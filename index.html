@@ -19,6 +19,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <!-- Html5-QRCode Library for scanning QR Codes via camera -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <!-- Supabase JS Client (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- Stylesheet -->
   <link rel="stylesheet" href="style.css">
 </head>
@@ -171,10 +173,6 @@
             </button>
           </div>
         </div>
-        <button class="menu-item" id="btn-menu-github" data-roles="admin" onclick="switchMenu('github')">
-          <i data-lucide="database"></i>
-          <span>Pengaturan Database</span>
-        </button>
         <div class="sync-badge-container">
           <div id="sync-status-indicator" class="sync-status status-offline">
             <span class="status-dot"></span>
@@ -2244,162 +2242,7 @@
           </div>
         </section>
 
-        <!-- ================= GITHUB SETTINGS VIEW ================= -->
-        <section id="view-github" class="content-view">
-          <div class="row justify-center">
-            <div class="col-md-8">
-              <div class="dashboard-card">
-                <div class="card-header border-bottom">
-                  <h2>Pengaturan Database & Sinkronisasi</h2>
-                  <p class="subtitle">Pilih metode penyimpanan data absensi sekolah Anda.</p>
-                </div>
 
-                <div class="card-body">
-                  <!-- Storage Mode Selector -->
-                  <div class="form-group mb-4">
-                    <label class="form-label font-semibold mb-2">Mode Penyimpanan Aktif</label>
-                    <div class="segmented-control" id="storage-mode-segmented">
-                      <button type="button" class="segment-button" id="btn-store-local"
-                        onclick="setStorageMode('local')">Lokal Browser</button>
-                      <button type="button" class="segment-button" id="btn-store-server"
-                        onclick="setStorageMode('server')">Server Sekolah (SQLite)</button>
-                      <button type="button" class="segment-button" id="btn-store-github"
-                        onclick="setStorageMode('github')">Awan GitHub (Cloud)</button>
-                    </div>
-                  </div>
-
-                  <!-- Mode Local Explanation -->
-                  <div id="settings-local-section" class="alert alert-info-box mb-4">
-                    <i data-lucide="database" class="flex-shrink-0 mr-3 text-info"></i>
-                    <div>
-                      <h4 class="font-semibold text-info mb-1">Penyimpanan Lokal Browser Aktif</h4>
-                      <p class="text-sm">Semua data disimpan di dalam <code>localStorage</code> browser pada komputer
-                        ini. Data bersifat offline dan akan hilang jika cache browser dibersihkan.</p>
-                    </div>
-                  </div>
-
-                  <!-- Mode Server Explanation -->
-                  <div id="settings-server-section" class="alert alert-info-box mb-4"
-                    style="display: none; border-color: var(--color-success); background: var(--color-success-soft);">
-                    <i data-lucide="server" class="flex-shrink-0 mr-3 text-success"
-                      style="color: var(--color-success)"></i>
-                    <div>
-                      <h4 class="font-semibold text-success mb-1" style="color: var(--color-success)">Terhubung ke
-                        Server Sekolah (SQLite)</h4>
-                      <p class="text-sm">Aplikasi menyimpan data secara terpusat ke database SQLite di server lokal
-                        sekolah. Otomatis sinkron antar guru/perangkat tanpa perlu memasukkan token GitHub.</p>
-                    </div>
-                  </div>
-
-                  <!-- Mode GitHub Form -->
-                  <div id="settings-github-section" style="display: none;">
-                    <div class="alert alert-info-box mb-4"
-                      style="border-color: var(--color-primary); background: var(--color-primary-glow);">
-                      <i data-lucide="github" class="flex-shrink-0 mr-3 text-primary"
-                        style="color: var(--color-primary)"></i>
-                      <div>
-                        <h4 class="font-semibold text-primary mb-1" style="color: var(--color-primary)">Integrasi GitHub
-                          Cloud</h4>
-                        <p class="text-sm">Simpan database di repositori GitHub Anda. Berguna jika Anda meng-host
-                          dashboard ini secara gratis di GitHub Pages agar dapat diakses online oleh guru & orang tua.
-                        </p>
-                      </div>
-                    </div>
-
-                    <form id="form-github-settings" onsubmit="handleGithubSave(event)">
-                      <div class="form-group mb-3">
-                        <label for="gh-token">GitHub Personal Access Token (PAT) <span class="required">*</span></label>
-                        <div class="input-password-wrapper">
-                          <input type="password" id="gh-token" class="form-input"
-                            placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
-                          <button type="button" class="btn-toggle-password" onclick="toggleTokenVisibility()">
-                            <i data-lucide="eye" id="icon-eye-open"></i>
-                            <i data-lucide="eye-off" id="icon-eye-closed" style="display: none;"></i>
-                          </button>
-                        </div>
-                        <small class="form-text text-muted">Token membutuhkan scope <code>repo</code>. Token ini aman
-                          dan disimpan langsung di browser Anda.</small>
-                      </div>
-
-                      <div class="row">
-                        <div class="col-8">
-                          <div class="form-group mb-3">
-                            <label for="gh-repo">Repositori GitHub <span class="required">*</span></label>
-                            <input type="text" id="gh-repo" class="form-input" placeholder="username/nama-repositori">
-                            <small class="form-text text-muted">Contoh: <code>smkn1/absensi-sekolah</code></small>
-                          </div>
-                        </div>
-                        <div class="col-4">
-                          <div class="form-group mb-3">
-                            <label for="gh-branch">Branch</label>
-                            <input type="text" id="gh-branch" class="form-input" placeholder="main" value="main">
-                          </div>
-                        </div>
-                      </div>
-
-                      <div class="form-group mb-4">
-                        <label for="gh-path">Path File Database (.json)</label>
-                        <input type="text" id="gh-path" class="form-input" placeholder="database.json"
-                          value="database.json">
-                        <small class="form-text text-muted">Lokasi file penyimpanan data di dalam repositori.</small>
-                      </div>
-
-                      <div class="d-flex justify-between border-top pt-4">
-                        <button type="button" class="btn btn-secondary btn-icon-text" onclick="copyAutoLoginLink()"
-                          title="Salin link bookmark berisi token agar tidak perlu memasukkannya lagi di perangkat lain">
-                          <i data-lucide="copy"></i>
-                          <span>Salin Link Auto-Login</span>
-                        </button>
-                        <div class="action-buttons">
-                          <button type="button" id="btn-gh-test" class="btn btn-secondary mr-2"
-                            onclick="testGithubConnection()">
-                            <i data-lucide="activity"></i> Tes Koneksi
-                          </button>
-                          <button type="submit" id="btn-gh-save" class="btn btn-primary btn-icon-text">
-                            <i data-lucide="save"></i>
-                            <span>Simpan & Sinkronisasi</span>
-                          </button>
-                        </div>
-                      </div>
-                    </form>
-                  </div>
-
-                </div>
-              </div>
-
-              <!-- Manual Sync Tools -->
-              <div class="dashboard-card mt-4" id="gh-sync-tools-card" style="display: none;">
-                <div class="card-header border-bottom">
-                  <h2>Alat Sinkronisasi Data GitHub</h2>
-                </div>
-                <div class="card-body">
-                  <p class="text-muted mb-4">Sinkronisasi data otomatis aktif saat Anda memperbarui data absensi atau
-                    siswa terlambat. Anda juga dapat memaksa sinkronisasi manual di bawah ini.</p>
-
-                  <div class="sync-actions-grid">
-                    <div class="sync-action-box">
-                      <h4>Unduh dari GitHub ke Browser</h4>
-                      <p class="text-muted text-sm">Menimpa data lokal di browser dengan versi terbaru yang ada di
-                        GitHub.</p>
-                      <button class="btn btn-info mt-2" onclick="syncPullFromGithubManual()">
-                        <i data-lucide="download-cloud"></i> Ambil Data Awan
-                      </button>
-                    </div>
-                    <div class="sync-action-box">
-                      <h4>Unggah dari Browser ke GitHub</h4>
-                      <p class="text-muted text-sm">Mengunggah paksa data lokal di browser untuk menimpa file di GitHub
-                        (gunakan jika terjadi konflik).</p>
-                      <button class="btn btn-danger mt-2" onclick="syncPushToGithubManual()">
-                        <i data-lucide="upload-cloud"></i> Unggah Data Lokal
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-          </div>
-        </section>
 
       </div>
 

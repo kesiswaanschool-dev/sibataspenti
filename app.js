@@ -1,6 +1,21 @@
-/* ==========================================================================
-   APP LOGIC - DASHBOARD ABSENSI & KETERLAMBATAN SISWA (SERVERLESS)
-   ========================================================================== */
+// --- Supabase Cloud Configuration ---
+// Masukkan URL dan ANON KEY Supabase Anda di sini untuk menghubungkan database Supabase secara otomatis
+const SUPABASE_CONFIG = {
+  url: 'https://YOUR_SUPABASE_PROJECT_ID.supabase.co', // Ganti dengan Supabase Project URL Anda
+  anonKey: 'YOUR_SUPABASE_ANON_KEY'                   // Ganti dengan Supabase Anon Key Anda
+};
+
+let supabaseClient = null;
+
+function initSupabase() {
+  if (typeof supabase !== 'undefined' && SUPABASE_CONFIG.url && !SUPABASE_CONFIG.url.includes('YOUR_SUPABASE_PROJECT_ID')) {
+    try {
+      supabaseClient = supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+    } catch (e) {
+      console.warn('Gagal inisialisasi Supabase:', e);
+    }
+  }
+}
 
 // --- App State ---
 let state = {
@@ -13,22 +28,12 @@ let state = {
   teachers: [],     // Array of { id, nama, mapel }
   kaihLogs: [],     // Array of 7 KAIH log entries
   accounts: [],     // Array of { id, username, password, nama, role }
-  githubSettings: {
-    token: '',
-    repo: '',
-    branch: 'main',
-    path: 'database.json'
-  },
-  storageMode: 'local', // 'local' or 'github'
   currentView: 'dashboard',
-  theme: 'dark',
-  githubSha: ''         // GitHub file SHA for updates
+  theme: 'dark'
 };
 
 // --- Initializer ---
 document.addEventListener('DOMContentLoaded', () => {
-  // Check URL parameters for GitHub Auto-Config
-  checkUrlParamsForConfig();
 
   // Load Theme
   initTheme();
@@ -255,122 +260,40 @@ function loadSettings() {
 }
 
 async function loadData() {
-  if (state.storageMode === 'github') {
-    // Attempt loading from GitHub
-    syncPullFromGithub(true); // silent load
-  } else if (state.storageMode === 'server') {
-    // Load from Server SQLite API
-    toggleLoader(true, 'Memuat data dari server sekolah...');
+  initSupabase();
+
+  if (supabaseClient) {
+    const loadedFromSupabase = await syncPullFromSupabase(true);
+    if (loadedFromSupabase) {
+      updateSyncBadge();
+      return;
+    }
+  }
+
+  // Load from LocalStorage fallback
+  const localDb = localStorage.getItem('schoolDb');
+  if (localDb) {
     try {
-      const [siswa, absensi, terlambat, pelanggaran, izinPulang, guru, jurnal] = await Promise.all([
-        fetch('/api/siswa').then(r => r.json()),
-        fetch('/api/absensi').then(r => r.json()),
-        fetch('/api/terlambat').then(r => r.json()),
-        fetch('/api/pelanggaran').then(r => r.json()),
-        fetch('/api/izin-pulang').then(r => r.json()),
-        fetch('/api/guru').then(r => r.json()).catch(() => []),
-        fetch('/api/jurnal').then(r => r.json()).catch(() => [])
-      ]);
-
-      // Map API schema to state arrays
-      state.students = (siswa || []).map(s => ({
-        id: String(s.id),
-        nama: s.nama,
-        nisn: s.nisn,
-        kelas: s.kelas
-      }));
-
-      state.attendance = (absensi || []).map(a => ({
-        id: String(a.id),
-        student_id: String(a.siswa_id),
-        tanggal: a.tanggal,
-        status: a.status,
-        keterangan: a.keterangan
-      }));
-
-      state.lateLogs = (terlambat || []).map(t => ({
-        id: String(t.id),
-        student_id: String(t.siswa_id),
-        tanggal: t.tanggal,
-        jam: t.jam,
-        keterangan: t.keterangan
-      }));
-
-      state.violations = (pelanggaran || []).map(p => ({
-        id: String(p.id),
-        student_id: String(p.siswa_id),
-        tanggal: p.tanggal,
-        jam: p.jam,
-        keterangan: p.keterangan
-      }));
-
-      state.izinPulang = (izinPulang || []).map(ip => ({
-        id: String(ip.id),
-        student_id: String(ip.siswa_id),
-        tanggal: ip.tanggal,
-        jam: ip.jam,
-        keterangan: ip.keterangan,
-        guru_piket: ip.guru_piket
-      }));
-
-      state.teachers = (guru || []).map(g => ({
-        id: String(g.id),
-        nama: g.nama,
-        mapel: g.mapel
-      }));
-
-      state.jurnalGuru = (jurnal || []).map(j => ({
-        id: String(j.id),
-        tanggal: j.tanggal,
-        hari: j.hari,
-        kelas: j.kelas,
-        guru: j.guru,
-        mapel: j.mapel,
-        materi: j.materi,
-        hadir: j.hadir,
-        sakit: j.sakit,
-        izin: j.izin,
-        alpha: j.alpha,
-        namaSakit: j.nama_sakit,
-        namaIzin: j.nama_izin,
-        namaAlpha: j.nama_alpha,
-        keteranganLain: j.keterangan_lain
-      }));
-
-      updateStorageExplanation();
-      refreshAllUI();
+      const parsed = JSON.parse(localDb);
+      state.students = parsed.students || [];
+      state.attendance = parsed.attendance || [];
+      state.lateLogs = parsed.lateLogs || [];
+      state.violations = parsed.violations || [];
+      state.izinPulang = parsed.izinPulang || [];
+      state.jurnalGuru = parsed.jurnalGuru || [];
+      state.teachers = parsed.teachers || [];
+      state.kaihLogs = parsed.kaihLogs || [];
+      state.accounts = parsed.accounts || getDefaultAccounts();
     } catch (e) {
-      console.error('Failed to load server data', e);
-      showToast('Gagal memuat data dari server sekolah.', 'error');
-    } finally {
-      toggleLoader(false);
+      console.error('Error parsing local DB', e);
+      showToast('Gagal memuat database lokal, file rusak.', 'error');
     }
   } else {
-    // Load from LocalStorage
-    const localDb = localStorage.getItem('schoolDb');
-    if (localDb) {
-      try {
-        const parsed = JSON.parse(localDb);
-        state.students = parsed.students || [];
-        state.attendance = parsed.attendance || [];
-        state.lateLogs = parsed.lateLogs || [];
-        state.violations = parsed.violations || [];
-        state.izinPulang = parsed.izinPulang || [];
-        state.jurnalGuru = parsed.jurnalGuru || [];
-        state.teachers = parsed.teachers || [];
-        state.kaihLogs = parsed.kaihLogs || [];
-        state.accounts = parsed.accounts || getDefaultAccounts();
-      } catch (e) {
-        console.error('Error parsing local DB', e);
-        showToast('Gagal memuat database lokal, file rusak.', 'error');
-      }
-    } else {
-      state.accounts = getDefaultAccounts();
-    }
-    updateStorageExplanation();
-    refreshAllUI();
-    checkAuthStatus();
+    state.accounts = getDefaultAccounts();
   }
+  updateSyncBadge();
+  refreshAllUI();
+  checkAuthStatus();
 }
 
 function saveLocalState() {
@@ -390,98 +313,95 @@ function saveLocalState() {
 
 async function persistData() {
   saveLocalState();
-  if (state.storageMode === 'github') {
-    await syncPushToGithub();
+  if (supabaseClient) {
+    await syncPushToSupabase(true);
   }
 }
 
-// --- GitHub API Sync Engine ---
+// --- Supabase Cloud Sync Engine ---
 function updateSyncBadge() {
   const indicator = document.getElementById('sync-status-indicator');
   const text = document.getElementById('sync-status-text');
   if (!indicator || !text) return;
-  
+
   indicator.className = 'sync-status';
-  if (state.storageMode === 'local') {
+  if (supabaseClient) {
+    indicator.classList.add('status-connected');
+    text.textContent = 'Supabase Database (Aktif)';
+  } else {
     indicator.classList.add('status-offline');
     text.textContent = 'Mode Lokal (Offline)';
-  } else if (state.storageMode === 'server') {
-    indicator.classList.add('status-connected');
-    text.textContent = 'Mode Server (Aktif)';
-  } else {
-    indicator.classList.add('status-connected');
-    text.textContent = `Awan: ${state.githubSettings.repo}`;
   }
 }
 
-function updateStorageExplanation() {
-  const expEl = document.getElementById('storage-status-explanation');
-  const syncCard = document.getElementById('gh-sync-tools-card');
-  if (!expEl) return;
+async function syncPullFromSupabase(silent = true) {
+  if (!supabaseClient) return false;
+  try {
+    const { data, error } = await supabaseClient
+      .from('school_data')
+      .select('*')
+      .eq('id', 1)
+      .maybeSingle();
 
-  if (state.storageMode === 'local') {
-    expEl.innerHTML = `Aplikasi sedang menggunakan <strong>Local Storage (Mode Demo)</strong> di browser Anda. Semua data disimpan secara lokal pada komputer ini. Untuk berkolaborasi dengan guru-guru lain, sambungkan ke repositori GitHub.`;
-    if (syncCard) syncCard.style.display = 'none';
-  } else if (state.storageMode === 'server') {
-    expEl.innerHTML = `Aplikasi terhubung ke <strong>Server Database Sekolah (SQLite)</strong>. Sinkronisasi data terpusat dan multi-device aktif secara otomatis tanpa memerlukan token GitHub.`;
-    if (syncCard) syncCard.style.display = 'none';
-  } else {
-    expEl.innerHTML = `Aplikasi terhubung ke GitHub repositori <strong>${state.githubSettings.repo}</strong> (${state.githubSettings.branch}). File data disimpan di <code>${state.githubSettings.path}</code>. Data tersinkronisasi otomatis saat ada perubahan.`;
-    if (syncCard) syncCard.style.display = 'block';
+    if (error || !data) return false;
+
+    if (data.students) state.students = data.students;
+    if (data.attendance) state.attendance = data.attendance;
+    if (data.lateLogs) state.lateLogs = data.lateLogs;
+    if (data.violations) state.violations = data.violations;
+    if (data.izinPulang) state.izinPulang = data.izinPulang;
+    if (data.jurnalGuru) state.jurnalGuru = data.jurnalGuru;
+    if (data.teachers) state.teachers = data.teachers;
+    if (data.kaihLogs) state.kaihLogs = data.kaihLogs;
+    if (data.accounts) state.accounts = data.accounts;
+
+    saveLocalState();
+    refreshAllUI();
+    checkAuthStatus();
+    return true;
+  } catch (err) {
+    if (!silent) console.error('Supabase Pull Exception:', err);
+    return false;
   }
 }
 
-function setStorageMode(mode) {
-  state.storageMode = mode;
-  localStorage.setItem('storageMode', mode);
-  
-  // Update segmented control active class
-  const buttons = document.querySelectorAll('#storage-mode-segmented .segment-button');
-  buttons.forEach(btn => btn.classList.remove('active'));
-  
-  const activeBtn = document.getElementById(`btn-store-${mode}`);
-  if (activeBtn) activeBtn.classList.add('active');
+async function syncPushToSupabase(silent = true) {
+  if (!supabaseClient) return;
 
-  // Toggle visibility of settings sections
-  const localSec = document.getElementById('settings-local-section');
-  const serverSec = document.getElementById('settings-server-section');
-  const githubSec = document.getElementById('settings-github-section');
-  const syncCard = document.getElementById('gh-sync-tools-card');
-
-  if (localSec) localSec.style.display = mode === 'local' ? 'flex' : 'none';
-  if (serverSec) serverSec.style.display = mode === 'server' ? 'flex' : 'none';
-  if (githubSec) githubSec.style.display = mode === 'github' ? 'block' : 'none';
-  if (syncCard) syncCard.style.display = mode === 'github' ? 'block' : 'none';
-
-  updateSyncBadge();
-  updateStorageExplanation();
-  
-  // Load data for the selected mode
-  loadData();
-  showToast(`Beralih ke mode penyimpanan: ${mode === 'local' ? 'Lokal' : mode === 'server' ? 'Server Sekolah' : 'GitHub Cloud'}`, 'info');
-}
-
-function copyAutoLoginLink() {
-  const token = document.getElementById('gh-token').value.trim();
-  const repo = document.getElementById('gh-repo').value.trim();
-  const branch = document.getElementById('gh-branch').value.trim() || 'main';
-  const path = document.getElementById('gh-path').value.trim() || 'database.json';
-
-  if (!token || !repo) {
-    showToast('Token dan Repositori wajib diisi sebelum menyalin link!', 'warning');
-    return;
+  const indicator = document.getElementById('sync-status-indicator');
+  const text = document.getElementById('sync-status-text');
+  if (indicator) {
+    indicator.className = 'sync-status status-syncing';
+    text.textContent = 'Menyinkronkan...';
   }
 
-  // Construct URL
-  const baseUrl = window.location.origin + window.location.pathname;
-  const loginUrl = `${baseUrl}?token=${encodeURIComponent(token)}&repo=${encodeURIComponent(repo)}&branch=${encodeURIComponent(branch)}&path=${encodeURIComponent(path)}`;
+  try {
+    const payload = {
+      id: 1,
+      students: state.students,
+      attendance: state.attendance,
+      lateLogs: state.lateLogs,
+      violations: state.violations,
+      izinPulang: state.izinPulang,
+      jurnalGuru: state.jurnalGuru,
+      teachers: state.teachers,
+      kaihLogs: state.kaihLogs,
+      accounts: getAccountsList(),
+      updated_at: new Date().toISOString()
+    };
 
-  navigator.clipboard.writeText(loginUrl).then(() => {
-    showToast('Link auto-login disalin! Simpan sebagai bookmark.', 'success');
-  }).catch(err => {
-    console.error('Failed to copy', err);
-    showToast('Gagal menyalin link otomatis.', 'error');
-  });
+    const { error } = await supabaseClient
+      .from('school_data')
+      .upsert(payload, { onConflict: 'id' });
+
+    if (error && !silent) {
+      showToast(`Gagal menyinkron ke Supabase: ${error.message}`, 'error');
+    }
+  } catch (error) {
+    if (!silent) showToast(`Gagal menyinkron ke Supabase: ${error.message}`, 'error');
+  } finally {
+    updateSyncBadge();
+  }
 }
 
 // Global loader toggle
@@ -492,249 +412,6 @@ function toggleLoader(show, text = 'Memuat...') {
     overlay.style.display = show ? 'flex' : 'none';
     if (textEl) textEl.textContent = text;
   }
-}
-
-async function githubApiRequest(endpoint, method = 'GET', body = null) {
-  const url = `https://api.github.com${endpoint}`;
-  const headers = {
-    'Authorization': `token ${state.githubSettings.token}`,
-    'Accept': 'application/vnd.github.v3+json',
-    'Content-Type': 'application/json'
-  };
-
-  const options = { method, headers };
-  if (body) {
-    options.body = JSON.stringify(body);
-  }
-
-  const response = await fetch(url, options);
-  if (!response.ok) {
-    const errData = await response.json().catch(() => ({}));
-    throw new Error(errData.message || `HTTP ${response.status}`);
-  }
-  return response.json();
-}
-
-async function testGithubConnection() {
-  const token = document.getElementById('gh-token').value.trim();
-  const repo = document.getElementById('gh-repo').value.trim();
-  
-  if (!token || !repo) {
-    showToast('Token dan Nama Repositori wajib diisi!', 'warning');
-    return;
-  }
-
-  toggleLoader(true, 'Menguji koneksi ke GitHub...');
-  try {
-    // Fetch repo details to test connection
-    const data = await fetch(`https://api.github.com/repos/${repo}`, {
-      headers: {
-        'Authorization': `token ${token}`,
-        'Accept': 'application/vnd.github.v3+json'
-      }
-    });
-
-    if (data.ok) {
-      showToast('Koneksi ke repositori GitHub berhasil!', 'success');
-    } else {
-      const err = await data.json().catch(() => ({}));
-      showToast(`Koneksi Gagal: ${err.message || data.statusText}`, 'error');
-    }
-  } catch (error) {
-    showToast(`Koneksi Error: ${error.message}`, 'error');
-  } finally {
-    toggleLoader(false);
-  }
-}
-
-async function handleGithubSave(event) {
-  event.preventDefault();
-  
-  const token = document.getElementById('gh-token').value.trim();
-  const repo = document.getElementById('gh-repo').value.trim();
-  const branch = document.getElementById('gh-branch').value.trim() || 'main';
-  const path = document.getElementById('gh-path').value.trim() || 'database.json';
-
-  if (!token || !repo) {
-    showToast('Token dan Repositori wajib diisi untuk mengaktifkan sinkronisasi!', 'warning');
-    return;
-  }
-
-  toggleLoader(true, 'Menyimpan dan menyinkronkan data...');
-
-  // Update temp settings
-  state.githubSettings = { token, repo, branch, path };
-  state.storageMode = 'github';
-
-  try {
-    // Attempt download or create database file on GitHub
-    await syncPullFromGithub(false);
-    
-    // Save settings to LocalStorage only if successful
-    localStorage.setItem('storageMode', 'github');
-    localStorage.setItem('githubSettings', JSON.stringify(state.githubSettings));
-    
-    updateSyncBadge();
-    updateStorageExplanation();
-    showToast('Pengaturan GitHub disimpan & data disinkronisasi!', 'success');
-  } catch (error) {
-    console.error('Failed GitHub Sync on Save', error);
-    // Revert storage mode to local since sync failed
-    state.storageMode = 'local';
-    updateSyncBadge();
-    updateStorageExplanation();
-    showToast(`Sinkronisasi Awal Gagal: ${error.message}. Kembali ke Mode Lokal.`, 'error');
-  } finally {
-    toggleLoader(false);
-  }
-}
-
-function switchLocalStorageMode() {
-  state.storageMode = 'local';
-  localStorage.setItem('storageMode', 'local');
-  updateSyncBadge();
-  updateStorageExplanation();
-  
-  // Reload local storage data
-  loadData();
-  showToast('Beralih ke Penyimpanan Lokal (Offline).', 'info');
-}
-
-async function syncPullFromGithub(silent = false) {
-  if (!state.githubSettings.token || !state.githubSettings.repo) {
-    if (!silent) showToast('Token GitHub atau repositori belum diatur!', 'warning');
-    return;
-  }
-
-  if (!silent) toggleLoader(true, 'Mengunduh data terbaru dari GitHub...');
-  
-  try {
-    const repo = state.githubSettings.repo;
-    const path = state.githubSettings.path;
-    const branch = state.githubSettings.branch;
-
-    // Fetch the file contents
-    const endpoint = `/repos/${repo}/contents/${path}?ref=${branch}`;
-    let fileData;
-    try {
-      fileData = await githubApiRequest(endpoint, 'GET');
-    } catch (err) {
-      if (err.message.includes('Not Found')) {
-        // File does not exist, let's create a new template database on GitHub
-        if (!silent) showToast('File database tidak ditemukan di GitHub. Membuat file baru...', 'info');
-        state.githubSha = '';
-        await syncPushToGithub(true); // force template push
-        if (!silent) toggleLoader(false);
-        return;
-      } else {
-        throw err;
-      }
-    }
-
-    state.githubSha = fileData.sha;
-    const rawContent = atob(fileData.content.replace(/\s/g, ''));
-    const parsedDb = JSON.parse(rawContent);
-
-    state.students = parsedDb.students || [];
-    state.attendance = parsedDb.attendance || [];
-    state.lateLogs = parsedDb.lateLogs || [];
-    state.violations = parsedDb.violations || [];
-    state.izinPulang = parsedDb.izinPulang || [];
-    state.jurnalGuru = parsedDb.jurnalGuru || [];
-    state.teachers = parsedDb.teachers || [];
-    state.kaihLogs = parsedDb.kaihLogs || [];
-    state.accounts = parsedDb.accounts || getDefaultAccounts();
-
-    // Save copy locally
-    saveLocalState();
-    refreshAllUI();
-    checkAuthStatus();
-    
-    if (!silent) showToast('Data berhasil diunduh dari GitHub!', 'success');
-  } catch (error) {
-    console.error('GitHub Pull Error:', error);
-    if (!silent) showToast(`Gagal mengunduh dari GitHub: ${error.message}`, 'error');
-  } finally {
-    if (!silent) toggleLoader(false);
-  }
-}
-
-async function syncPushToGithub(isNewFile = false) {
-  if (!state.githubSettings.token || !state.githubSettings.repo) {
-    return;
-  }
-
-  const indicator = document.getElementById('sync-status-indicator');
-  const text = document.getElementById('sync-status-text');
-  if (indicator) {
-    indicator.className = 'sync-status status-syncing';
-    text.textContent = 'Menyinkronkan...';
-  }
-
-  try {
-    const repo = state.githubSettings.repo;
-    const path = state.githubSettings.path;
-    const branch = state.githubSettings.branch;
-
-    // 1. Fetch current SHA to prevent edit conflict if not creating a new file
-    if (!isNewFile) {
-      try {
-        const fileInfo = await githubApiRequest(`/repos/${repo}/contents/${path}?ref=${branch}`, 'GET');
-        state.githubSha = fileInfo.sha;
-      } catch (err) {
-        // Ignore if file doesn't exist, it means we create it
-        if (!err.message.includes('Not Found')) {
-          throw err;
-        }
-      }
-    }
-
-    // 2. Prepare payload
-    const dbPayload = {
-      students: state.students,
-      attendance: state.attendance,
-      lateLogs: state.lateLogs,
-      violations: state.violations,
-      izinPulang: state.izinPulang,
-      jurnalGuru: state.jurnalGuru,
-      teachers: state.teachers,
-      kaihLogs: state.kaihLogs,
-      accounts: getAccountsList()
-    };
-    
-    const base64Content = btoa(unescape(encodeURIComponent(JSON.stringify(dbPayload, null, 2))));
-    
-    const body = {
-      message: `update: data sekolah tanggal ${new Date().toISOString().split('T')[0]}`,
-      content: base64Content,
-      branch
-    };
-
-    if (state.githubSha) {
-      body.sha = state.githubSha;
-    }
-
-    const res = await githubApiRequest(`/repos/${repo}/contents/${path}`, 'PUT', body);
-    state.githubSha = res.content.sha;
-    
-    showToast('Data berhasil disimpan ke awan GitHub!', 'success');
-  } catch (error) {
-    console.error('GitHub Push Error:', error);
-    showToast(`Gagal menyimpan ke GitHub: ${error.message}. Menggunakan penyimpanan lokal.`, 'error');
-  } finally {
-    updateSyncBadge();
-  }
-}
-
-// Manual button triggers
-function syncPullFromGithubManual() {
-  syncPullFromGithub(false);
-}
-
-async function syncPushToGithubManual() {
-  toggleLoader(true, 'Mengunggah data lokal ke GitHub...');
-  await syncPushToGithub();
-  toggleLoader(false);
 }
 
 // --- Toast Notifications ---
