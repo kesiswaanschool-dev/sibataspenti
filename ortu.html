@@ -740,31 +740,6 @@
 
   <script>
     // --- Application State ---
-    let appDb = {
-      students: [],
-      attendance: [],
-      lateLogs: [],
-      violations: [],
-      izinPulang: [],
-      kaihLogs: []
-    };
-    
-    let currentStudent = null;
-    let studentAttendance = [];
-    let studentLates = [];
-    let studentViolations = [];
-    let studentIzinPulang = [];
-    let studentKaih = [];
-    
-    let dbSource = 'local'; // 'local', 'github-relative', 'github-param'
-    let dbRepoName = '';
-
-    // --- Initializer ---
-    document.addEventListener('DOMContentLoaded', async () => {
-      lucide.createIcons();
-      await connectAndLoadDatabase();
-    });
-
     const SUPABASE_CONFIG = {
       url: 'https://wedwjlkvnzbgrrybamqm.supabase.co',
       anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndlZHdqbGt2bnpiZ3JyeWJhbXFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4NzA0MjIsImV4cCI6MjEwMDQ0NjQyMn0.MYUa4uqQEX35ecSyQxm-iPFkPNLmLHugCXo4uOyji0Y'
@@ -781,6 +756,31 @@
         }
       }
     }
+
+    let appDb = {
+      students: [],
+      attendance: [],
+      lateLogs: [],
+      violations: [],
+      izinPulang: [],
+      kaihLogs: []
+    };
+    
+    let currentStudent = null;
+    let studentAttendance = [];
+    let studentLates = [];
+    let studentViolations = [];
+    let studentIzinPulang = [];
+    let studentKaih = [];
+    
+    let dbSource = 'local';
+    let dbRepoName = '';
+
+    // --- Initializer ---
+    document.addEventListener('DOMContentLoaded', async () => {
+      lucide.createIcons();
+      await connectAndLoadDatabase();
+    });
 
     // --- Database Fetch Engine ---
     async function connectAndLoadDatabase() {
@@ -908,7 +908,10 @@
         btnSpinner.style.display = 'none';
 
         // Perform search
-        const student = appDb.students.find(s => s.nisn === nisnInput || s.id === nisnInput);
+        const student = appDb.students.find(s => 
+          (s.nisn && String(s.nisn).trim() === nisnInput) || 
+          (s.id && String(s.id).trim() === nisnInput)
+        );
         
         if (!student) {
           showToast('NISN tidak terdaftar dalam sistem.', 'error');
@@ -939,7 +942,7 @@
       const selectedMonth = document.getElementById('filter-bulan')?.value || '';
       
       // 1. Process Attendance
-      let rawAttendance = (appDb.attendance || []).filter(a => a.student_id === student.id);
+      let rawAttendance = (appDb.attendance || []).filter(a => String(a.student_id) === String(student.id));
       if (selectedMonth) {
         rawAttendance = rawAttendance.filter(a => a.tanggal && a.tanggal.split('-')[1] === selectedMonth);
       }
@@ -997,7 +1000,7 @@
       }
 
       // 2. Process Tardiness Timeline
-      let rawLates = (appDb.lateLogs || []).filter(l => l.student_id === student.id);
+      let rawLates = (appDb.lateLogs || []).filter(l => String(l.student_id) === String(student.id));
       if (selectedMonth) {
         rawLates = rawLates.filter(l => l.tanggal && l.tanggal.split('-')[1] === selectedMonth);
       }
@@ -1030,7 +1033,7 @@
       }
 
       // 3. Process Violations Timeline
-      let rawViolations = (appDb.violations || []).filter(v => v.student_id === student.id);
+      let rawViolations = (appDb.violations || []).filter(v => String(v.student_id) === String(student.id));
       if (selectedMonth) {
         rawViolations = rawViolations.filter(v => v.tanggal && v.tanggal.split('-')[1] === selectedMonth);
       }
@@ -1063,7 +1066,7 @@
       }
 
       // 4. Process Izin Pulang Timeline
-      let rawIzinPulang = (appDb.izinPulang || []).filter(ip => ip.student_id === student.id);
+      let rawIzinPulang = (appDb.izinPulang || []).filter(ip => String(ip.student_id) === String(student.id));
       if (selectedMonth) {
         rawIzinPulang = rawIzinPulang.filter(ip => ip.tanggal && ip.tanggal.split('-')[1] === selectedMonth);
       }
