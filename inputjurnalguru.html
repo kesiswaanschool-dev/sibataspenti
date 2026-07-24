@@ -10,6 +10,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- Lucide Icons (CDN) -->
   <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Supabase JS SDK CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- Stylesheet -->
   <link rel="stylesheet" href="style.css">
   <style>
@@ -25,10 +27,39 @@
 
     .jurnal-container {
       width: 100%;
-      max-width: 860px;
+      max-width: 880px;
       display: flex;
       flex-direction: column;
       gap: 20px;
+    }
+
+    .nav-top-bar {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .btn-back-dash {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .btn-back-dash:hover {
+      background: rgba(99, 102, 241, 0.15);
+      color: var(--text-main);
+      border-color: rgba(99, 102, 241, 0.3);
     }
 
     .jurnal-header {
@@ -53,9 +84,12 @@
       backdrop-filter: blur(16px);
       border: 1px solid var(--border-color, rgba(255, 255, 255, 0.07));
       border-radius: 16px;
-      padding: 32px 24px;
+      padding: 36px 28px;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
       text-align: center;
+      max-width: 440px;
+      margin: 0 auto;
+      width: 100%;
     }
 
     .teacher-profile-bar {
@@ -95,12 +129,36 @@
       transform: translateX(-50%) translateY(0);
       opacity: 1;
     }
+
+    @media (max-width: 600px) {
+      body {
+        padding: 12px 8px;
+      }
+      .login-card {
+        padding: 24px 16px;
+      }
+      .stats-summary-box div[style*="grid-template-columns"] {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+      }
+    }
   </style>
 </head>
 <body class="dark-theme">
 
   <div class="jurnal-container">
     
+    <!-- Top Nav Back Link -->
+    <div class="nav-top-bar">
+      <a href="index.html" class="btn-back-dash">
+        <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+        <span>Dashboard Utama</span>
+      </a>
+      <div id="sync-status-badge" style="font-size: 12px; font-weight: 600; color: #34d399; display: flex; align-items: center; gap: 6px;">
+        <span style="width: 8px; height: 8px; border-radius: 50%; background: #34d399;"></span> Supabase Cloud
+      </div>
+    </div>
+
     <!-- Header Logo & Title -->
     <div class="jurnal-header">
       <img src="logo.png" alt="Logo SMPN 3 Batam" class="logo-img" onerror="this.src='https://placehold.co/100/10b981/ffffff?text=SMP3'">
@@ -268,35 +326,38 @@
               </div>
             </div>
 
-            <div class="form-actions">
+            <!-- Action Submit -->
+            <div class="form-actions border-top pt-3 d-flex justify-end gap-2">
               <button type="submit" class="btn btn-primary btn-lg" style="background: #4f46e5; width: 100%;">
-                <i data-lucide="save" class="mr-1"></i> Simpan Jurnal Guru
+                <i data-lucide="save" class="mr-1"></i> Simpan Jurnal Pembelajaran
               </button>
             </div>
           </form>
         </div>
       </div>
 
-      <!-- Riwayat Jurnal Guru Saya -->
-      <div class="dashboard-card card-full">
-        <div class="card-header border-bottom">
+      <!-- Riwayat Jurnal Guru -->
+      <div class="dashboard-card card-full mb-5">
+        <div class="card-header border-bottom d-flex justify-between align-center">
           <h2 style="font-size: 16px; font-weight: 700; margin: 0;">Riwayat Jurnal Pembelajaran Saya</h2>
         </div>
-        <div class="card-body">
+        <div class="card-body p-0">
           <div class="custom-table-container" style="overflow-x: auto;">
             <table class="styled-table text-sm">
               <thead>
                 <tr>
-                  <th width="50" class="text-center">No</th>
-                  <th width="150">Hari, Tanggal</th>
-                  <th width="130">Jam Ke / Waktu</th>
-                  <th width="140">Kelas & Mapel</th>
-                  <th>Materi & Kehadiran</th>
-                  <th width="200">Ket. Tambahan</th>
+                  <th style="width: 50px;" class="text-center">No</th>
+                  <th style="min-width: 120px;">Tanggal</th>
+                  <th style="min-width: 110px;">Jam Ke</th>
+                  <th style="min-width: 140px;">Kelas & Mapel</th>
+                  <th style="min-width: 250px;">Batas Materi & Kehadiran</th>
+                  <th style="min-width: 180px;">Catatan</th>
                 </tr>
               </thead>
               <tbody id="teacher-history-tbody">
-                <!-- Rendered dynamically -->
+                <tr>
+                  <td colspan="6" class="text-center text-muted py-4">Memuat data riwayat jurnal...</td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -308,12 +369,29 @@
   </div>
 
   <!-- Toast Notification -->
-  <div class="toast" id="toast-notif">
+  <div id="toast-notif" class="toast">
     <i id="toast-icon"></i>
     <span id="toast-text">-</span>
   </div>
 
   <script>
+    const SUPABASE_CONFIG = {
+      url: 'https://wedwjlkvnzbgrrybamqm.supabase.co',
+      anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndlZHdqbGt2bnpiZ3JyeWJhbXFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4NzA0MjIsImV4cCI6MjEwMDQ0NjQyMn0.MYUa4uqQEX35ecSyQxm-iPFkPNLmLHugCXo4uOyji0Y'
+    };
+
+    let supabaseClient = null;
+
+    function initSupabase() {
+      if (typeof supabase !== 'undefined' && SUPABASE_CONFIG.url && SUPABASE_CONFIG.anonKey) {
+        try {
+          supabaseClient = supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+        } catch (e) {
+          console.warn('Gagal inisialisasi Supabase:', e);
+        }
+      }
+    }
+
     const HARI_INDONESIA = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
     let appDb = {
@@ -325,10 +403,10 @@
     let currentTeacher = null;
 
     document.addEventListener('DOMContentLoaded', async () => {
+      initSupabase();
       lucide.createIcons();
       await loadDatabase();
 
-      // Set default date
       const todayISO = new Date().toISOString().split('T')[0];
       const dateInput = document.getElementById('jurnal-tanggal');
       if (dateInput) {
@@ -336,12 +414,11 @@
         handleDateChange();
       }
 
-      // Check session
       const savedSession = sessionStorage.getItem('loggedTeacherJurnal');
       if (savedSession) {
         try {
           const teacher = JSON.parse(savedSession);
-          const found = appDb.teachers.find(t => String(t.id) === String(teacher.id) || (t.nip && t.nip === teacher.nip) || t.nama === teacher.nama);
+          const found = appDb.teachers.find(t => String(t.id) === String(teacher.id) || t.nip === teacher.nip);
           if (found) {
             showTeacherForm(found);
           }
@@ -350,35 +427,19 @@
     });
 
     async function loadDatabase() {
-      if (window.location.protocol.startsWith('http')) {
+      if (supabaseClient) {
         try {
-          const [guruRes, siswaRes, absenRes, jurnalRes] = await Promise.all([
-            fetch('/api/guru').then(r => r.json()).catch(() => []),
-            fetch('/api/siswa').then(r => r.json()).catch(() => []),
-            fetch('/api/absensi').then(r => r.json()).catch(() => []),
-            fetch('/api/jurnal').then(r => r.json()).catch(() => [])
-          ]);
-          if (Array.isArray(guruRes) && guruRes.length > 0) {
-            appDb.teachers = guruRes;
-            appDb.students = siswaRes || [];
-            appDb.attendance = absenRes || [];
-            appDb.jurnalGuru = jurnalRes || [];
+          const { data, error } = await supabaseClient.from('school_data').select('*').eq('id', 1).maybeSingle();
+          if (!error && data) {
+            if (data.teachers) appDb.teachers = data.teachers;
+            if (data.students) appDb.students = data.students;
+            if (data.attendance) appDb.attendance = data.attendance;
+            if (data.jurnalGuru) appDb.jurnalGuru = data.jurnalGuru;
+            saveLocalDatabase();
             return;
           }
         } catch (e) {}
       }
-
-      try {
-        const res = await fetch('./database.json', { cache: 'no-store' });
-        if (res.ok) {
-          const data = await res.json();
-          appDb.teachers = data.teachers || [];
-          appDb.students = data.students || [];
-          appDb.attendance = data.attendance || [];
-          appDb.jurnalGuru = data.jurnalGuru || [];
-          return;
-        }
-      } catch (e) {}
 
       const localDb = localStorage.getItem('schoolDb');
       if (localDb) {
@@ -392,14 +453,35 @@
       }
     }
 
-    function saveDatabase() {
+    function saveLocalDatabase() {
       let existingDb = {};
       const localDb = localStorage.getItem('schoolDb');
       if (localDb) {
         try { existingDb = JSON.parse(localDb); } catch(e) {}
       }
+      existingDb.teachers = appDb.teachers;
+      existingDb.students = appDb.students;
       existingDb.jurnalGuru = appDb.jurnalGuru;
       localStorage.setItem('schoolDb', JSON.stringify(existingDb));
+    }
+
+    async function saveDatabase() {
+      saveLocalDatabase();
+
+      if (supabaseClient) {
+        try {
+          let existingDb = {};
+          const localDb = localStorage.getItem('schoolDb');
+          if (localDb) {
+            try { existingDb = JSON.parse(localDb); } catch(e) {}
+          }
+          existingDb.id = 1;
+          existingDb.updated_at = new Date().toISOString();
+          await supabaseClient.from('school_data').upsert(existingDb, { onConflict: 'id' });
+        } catch (e) {
+          console.error('Supabase save error', e);
+        }
+      }
     }
 
     function handleLoginKeyPress(e) {

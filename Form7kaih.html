@@ -10,6 +10,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- Lucide Icons (CDN) -->
   <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Supabase JS SDK CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- Stylesheet -->
   <link rel="stylesheet" href="style.css">
   <style>
@@ -25,10 +27,39 @@
 
     .kaih-container {
       width: 100%;
-      max-width: 720px;
+      max-width: 760px;
       display: flex;
       flex-direction: column;
       gap: 20px;
+    }
+
+    .nav-top-bar {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .btn-back-dash {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .btn-back-dash:hover {
+      background: rgba(99, 102, 241, 0.15);
+      color: var(--text-main);
+      border-color: rgba(99, 102, 241, 0.3);
     }
 
     .kaih-header {
@@ -53,9 +84,12 @@
       backdrop-filter: blur(16px);
       border: 1px solid var(--border-color, rgba(255, 255, 255, 0.07));
       border-radius: 16px;
-      padding: 32px 24px;
+      padding: 36px 28px;
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
       text-align: center;
+      max-width: 440px;
+      margin: 0 auto;
+      width: 100%;
     }
 
     .student-profile-bar {
@@ -95,12 +129,35 @@
       transform: translateX(-50%) translateY(0);
       opacity: 1;
     }
+
+    @media (max-width: 600px) {
+      body {
+        padding: 12px 8px;
+      }
+      .login-card {
+        padding: 24px 16px;
+      }
+      .filter-bar div[style*="grid-template-columns"] {
+        grid-template-columns: 1fr !important;
+      }
+    }
   </style>
 </head>
 <body class="dark-theme">
 
   <div class="kaih-container">
     
+    <!-- Top Nav Back Link -->
+    <div class="nav-top-bar">
+      <a href="index.html" class="btn-back-dash">
+        <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+        <span>Dashboard Utama</span>
+      </a>
+      <div id="sync-status-badge" style="font-size: 12px; font-weight: 600; color: #34d399; display: flex; align-items: center; gap: 6px;">
+        <span style="width: 8px; height: 8px; border-radius: 50%; background: #34d399;"></span> Supabase Cloud
+      </div>
+    </div>
+
     <!-- Header Logo & Title -->
     <div class="kaih-header">
       <img src="logo.png" alt="Logo SMPN 3 Batam" class="logo-img" onerror="this.src='https://placehold.co/100/10b981/ffffff?text=SMP3'">
@@ -137,7 +194,7 @@
       
       <!-- Profile Bar -->
       <div class="student-profile-bar">
-        <div style="display: flex; align-center; gap: 12px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
           <div style="width: 42px; height: 42px; background: #4f46e5; color: white; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 700;">
             <i data-lucide="user" style="width: 22px; height: 22px;"></i>
           </div>
@@ -262,29 +319,31 @@
         </div>
       </div>
 
-      <!-- Riwayat Pengisian Saya -->
+      <!-- History Table -->
       <div class="dashboard-card card-full">
         <div class="card-header border-bottom">
-          <h2 style="font-size: 16px; font-weight: 700; margin: 0;">Riwayat Pengisian Saya</h2>
+          <h2 style="font-size: 16px; font-weight: 700; margin: 0;">Riwayat Pengisian 7 KAIH Saya</h2>
         </div>
-        <div class="card-body">
+        <div class="card-body p-0">
           <div class="custom-table-container" style="overflow-x: auto;">
-            <table class="styled-table text-sm">
+            <table class="styled-table">
               <thead>
                 <tr>
-                  <th>Tanggal</th>
-                  <th>Semester</th>
-                  <th class="text-center">Bangun Pagi</th>
-                  <th class="text-center">Beribadah</th>
-                  <th class="text-center">Berolahraga</th>
-                  <th class="text-center">Makan Sehat</th>
-                  <th class="text-center">Belajar</th>
-                  <th class="text-center">Sosial</th>
-                  <th class="text-center">Tidur</th>
+                  <th style="min-width: 110px;">Tanggal</th>
+                  <th style="min-width: 90px;">Semester</th>
+                  <th class="text-center" style="min-width: 90px;">Bangun Pagi</th>
+                  <th class="text-center" style="min-width: 90px;">Beribadah</th>
+                  <th class="text-center" style="min-width: 90px;">Berolahraga</th>
+                  <th class="text-center" style="min-width: 90px;">Makan Sehat</th>
+                  <th class="text-center" style="min-width: 90px;">Gemar Belajar</th>
+                  <th class="text-center" style="min-width: 90px;">Bermasyarakat</th>
+                  <th class="text-center" style="min-width: 90px;">Tidur Cepat</th>
                 </tr>
               </thead>
               <tbody id="student-history-tbody">
-                <!-- Rendered dynamically -->
+                <tr>
+                  <td colspan="9" class="text-center text-muted py-4">Memuat data riwayat...</td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -296,12 +355,29 @@
   </div>
 
   <!-- Toast Notification -->
-  <div class="toast" id="toast-notif">
+  <div id="toast-notif" class="toast">
     <i id="toast-icon"></i>
     <span id="toast-text">-</span>
   </div>
 
   <script>
+    const SUPABASE_CONFIG = {
+      url: 'https://wedwjlkvnzbgrrybamqm.supabase.co',
+      anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndlZHdqbGt2bnpiZ3JyeWJhbXFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4NzA0MjIsImV4cCI6MjEwMDQ0NjQyMn0.MYUa4uqQEX35ecSyQxm-iPFkPNLmLHugCXo4uOyji0Y'
+    };
+
+    let supabaseClient = null;
+
+    function initSupabase() {
+      if (typeof supabase !== 'undefined' && SUPABASE_CONFIG.url && SUPABASE_CONFIG.anonKey) {
+        try {
+          supabaseClient = supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+        } catch (e) {
+          console.warn('Gagal inisialisasi Supabase:', e);
+        }
+      }
+    }
+
     let appDb = {
       students: [],
       kaihLogs: []
@@ -309,6 +385,7 @@
     let currentStudent = null;
 
     document.addEventListener('DOMContentLoaded', async () => {
+      initSupabase();
       lucide.createIcons();
       await loadDatabase();
 
@@ -332,33 +409,19 @@
     });
 
     async function loadDatabase() {
-      // 1. Try fetching from server API
-      if (window.location.protocol.startsWith('http')) {
+      if (supabaseClient) {
         try {
-          const [siswaRes, kaihRes] = await Promise.all([
-            fetch('/api/siswa').then(r => r.json()).catch(() => []),
-            fetch('/api/kaih').then(r => r.json()).catch(() => [])
-          ]);
-          if (Array.isArray(siswaRes) && siswaRes.length > 0) {
-            appDb.students = siswaRes.map(s => ({ id: String(s.id), nama: s.nama, nisn: s.nisn, kelas: s.kelas }));
-            appDb.kaihLogs = kaihRes || [];
+          const { data, error } = await supabaseClient.from('school_data').select('*').eq('id', 1).maybeSingle();
+          if (!error && data) {
+            if (data.students) appDb.students = data.students;
+            if (data.kaihLogs) appDb.kaihLogs = data.kaihLogs;
+            saveLocalDatabase();
             return;
           }
         } catch (e) {}
       }
 
-      // 2. Try fetching relative database.json
-      try {
-        const res = await fetch('./database.json', { cache: 'no-store' });
-        if (res.ok) {
-          const data = await res.json();
-          appDb.students = data.students || [];
-          appDb.kaihLogs = data.kaihLogs || [];
-          return;
-        }
-      } catch (e) {}
-
-      // 3. Fallback LocalStorage
+      // Fallback LocalStorage
       const localDb = localStorage.getItem('schoolDb');
       if (localDb) {
         try {
@@ -369,15 +432,34 @@
       }
     }
 
-    function saveDatabase() {
-      // Update LocalStorage schoolDb
+    function saveLocalDatabase() {
       let existingDb = {};
       const localDb = localStorage.getItem('schoolDb');
       if (localDb) {
         try { existingDb = JSON.parse(localDb); } catch(e) {}
       }
+      existingDb.students = appDb.students;
       existingDb.kaihLogs = appDb.kaihLogs;
       localStorage.setItem('schoolDb', JSON.stringify(existingDb));
+    }
+
+    async function saveDatabase() {
+      saveLocalDatabase();
+
+      if (supabaseClient) {
+        try {
+          let existingDb = {};
+          const localDb = localStorage.getItem('schoolDb');
+          if (localDb) {
+            try { existingDb = JSON.parse(localDb); } catch(e) {}
+          }
+          existingDb.id = 1;
+          existingDb.updated_at = new Date().toISOString();
+          await supabaseClient.from('school_data').upsert(existingDb, { onConflict: 'id' });
+        } catch (e) {
+          console.error('Supabase save error', e);
+        }
+      }
     }
 
     function handleLoginKeyPress(e) {
