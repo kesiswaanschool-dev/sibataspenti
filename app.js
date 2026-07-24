@@ -2,13 +2,13 @@
 // Masukkan URL dan ANON KEY Supabase Anda di sini untuk menghubungkan database Supabase secara otomatis
 const SUPABASE_CONFIG = {
   url: 'https://wedwjlkvnzbgrrybamqm.supabase.co',
-  anonKey: (typeof process !== 'undefined' && process.env && process.env.SUPABASE_KEY) ? process.env.SUPABASE_KEY : 'YOUR_SUPABASE_ANON_KEY'
+  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndlZHdqbGt2bnpiZ3JyeWJhbXFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4NzA0MjIsImV4cCI6MjEwMDQ0NjQyMn0.MYUa4uqQEX35ecSyQxm-iPFkPNLmLHugCXo4uOyji0Y'
 };
 
 let supabaseClient = null;
 
 function initSupabase() {
-  if (typeof supabase !== 'undefined' && SUPABASE_CONFIG.url && SUPABASE_CONFIG.anonKey !== 'YOUR_SUPABASE_ANON_KEY') {
+  if (typeof supabase !== 'undefined' && SUPABASE_CONFIG.url && SUPABASE_CONFIG.anonKey) {
     try {
       supabaseClient = supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
     } catch (e) {
