@@ -900,7 +900,10 @@ function switch7KaihTab(tabName) {
 function switchMenu(menuName) {
   // Hide all views
   const views = document.querySelectorAll('.content-view');
-  views.forEach(view => view.classList.remove('active'));
+  views.forEach(view => {
+    view.classList.remove('active');
+    view.style.display = '';
+  });
 
   // Deactivate all sidebar items
   const menuButtons = document.querySelectorAll('.sidebar-menu .menu-item, .sidebar-footer .menu-item, .sidebar-submenu .submenu-item');
@@ -929,7 +932,10 @@ function switchMenu(menuName) {
 
   // Show selected view
   const targetView = document.getElementById(`view-${menuName}`);
-  if (targetView) targetView.classList.add('active');
+  if (targetView) {
+    targetView.style.display = '';
+    targetView.classList.add('active');
+  }
 
   // Activate selected menu button
   const targetBtn = document.getElementById(`btn-menu-${menuName}`);
