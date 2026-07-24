@@ -291,6 +291,12 @@ async function loadData() {
   } else {
     state.accounts = getDefaultAccounts();
   }
+
+  // Seed Supabase with initial data if connected and row is missing
+  if (supabaseClient) {
+    syncPushToSupabase(true);
+  }
+
   updateSyncBadge();
   refreshAllUI();
   checkAuthStatus();
