@@ -155,6 +155,27 @@
           <i data-lucide="log-in" class="mr-1"></i> Masuk Jurnal Pembelajaran
         </button>
       </div>
+
+      <!-- Barcode QR Code Box -->
+      <div style="margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--border-color); display: flex; flex-direction: column; align-items: center; gap: 12px;">
+        <div style="font-size: 13px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
+          <i data-lucide="qr-code" style="width: 18px; height: 18px; color: #818cf8;"></i> Barcode QR Code Jurnal Guru
+        </div>
+        <p style="font-size: 12px; color: var(--text-muted); margin: 0; max-width: 320px;">
+          Scan QR Code di bawah menggunakan HP untuk membuka formulir ini secara otomatis.
+        </p>
+        <div style="background: #ffffff; padding: 12px; border-radius: 14px; box-shadow: 0 8px 20px rgba(0,0,0,0.3); display: inline-flex;">
+          <img src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=https://kesiswaanschool-dev.github.io/sibataspenti/inputjurnalguru.html&color=0f172a&bgcolor=ffffff" alt="Barcode QR Code Input Jurnal Guru" style="width: 160px; height: 160px; display: block; border-radius: 6px;">
+        </div>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 4px;">
+          <button class="btn btn-outline btn-sm" onclick="printQrCode()" style="border-color: rgba(255,255,255,0.15); font-size: 12px; padding: 6px 12px;">
+            <i data-lucide="printer" style="width: 14px; height: 14px;"></i> Cetak Barcode QR
+          </button>
+          <a href="https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=https://kesiswaanschool-dev.github.io/sibataspenti/inputjurnalguru.html&color=0f172a&bgcolor=ffffff" target="_blank" download="Barcode-QR-Jurnal-Guru.png" class="btn btn-outline btn-sm" style="border-color: rgba(255,255,255,0.15); font-size: 12px; padding: 6px 12px; text-decoration: none;">
+            <i data-lucide="download" style="width: 14px; height: 14px;"></i> Unduh Gambar
+          </a>
+        </div>
+      </div>
     </div>
 
     <!-- SCREEN 2: FORM JURNAL GURU (AFTER LOGIN) -->
@@ -713,6 +734,37 @@
           </tr>
         `;
       }).join('');
+    }
+
+    function printQrCode() {
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Cetak Barcode QR Code Jurnal Guru - SMPN 3 Batam</title>
+          <style>
+            body { font-family: sans-serif; text-align: center; padding: 40px; background: #fff; color: #000; }
+            .box { border: 2px dashed #4f46e5; padding: 32px; border-radius: 20px; display: inline-block; max-width: 400px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+            img { width: 240px; height: 240px; margin: 20px 0; }
+            h2 { margin-bottom: 4px; color: #1e293b; font-size: 22px; }
+            p { color: #64748b; font-size: 13px; line-height: 1.5; }
+            .badge-school { background: #4f46e5; color: #fff; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; display: inline-block; margin-top: 6px; }
+          </style>
+        </head>
+        <body onload="window.print(); window.close();">
+          <div class="box">
+            <h2>SMP NEGERI 3 BATAM</h2>
+            <div class="badge-school">FORM INPUT JURNAL GURU</div>
+            <br>
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=https://kesiswaanschool-dev.github.io/sibataspenti/inputjurnalguru.html&color=0f172a&bgcolor=ffffff" alt="QR Code Jurnal Guru" />
+            <p><strong>Scan QR Code</strong> di atas menggunakan kamera smartphone untuk mengisi Jurnal Pembelajaran Guru secara langsung.</p>
+            <p style="font-size: 11px; color: #94a3b8; word-break: break-all;">https://kesiswaanschool-dev.github.io/sibataspenti/inputjurnalguru.html</p>
+          </div>
+        </body>
+        </html>
+      `);
+      printWindow.document.close();
     }
 
     function showToast(message, type = 'success') {
