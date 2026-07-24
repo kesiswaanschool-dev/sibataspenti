@@ -262,45 +262,52 @@ function loadSettings() {
 async function loadData() {
   initSupabase();
 
+  let loadedFromSupabase = false;
   if (supabaseClient) {
-    const loadedFromSupabase = await syncPullFromSupabase(true);
-    if (loadedFromSupabase) {
-      updateSyncBadge();
-      return;
-    }
+    loadedFromSupabase = await syncPullFromSupabase(true);
   }
 
-  // Load from LocalStorage fallback
-  const localDb = localStorage.getItem('schoolDb');
-  if (localDb) {
-    try {
-      const parsed = JSON.parse(localDb);
-      state.students = parsed.students || [];
-      state.attendance = parsed.attendance || [];
-      state.lateLogs = parsed.lateLogs || [];
-      state.violations = parsed.violations || [];
-      state.izinPulang = parsed.izinPulang || [];
-      state.jurnalGuru = parsed.jurnalGuru || [];
-      state.teachers = parsed.teachers || [];
-      state.kaihLogs = parsed.kaihLogs || [];
-      state.accounts = parsed.accounts || getDefaultAccounts();
-    } catch (e) {
-      console.error('Error parsing local DB', e);
-      showToast('Gagal memuat database lokal, file rusak.', 'error');
+  // Load from LocalStorage fallback if Supabase didn't load or was empty
+  if (!loadedFromSupabase) {
+    const localDb = localStorage.getItem('schoolDb');
+    if (localDb) {
+      try {
+        const parsed = JSON.parse(localDb);
+        state.students = parsed.students || [];
+        state.attendance = parsed.attendance || [];
+        state.lateLogs = parsed.lateLogs || [];
+        state.violations = parsed.violations || [];
+        state.izinPulang = parsed.izinPulang || [];
+        state.jurnalGuru = parsed.jurnalGuru || [];
+        state.teachers = parsed.teachers || [];
+        state.kaihLogs = parsed.kaihLogs || [];
+        state.accounts = parsed.accounts || getDefaultAccounts();
+      } catch (e) {
+        console.error('Error parsing local DB', e);
+        showToast('Gagal memuat database lokal, file rusak.', 'error');
+      }
+    } else {
+      state.accounts = getDefaultAccounts();
     }
-  } else {
-    state.accounts = getDefaultAccounts();
-  }
 
-  // Seed Supabase with initial data if connected and row is missing
-  if (supabaseClient) {
-    syncPushToSupabase(true);
+    // Only push to Supabase if local state actually contains data to avoid wiping cloud database
+    const hasLocalData = state.students.length > 0 || state.teachers.length > 0 || state.attendance.length > 0;
+    if (supabaseClient && hasLocalData) {
+      syncPushToSupabase(true);
+    }
   }
 
   updateSyncBadge();
   refreshAllUI();
   checkAuthStatus();
 }
+
+// Auto-sync when user returns/focuses tab on any device
+window.addEventListener('focus', () => {
+  if (supabaseClient) {
+    syncPullFromSupabase(true);
+  }
+});
 
 function saveLocalState() {
   const dbData = {
@@ -334,9 +341,13 @@ function updateSyncBadge() {
   if (supabaseClient) {
     indicator.classList.add('status-connected');
     text.textContent = 'Supabase Database (Aktif)';
+    indicator.title = 'Klik untuk memperbarui & menarik data terbaru dari Supabase Cloud';
+    indicator.style.cursor = 'pointer';
+    indicator.onclick = () => syncPullFromSupabase(false);
   } else {
     indicator.classList.add('status-offline');
     text.textContent = 'Mode Lokal (Offline)';
+    indicator.title = 'Penyimpanan lokal browser';
   }
 }
 
@@ -351,19 +362,21 @@ async function syncPullFromSupabase(silent = true) {
 
     if (error || !data) return false;
 
-    if (data.students) state.students = data.students;
-    if (data.attendance) state.attendance = data.attendance;
-    if (data.lateLogs) state.lateLogs = data.lateLogs;
-    if (data.violations) state.violations = data.violations;
-    if (data.izinPulang) state.izinPulang = data.izinPulang;
-    if (data.jurnalGuru) state.jurnalGuru = data.jurnalGuru;
-    if (data.teachers) state.teachers = data.teachers;
-    if (data.kaihLogs) state.kaihLogs = data.kaihLogs;
-    if (data.accounts) state.accounts = data.accounts;
+    // Pull arrays from Supabase if present
+    if (Array.isArray(data.students)) state.students = data.students;
+    if (Array.isArray(data.attendance)) state.attendance = data.attendance;
+    if (Array.isArray(data.lateLogs)) state.lateLogs = data.lateLogs;
+    if (Array.isArray(data.violations)) state.violations = data.violations;
+    if (Array.isArray(data.izinPulang)) state.izinPulang = data.izinPulang;
+    if (Array.isArray(data.jurnalGuru)) state.jurnalGuru = data.jurnalGuru;
+    if (Array.isArray(data.teachers)) state.teachers = data.teachers;
+    if (Array.isArray(data.kaihLogs)) state.kaihLogs = data.kaihLogs;
+    if (Array.isArray(data.accounts) && data.accounts.length > 0) state.accounts = data.accounts;
 
     saveLocalState();
     refreshAllUI();
     checkAuthStatus();
+    if (!silent) showToast('Data terbaru berhasil dimuat dari Supabase Cloud!', 'success');
     return true;
   } catch (err) {
     if (!silent) console.error('Supabase Pull Exception:', err);
@@ -374,6 +387,12 @@ async function syncPullFromSupabase(silent = true) {
 async function syncPushToSupabase(silent = true) {
   if (!supabaseClient) return;
 
+  // Don't push completely empty state to Supabase if Supabase already has data
+  const isStateEmpty = (!state.students || state.students.length === 0) &&
+                       (!state.teachers || state.teachers.length === 0) &&
+                       (!state.attendance || state.attendance.length === 0) &&
+                       (!state.jurnalGuru || state.jurnalGuru.length === 0);
+
   const indicator = document.getElementById('sync-status-indicator');
   const text = document.getElementById('sync-status-text');
   if (indicator) {
@@ -382,16 +401,30 @@ async function syncPushToSupabase(silent = true) {
   }
 
   try {
+    if (isStateEmpty) {
+      const { data: existing } = await supabaseClient
+        .from('school_data')
+        .select('*')
+        .eq('id', 1)
+        .maybeSingle();
+
+      if (existing && ((existing.students && existing.students.length > 0) || (existing.teachers && existing.teachers.length > 0))) {
+        // Supabase has data, pull instead of overwriting with empty
+        await syncPullFromSupabase(true);
+        return;
+      }
+    }
+
     const payload = {
       id: 1,
-      students: state.students,
-      attendance: state.attendance,
-      lateLogs: state.lateLogs,
-      violations: state.violations,
-      izinPulang: state.izinPulang,
-      jurnalGuru: state.jurnalGuru,
-      teachers: state.teachers,
-      kaihLogs: state.kaihLogs,
+      students: state.students || [],
+      attendance: state.attendance || [],
+      lateLogs: state.lateLogs || [],
+      violations: state.violations || [],
+      izinPulang: state.izinPulang || [],
+      jurnalGuru: state.jurnalGuru || [],
+      teachers: state.teachers || [],
+      kaihLogs: state.kaihLogs || [],
       accounts: getAccountsList(),
       updated_at: new Date().toISOString()
     };
@@ -402,6 +435,8 @@ async function syncPushToSupabase(silent = true) {
 
     if (error && !silent) {
       showToast(`Gagal menyinkron ke Supabase: ${error.message}`, 'error');
+    } else if (!silent) {
+      showToast('Data berhasil disimpan ke Supabase Cloud!', 'success');
     }
   } catch (error) {
     if (!silent) showToast(`Gagal menyinkron ke Supabase: ${error.message}`, 'error');
