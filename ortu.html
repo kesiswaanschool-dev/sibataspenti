@@ -532,6 +532,13 @@
 
   <div class="container">
     
+    <!-- Top Sync Status Badge -->
+    <div style="display: flex; justify-content: center; width: 100%; margin-top: 8px;">
+      <div id="top-sync-badge" style="font-size: 12.5px; font-weight: 600; color: #34d399; display: inline-flex; align-items: center; gap: 8px; background: rgba(52, 211, 153, 0.1); border: 1px solid rgba(52, 211, 153, 0.2); padding: 6px 14px; border-radius: 20px;">
+        <span style="width: 8px; height: 8px; border-radius: 50%; background: #34d399;"></span> Supabase Cloud (Terhubung)
+      </div>
+    </div>
+
     <!-- Logo & Header -->
     <div class="header">
       <div class="logo-container">
@@ -544,11 +551,12 @@
     <!-- Search Card -->
     <div class="card">
       <div class="search-group">
-        <label for="search-nisn">Masukkan NISN Siswa</label>
+        <label for="search-nisn">Cari NISN atau Nama Siswa</label>
         <div class="search-row">
           <div class="search-input-wrapper">
             <i data-lucide="search"></i>
-            <input type="text" id="search-nisn" class="search-input" placeholder="Ketik 10 digit NISN..." maxlength="15" onkeypress="handleSearchKeyPress(event)">
+            <input type="text" id="search-nisn" list="student-list" class="search-input" placeholder="Ketik NISN atau Nama Siswa..." autocomplete="off" onkeypress="handleSearchKeyPress(event)">
+            <datalist id="student-list"></datalist>
           </div>
           <button class="btn btn-primary" onclick="performSearch()">
             <span id="btn-text">Cari Data</span>
@@ -786,6 +794,7 @@
     async function connectAndLoadDatabase() {
       const connDot = document.getElementById('conn-dot');
       const connText = document.getElementById('conn-text');
+      const topBadge = document.getElementById('top-sync-badge');
       
       initSupabase();
 
@@ -806,8 +815,13 @@
             };
             dbSource = 'supabase';
             if (connDot) connDot.className = 'connection-dot conn-github';
-            if (connText) connText.textContent = 'Supabase Cloud Database (Aktif)';
-            showToast('Terhubung ke Supabase Cloud Database', 'success');
+            if (connText) connText.textContent = `Supabase Cloud (Aktif - ${appDb.students.length} Siswa)`;
+            if (topBadge) {
+              topBadge.style.display = 'inline-flex';
+              topBadge.innerHTML = `<span style="width: 8px; height: 8px; border-radius: 50%; background: #34d399;"></span> Supabase Cloud (Terhubung - ${appDb.students.length} Siswa Terdaftar)`;
+            }
+            populateStudentDatalist();
+            showToast(`Terhubung ke Supabase Cloud (${appDb.students.length} Siswa)`, 'success');
             return;
           }
         } catch (e) {
@@ -828,6 +842,7 @@
         
         try {
           await fetchFromGithub(repoParam);
+          populateStudentDatalist();
           return;
         } catch (e) {
           console.warn('Gagal memuat via URL Repo parameter, mencoba relative path...', e);
@@ -843,6 +858,7 @@
           dbSource = 'github-relative';
           connDot.className = 'connection-dot conn-github';
           connText.textContent = 'Hub Awan: Server Cloud Sekolah';
+          populateStudentDatalist();
           showToast('Terhubung ke database server sekolah', 'success');
           return;
         }
@@ -858,6 +874,10 @@
           dbSource = 'local';
           connDot.className = 'connection-dot conn-local';
           connText.textContent = 'Mode Uji Coba (Lokal Browser)';
+          if (topBadge) {
+            topBadge.innerHTML = `<span style="width: 8px; height: 8px; border-radius: 50%; background: #f59e0b;"></span> Mode Lokal (Lokal Browser - ${appDb.students ? appDb.students.length : 0} Siswa)`;
+          }
+          populateStudentDatalist();
           showToast('Membaca database dari LocalStorage', 'warning');
         } catch (e) {
           console.error('Error parsing localDb', e);
@@ -869,6 +889,14 @@
         connText.textContent = 'Tidak terhubung ke database';
         showToast('Database kosong. Data akan terisi setelah admin/guru menginput data.', 'warning');
       }
+    }
+
+    function populateStudentDatalist() {
+      const datalist = document.getElementById('student-list');
+      if (!datalist || !appDb.students) return;
+      datalist.innerHTML = appDb.students.map(s => 
+        `<option value="${s.nisn}">${s.nama} - ${s.kelas}</option>`
+      ).join('');
     }
 
     async function fetchFromGithub(repo) {
@@ -890,9 +918,9 @@
     }
 
     function performSearch() {
-      const nisnInput = document.getElementById('search-nisn').value.trim();
-      if (!nisnInput) {
-        showToast('Silakan masukkan NISN siswa!', 'warning');
+      const query = document.getElementById('search-nisn').value.trim().toLowerCase();
+      if (!query) {
+        showToast('Silakan masukkan NISN atau Nama siswa!', 'warning');
         return;
       }
 
@@ -902,19 +930,20 @@
       btnText.style.display = 'none';
       btnSpinner.style.display = 'block';
 
-      // Simulate a quick network latency for better UX feel
+      // Perform search after brief delay
       setTimeout(() => {
         btnText.style.display = 'block';
         btnSpinner.style.display = 'none';
 
-        // Perform search
-        const student = appDb.students.find(s => 
-          (s.nisn && String(s.nisn).trim() === nisnInput) || 
-          (s.id && String(s.id).trim() === nisnInput)
+        // Search by NISN, ID, or Nama
+        const student = (appDb.students || []).find(s => 
+          (s.nisn && String(s.nisn).trim().toLowerCase() === query) || 
+          (s.id && String(s.id).trim().toLowerCase() === query) ||
+          (s.nama && s.nama.trim().toLowerCase().includes(query))
         );
         
         if (!student) {
-          showToast('NISN tidak terdaftar dalam sistem.', 'error');
+          showToast(`Siswa "${query}" tidak ditemukan dalam sistem.`, 'error');
           hideResultCards();
           return;
         }
