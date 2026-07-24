@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIBATA (Sistem Basis Data) - Input Jurnal Guru</title>
+  <!-- Google Fonts: Outfit & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Lucide Icons (CDN) -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      background-color: var(--bg-app, #070b13);
+      color: var(--text-main, #f1f5f9);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px;
+    }
+
+    .jurnal-container {
+      width: 100%;
+      max-width: 860px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .jurnal-header {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .logo-img {
+      width: 64px;
+      height: 64px;
+      object-fit: contain;
+      border-radius: 50%;
+      box-shadow: 0 4px 20px rgba(99, 102, 241, 0.25);
+    }
+
+    .login-card {
+      background: var(--bg-card, rgba(21, 32, 54, 0.45));
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border-color, rgba(255, 255, 255, 0.07));
+      border-radius: 16px;
+      padding: 32px 24px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      text-align: center;
+    }
+
+    .teacher-profile-bar {
+      background: rgba(99, 102, 241, 0.1);
+      border: 1px solid rgba(99, 102, 241, 0.2);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #1e293b;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 12px 24px;
+      border-radius: 30px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13.5px;
+      font-weight: 500;
+      z-index: 1000;
+      opacity: 0;
+      transition: all 0.3s ease;
+      pointer-events: none;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body class="dark-theme">
+
+  <div class="jurnal-container">
+    
+    <!-- Header Logo & Title -->
+    <div class="jurnal-header">
+      <img src="logo.png" alt="Logo SMPN 3 Batam" class="logo-img" onerror="this.src='https://placehold.co/100/10b981/ffffff?text=SMP3'">
+      <div>
+        <h1 style="font-family: 'Outfit', sans-serif; font-size: 24px; font-weight: 700; margin-bottom: 4px;">Input Jurnal Pembelajaran Guru</h1>
+        <p style="color: var(--text-muted); font-size: 14px;">Dokumentasi kegiatan mengajar dan rekapitulasi kehadiran kelas - SMP Negeri 3 Batam</p>
+      </div>
+    </div>
+
+    <!-- SCREEN 1: LOGIN NIP GURU -->
+    <div id="screen-login" class="login-card">
+      <div style="width: 56px; height: 56px; background: rgba(99, 102, 241, 0.15); color: #6366f1; border-radius: 16px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px;">
+        <i data-lucide="book-open" style="width: 28px; height: 28px;"></i>
+      </div>
+      <h2 style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">Login Guru</h2>
+      <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 24px; max-width: 420px; margin-left: auto; margin-right: auto;">
+        Masukkan NIP Anda untuk mengakses Formulir Jurnal Pembelajaran Guru.
+      </p>
+
+      <div style="max-width: 360px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px;">
+        <div style="text-align: left;">
+          <label for="input-nip" style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 6px;">NIP Guru</label>
+          <input type="text" id="input-nip" class="form-input" placeholder="Masukkan NIP Guru..." style="width: 100%; text-align: center; font-size: 16px; letter-spacing: 1px;" onkeypress="handleLoginKeyPress(event)">
+        </div>
+
+        <button class="btn btn-primary btn-lg" onclick="loginTeacher()" style="background: #4f46e5; width: 100%;">
+          <i data-lucide="log-in" class="mr-1"></i> Masuk Jurnal Pembelajaran
+        </button>
+      </div>
+    </div>
+
+    <!-- SCREEN 2: FORM JURNAL GURU (AFTER LOGIN) -->
+    <div id="screen-form" style="display: none; flex-direction: column; gap: 20px;">
+      
+      <!-- Profile Bar -->
+      <div class="teacher-profile-bar">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="width: 42px; height: 42px; background: #4f46e5; color: white; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 700;">
+            <i data-lucide="user-check" style="width: 22px; height: 22px;"></i>
+          </div>
+          <div>
+            <h3 id="profile-teacher-name" style="font-size: 16px; font-weight: 700; margin: 0;">-</h3>
+            <p style="font-size: 12px; color: var(--text-muted); margin: 0;">
+              NIP: <span id="profile-teacher-nip" style="font-family: monospace;">-</span> | Mapel: <span id="profile-teacher-mapel" class="badge badge-info">-</span>
+            </p>
+          </div>
+        </div>
+        <button class="btn btn-outline btn-sm text-danger" onclick="logoutTeacher()">
+          <i data-lucide="log-out" class="mr-1"></i> Keluar
+        </button>
+      </div>
+
+      <!-- Card Input Jurnal -->
+      <div class="dashboard-card card-full">
+        <div class="card-header border-bottom d-flex justify-between align-center">
+          <h2 style="font-size: 16px; font-weight: 700; margin: 0;">Form Input Jurnal Pembelajaran Guru</h2>
+        </div>
+
+        <div class="card-body">
+          <form id="form-jurnal-mandiri" onsubmit="saveJurnalEntry(event)">
+            
+            <!-- Seksi 1: Identitas Pembelajaran -->
+            <div class="form-section mb-4 p-3 rounded" style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 12px;">
+              <div class="font-semibold text-sm mb-3 d-flex align-center" style="color: var(--color-primary);">
+                <i data-lucide="layers" class="mr-2" style="width:16px;height:16px;"></i> Identitas Pembelajaran
+              </div>
+              
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 14px;">
+                <div>
+                  <label for="jurnal-kelas" style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 6px;">Pilih Kelas <span style="color: #ef4444;">*</span></label>
+                  <select id="jurnal-kelas" class="form-select" style="width: 100%;" onchange="updateJurnalAttendanceStats()" required>
+                    <option value="">-- Pilih Kelas --</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label for="jurnal-tanggal" style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 6px;">Tanggal <span style="color: #ef4444;">*</span></label>
+                  <input type="date" id="jurnal-tanggal" class="form-input" style="width: 100%;" onchange="handleDateChange()" required>
+                </div>
+
+                <div>
+                  <label for="jurnal-hari" style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 6px;">Hari</label>
+                  <input type="text" id="jurnal-hari" class="form-input" readonly placeholder="Hari" style="width: 100%; opacity: 0.8; font-weight: 600;">
+                </div>
+
+                <div>
+                  <label for="jurnal-jam" style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 6px;">Jam Ke / Waktu <span style="color: #ef4444;">*</span></label>
+                  <input type="text" id="jurnal-jam" class="form-input" placeholder="Contoh: Jam 1-2 (07.30 - 08.50)" style="width: 100%;" required>
+                </div>
+              </div>
+
+              <div>
+                <label for="jurnal-mapel" style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 6px;">Mata Pelajaran (Mapel) <span style="color: #ef4444;">*</span></label>
+                <input type="text" id="jurnal-mapel" class="form-input" style="width: 100%; font-weight: 600;" required>
+              </div>
+            </div>
+
+            <!-- Seksi 2: Detail & Batas Materi -->
+            <div class="form-section mb-4 p-3 rounded" style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 12px;">
+              <div class="font-semibold text-sm mb-3 d-flex align-center" style="color: var(--color-primary);">
+                <i data-lucide="file-text" class="mr-2" style="width:16px;height:16px;"></i> Detail & Batas Materi
+              </div>
+              
+              <div style="display: flex; flex-direction: column; gap: 14px;">
+                <div>
+                  <label for="jurnal-materi" style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 6px;">Batas Materi / Uraian Kegiatan Pembelajaran <span style="color: #ef4444;">*</span></label>
+                  <textarea id="jurnal-materi" class="form-input" rows="2" placeholder="Contoh: Bab 3 Persamaan Kuadrat - Mengerjakan latihan soal Halaman 45-50" style="width: 100%; resize: vertical;" required></textarea>
+                </div>
+
+                <div>
+                  <label for="jurnal-catatan" style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 6px;">Keterangan Lain / Catatan Tambahan</label>
+                  <textarea id="jurnal-catatan" class="form-input" rows="2" placeholder="Catatan kondisi kelas, kendala mengajar, tugas tambahan, dll." style="width: 100%; resize: vertical;"></textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- Seksi 3: Rekapitulasi Kehadiran Siswa Hari Ini (Otomatis) -->
+            <div class="form-section mb-4 p-3 rounded" style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 12px;">
+              <div class="d-flex justify-between align-center mb-3">
+                <div class="font-semibold text-sm d-flex align-center" style="color: var(--color-primary);">
+                  <i data-lucide="users" class="mr-2" style="width:16px;height:16px;"></i> Rekapitulasi Kehadiran Siswa
+                </div>
+                <small class="text-muted d-flex align-center" style="font-size: 11px;">
+                  <i data-lucide="info" class="mr-1" style="width:13px;height:13px;"></i> Terhubung otomatis dengan Data Absensi Kelas
+                </small>
+              </div>
+
+              <div class="stats-summary-box p-3 rounded" style="background: rgba(0, 0, 0, 0.15); border: 1px solid var(--border-color);">
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; text-align: center; margin-bottom: 12px;">
+                  <div class="p-2 rounded" style="background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3);">
+                    <div style="font-size: 11px; font-weight: 600; color: #34d399;">HADIR</div>
+                    <div style="font-size: 20px; font-weight: 700; color: #34d399;" id="jurnal-stat-hadir">0</div>
+                  </div>
+                  <div class="p-2 rounded" style="background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.3);">
+                    <div style="font-size: 11px; font-weight: 600; color: #fbbf24;">SAKIT</div>
+                    <div style="font-size: 20px; font-weight: 700; color: #fbbf24;" id="jurnal-stat-sakit">0</div>
+                  </div>
+                  <div class="p-2 rounded" style="background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.3);">
+                    <div style="font-size: 11px; font-weight: 600; color: #60a5fa;">IZIN</div>
+                    <div style="font-size: 20px; font-weight: 700; color: #60a5fa;" id="jurnal-stat-izin">0</div>
+                  </div>
+                  <div class="p-2 rounded" style="background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.3);">
+                    <div style="font-size: 11px; font-weight: 600; color: #f87171;">ALPHA</div>
+                    <div style="font-size: 20px; font-weight: 700; color: #f87171;" id="jurnal-stat-alpha">0</div>
+                  </div>
+                </div>
+
+                <!-- Rincian Nama Siswa Tidak Hadir -->
+                <div class="attendance-names-detail text-sm pt-2 border-top" style="border-color: rgba(255,255,255,0.05)!important; font-size: 12px;">
+                  <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <div>
+                      <span class="badge badge-warning" style="font-size:10px;">Sakit:</span>
+                      <span id="jurnal-names-sakit" class="text-muted ml-1">Tidak ada</span>
+                    </div>
+                    <div>
+                      <span class="badge badge-info" style="font-size:10px;">Izin:</span>
+                      <span id="jurnal-names-izin" class="text-muted ml-1">Tidak ada</span>
+                    </div>
+                    <div>
+                      <span class="badge badge-danger" style="font-size:10px;">Alpha:</span>
+                      <span id="jurnal-names-alpha" class="text-muted ml-1">Tidak ada</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary btn-lg" style="background: #4f46e5; width: 100%;">
+                <i data-lucide="save" class="mr-1"></i> Simpan Jurnal Guru
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Riwayat Jurnal Guru Saya -->
+      <div class="dashboard-card card-full">
+        <div class="card-header border-bottom">
+          <h2 style="font-size: 16px; font-weight: 700; margin: 0;">Riwayat Jurnal Pembelajaran Saya</h2>
+        </div>
+        <div class="card-body">
+          <div class="custom-table-container" style="overflow-x: auto;">
+            <table class="styled-table text-sm">
+              <thead>
+                <tr>
+                  <th width="50" class="text-center">No</th>
+                  <th width="150">Hari, Tanggal</th>
+                  <th width="130">Jam Ke / Waktu</th>
+                  <th width="140">Kelas & Mapel</th>
+                  <th>Materi & Kehadiran</th>
+                  <th width="200">Ket. Tambahan</th>
+                </tr>
+              </thead>
+              <tbody id="teacher-history-tbody">
+                <!-- Rendered dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toast-notif">
+    <i id="toast-icon"></i>
+    <span id="toast-text">-</span>
+  </div>
+
+  <script>
+    const HARI_INDONESIA = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+
+    let appDb = {
+      teachers: [],
+      students: [],
+      attendance: [],
+      jurnalGuru: []
+    };
+    let currentTeacher = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      lucide.createIcons();
+      await loadDatabase();
+
+      // Set default date
+      const todayISO = new Date().toISOString().split('T')[0];
+      const dateInput = document.getElementById('jurnal-tanggal');
+      if (dateInput) {
+        dateInput.value = todayISO;
+        handleDateChange();
+      }
+
+      // Check session
+      const savedSession = sessionStorage.getItem('loggedTeacherJurnal');
+      if (savedSession) {
+        try {
+          const teacher = JSON.parse(savedSession);
+          const found = appDb.teachers.find(t => String(t.id) === String(teacher.id) || (t.nip && t.nip === teacher.nip) || t.nama === teacher.nama);
+          if (found) {
+            showTeacherForm(found);
+          }
+        } catch (e) {}
+      }
+    });
+
+    async function loadDatabase() {
+      if (window.location.protocol.startsWith('http')) {
+        try {
+          const [guruRes, siswaRes, absenRes, jurnalRes] = await Promise.all([
+            fetch('/api/guru').then(r => r.json()).catch(() => []),
+            fetch('/api/siswa').then(r => r.json()).catch(() => []),
+            fetch('/api/absensi').then(r => r.json()).catch(() => []),
+            fetch('/api/jurnal').then(r => r.json()).catch(() => [])
+          ]);
+          if (Array.isArray(guruRes) && guruRes.length > 0) {
+            appDb.teachers = guruRes;
+            appDb.students = siswaRes || [];
+            appDb.attendance = absenRes || [];
+            appDb.jurnalGuru = jurnalRes || [];
+            return;
+          }
+        } catch (e) {}
+      }
+
+      try {
+        const res = await fetch('./database.json', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          appDb.teachers = data.teachers || [];
+          appDb.students = data.students || [];
+          appDb.attendance = data.attendance || [];
+          appDb.jurnalGuru = data.jurnalGuru || [];
+          return;
+        }
+      } catch (e) {}
+
+      const localDb = localStorage.getItem('schoolDb');
+      if (localDb) {
+        try {
+          const parsed = JSON.parse(localDb);
+          appDb.teachers = parsed.teachers || [];
+          appDb.students = parsed.students || [];
+          appDb.attendance = parsed.attendance || [];
+          appDb.jurnalGuru = parsed.jurnalGuru || [];
+        } catch (e) {}
+      }
+    }
+
+    function saveDatabase() {
+      let existingDb = {};
+      const localDb = localStorage.getItem('schoolDb');
+      if (localDb) {
+        try { existingDb = JSON.parse(localDb); } catch(e) {}
+      }
+      existingDb.jurnalGuru = appDb.jurnalGuru;
+      localStorage.setItem('schoolDb', JSON.stringify(existingDb));
+    }
+
+    function handleLoginKeyPress(e) {
+      if (e.key === 'Enter') loginTeacher();
+    }
+
+    function handleDateChange() {
+      const dateVal = document.getElementById('jurnal-tanggal')?.value;
+      const hariInput = document.getElementById('jurnal-hari');
+      if (!hariInput) return;
+
+      if (dateVal) {
+        const d = new Date(dateVal + 'T00:00:00');
+        hariInput.value = HARI_INDONESIA[d.getDay()] || '';
+      } else {
+        hariInput.value = '';
+      }
+      updateJurnalAttendanceStats();
+    }
+
+    function updateJurnalAttendanceStats() {
+      const kelas = document.getElementById('jurnal-kelas')?.value || '';
+      const tanggal = document.getElementById('jurnal-tanggal')?.value || '';
+
+      const statHadir = document.getElementById('jurnal-stat-hadir');
+      const statSakit = document.getElementById('jurnal-stat-sakit');
+      const statIzin = document.getElementById('jurnal-stat-izin');
+      const statAlpha = document.getElementById('jurnal-stat-alpha');
+
+      const namesSakit = document.getElementById('jurnal-names-sakit');
+      const namesIzin = document.getElementById('jurnal-names-izin');
+      const namesAlpha = document.getElementById('jurnal-names-alpha');
+
+      if (!statHadir) return;
+
+      if (!kelas || !tanggal) {
+        statHadir.textContent = '0';
+        statSakit.textContent = '0';
+        statIzin.textContent = '0';
+        statAlpha.textContent = '0';
+        if (namesSakit) namesSakit.textContent = 'Tidak ada';
+        if (namesIzin) namesIzin.textContent = 'Tidak ada';
+        if (namesAlpha) namesAlpha.textContent = 'Tidak ada';
+        return;
+      }
+
+      const classStudents = (appDb.students || []).filter(s => s.kelas === kelas);
+      const studentIdsSet = new Set(classStudents.map(s => String(s.id)));
+
+      const dayAttendance = (appDb.attendance || []).filter(a => a.tanggal === tanggal && studentIdsSet.has(String(a.student_id)));
+
+      let countHadir = 0;
+      let countSakit = 0;
+      let countIzin = 0;
+      let countAlpha = 0;
+
+      const listSakit = [];
+      const listIzin = [];
+      const listAlpha = [];
+
+      classStudents.forEach(std => {
+        const rec = dayAttendance.find(a => String(a.student_id) === String(std.id));
+        const status = rec ? rec.status : 'hadir';
+
+        if (status === 'hadir') countHadir++;
+        else if (status === 'sakit') { countSakit++; listSakit.push(std.nama); }
+        else if (status === 'izin') { countIzin++; listIzin.push(std.nama); }
+        else if (status === 'alpha') { countAlpha++; listAlpha.push(std.nama); }
+      });
+
+      statHadir.textContent = countHadir;
+      statSakit.textContent = countSakit;
+      statIzin.textContent = countIzin;
+      statAlpha.textContent = countAlpha;
+
+      if (namesSakit) namesSakit.textContent = listSakit.length > 0 ? listSakit.join(', ') : 'Tidak ada';
+      if (namesIzin) namesIzin.textContent = listIzin.length > 0 ? listIzin.join(', ') : 'Tidak ada';
+      if (namesAlpha) namesAlpha.textContent = listAlpha.length > 0 ? listAlpha.join(', ') : 'Tidak ada';
+    }
+
+    function loginTeacher() {
+      const nipInput = document.getElementById('input-nip').value.trim();
+      if (!nipInput) {
+        showToast('Silakan masukkan NIP Anda!', 'warning');
+        return;
+      }
+
+      const teacher = appDb.teachers.find(t => (t.nip && t.nip.trim() === nipInput) || String(t.id) === nipInput || t.nama.toLowerCase().includes(nipInput.toLowerCase()));
+      if (!teacher) {
+        showToast('NIP Guru tidak terdaftar dalam sistem sekolah.', 'error');
+        return;
+      }
+
+      sessionStorage.setItem('loggedTeacherJurnal', JSON.stringify(teacher));
+      showTeacherForm(teacher);
+      showToast(`Selamat datang, ${teacher.nama}!`, 'success');
+    }
+
+    function showTeacherForm(teacher) {
+      currentTeacher = teacher;
+      document.getElementById('screen-login').style.display = 'none';
+
+      const formScreen = document.getElementById('screen-form');
+      formScreen.style.display = 'flex';
+
+      document.getElementById('profile-teacher-name').textContent = teacher.nama;
+      document.getElementById('profile-teacher-nip').textContent = teacher.nip || '-';
+      document.getElementById('profile-teacher-mapel').textContent = teacher.mapel || '-';
+
+      const mapelInput = document.getElementById('jurnal-mapel');
+      if (mapelInput) mapelInput.value = teacher.mapel || '';
+
+      populateClassSelect();
+      updateJurnalAttendanceStats();
+      renderMyJournalHistory();
+      lucide.createIcons();
+    }
+
+    function logoutTeacher() {
+      sessionStorage.removeItem('loggedTeacherJurnal');
+      currentTeacher = null;
+      document.getElementById('screen-form').style.display = 'none';
+      document.getElementById('screen-login').style.display = 'block';
+      document.getElementById('input-nip').value = '';
+      showToast('Anda telah keluar.', 'info');
+    }
+
+    function populateClassSelect() {
+      const select = document.getElementById('jurnal-kelas');
+      if (!select) return;
+
+      select.innerHTML = '<option value="">-- Pilih Kelas --</option>';
+      const classes = [...new Set(appDb.students.map(s => s.kelas))].sort();
+
+      classes.forEach(c => {
+        if (!c) return;
+        const opt = document.createElement('option');
+        opt.value = c;
+        opt.textContent = `Kelas ${c}`;
+        select.appendChild(opt);
+      });
+    }
+
+    function saveJurnalEntry(e) {
+      e.preventDefault();
+      if (!currentTeacher) return;
+
+      const kelas = document.getElementById('jurnal-kelas').value;
+      const tanggal = document.getElementById('jurnal-tanggal').value;
+      const hari = document.getElementById('jurnal-hari').value;
+      const jam = document.getElementById('jurnal-jam').value.trim();
+      const mapel = document.getElementById('jurnal-mapel').value.trim();
+      const materi = document.getElementById('jurnal-materi').value.trim();
+      const catatan = document.getElementById('jurnal-catatan').value.trim();
+
+      const hadir = parseInt(document.getElementById('jurnal-stat-hadir').textContent) || 0;
+      const sakit = parseInt(document.getElementById('jurnal-stat-sakit').textContent) || 0;
+      const izin = parseInt(document.getElementById('jurnal-stat-izin').textContent) || 0;
+      const alpha = parseInt(document.getElementById('jurnal-stat-alpha').textContent) || 0;
+
+      const namaSakit = document.getElementById('jurnal-names-sakit').textContent;
+      const namaIzin = document.getElementById('jurnal-names-izin').textContent;
+      const namaAlpha = document.getElementById('jurnal-names-alpha').textContent;
+
+      if (!kelas || !tanggal || !jam || !mapel || !materi) {
+        showToast('Harap lengkapi seluruh kolom wajib jurnal (*)!', 'warning');
+        return;
+      }
+
+      const entry = {
+        id: 'jurnal-' + Date.now(),
+        guru_id: currentTeacher.id,
+        guru: currentTeacher.nama,
+        nip: currentTeacher.nip || '-',
+        kelas: kelas,
+        tanggal: tanggal,
+        hari: hari,
+        jam: jam,
+        mapel: mapel,
+        materi: materi,
+        hadir: hadir,
+        sakit: sakit,
+        izin: izin,
+        alpha: alpha,
+        namaSakit: namaSakit,
+        namaIzin: namaIzin,
+        namaAlpha: namaAlpha,
+        keteranganLain: catatan
+      };
+
+      if (!appDb.jurnalGuru) appDb.jurnalGuru = [];
+      appDb.jurnalGuru.unshift(entry);
+
+      saveDatabase();
+      showToast('Jurnal Guru berhasil disimpan!', 'success');
+
+      // Reset fields
+      document.getElementById('jurnal-jam').value = '';
+      document.getElementById('jurnal-materi').value = '';
+      document.getElementById('jurnal-catatan').value = '';
+
+      renderMyJournalHistory();
+    }
+
+    function renderMyJournalHistory() {
+      if (!currentTeacher) return;
+
+      const tbody = document.getElementById('teacher-history-tbody');
+      if (!tbody) return;
+
+      const myLogs = (appDb.jurnalGuru || [])
+        .filter(j => j.guru === currentTeacher.nama || (j.nip && j.nip === currentTeacher.nip) || String(j.guru_id) === String(currentTeacher.id))
+        .sort((a, b) => b.tanggal.localeCompare(a.tanggal));
+
+      if (myLogs.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5" class="text-center text-muted py-4">
+              Belum ada riwayat jurnal pembelajaran yang diisi.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = myLogs.map((j, idx) => {
+        const totalAtt = (j.hadir || 0) + (j.sakit || 0) + (j.izin || 0) + (j.alpha || 0);
+        let attendanceHtml = '';
+        if (totalAtt > 0) {
+          attendanceHtml = `
+            <div class="d-flex gap-1 text-xs mt-1">
+              <span class="badge badge-success" style="font-size:10px;">H: ${j.hadir}</span>
+              <span class="badge badge-warning" style="font-size:10px;">S: ${j.sakit}</span>
+              <span class="badge badge-info" style="font-size:10px;">I: ${j.izin}</span>
+              <span class="badge badge-danger" style="font-size:10px;">A: ${j.alpha}</span>
+            </div>
+            ${j.namaSakit && j.namaSakit !== 'Tidak ada' ? `<div class="text-xs text-warning mt-1">Sakit: ${j.namaSakit}</div>` : ''}
+            ${j.namaIzin && j.namaIzin !== 'Tidak ada' ? `<div class="text-xs text-info mt-1">Izin: ${j.namaIzin}</div>` : ''}
+            ${j.namaAlpha && j.namaAlpha !== 'Tidak ada' ? `<div class="text-xs text-danger mt-1">Alpha: ${j.namaAlpha}</div>` : ''}
+          `;
+        }
+
+        return `
+          <tr>
+            <td style="font-weight: 500;" class="text-center">${idx + 1}</td>
+            <td>${j.hari ? j.hari + ', ' : ''}${j.tanggal}</td>
+            <td><span class="badge badge-info" style="background-color: var(--color-primary-glow); color: var(--color-primary); font-size: 11px; font-weight: 600;">${j.jam || '-'}</span></td>
+            <td>
+              <span class="badge badge-primary mb-1">${j.kelas}</span>
+              <div style="font-weight: 600;">${j.mapel}</div>
+            </td>
+            <td>
+              <div style="max-width: 280px; white-space: normal;"><strong>Materi:</strong> ${j.materi}</div>
+              ${attendanceHtml}
+            </td>
+            <td style="max-width: 200px; white-space: normal;">
+              ${j.keteranganLain
+                ? `<div class="text-sm" style="color: var(--color-text-secondary); font-style: italic;">${j.keteranganLain}</div>`
+                : `<span style="color: #6b7280; font-size: 12px;">-</span>`
+              }
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast-notif');
+      const text = document.getElementById('toast-text');
+      
+      toast.className = `toast show`;
+      if (type === 'success') toast.style.borderLeft = '4px solid #10b981';
+      if (type === 'error') toast.style.borderLeft = '4px solid #ef4444';
+      if (type === 'warning') toast.style.borderLeft = '4px solid #f59e0b';
+      
+      text.textContent = message;
+
+      setTimeout(() => {
+        toast.className = 'toast';
+      }, 3000);
+    }
+  </script>
+</body>
+</html>

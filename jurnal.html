@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIBATA (Sistem Basis Data) - Jurnal Pembelajaran Guru</title>
+  <!-- Google Fonts: Outfit & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Lucide Icons (CDN) -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- SheetJS (XLSX) library (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- QRCode.js Library for generating QR Codes -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- Html5-QRCode Library for scanning QR Codes via camera -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="dark-theme">
+
+  <!-- Main Container -->
+  <div class="app-container">
+    
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <img src="logo.png" alt="Logo SMPN 3 Batam" class="logo-img">
+        <span class="logo-text">SMPN 3 Batam</span>
+      </div>
+      
+      <nav class="sidebar-menu">
+        <a href="index.html" class="menu-item">
+          <i data-lucide="layout-dashboard"></i>
+          <span>Dashboard Admin</span>
+        </a>
+        <a href="guru.html" class="menu-item">
+          <i data-lucide="user-check"></i>
+          <span>Dashboard Guru</span>
+        </a>
+        <button class="menu-item active" id="btn-menu-jurnal-guru" onclick="switchMenu('jurnal-guru')">
+          <i data-lucide="book-open"></i>
+          <span>Jurnal Guru</span>
+        </button>
+
+
+      </nav>
+
+      <!-- Sidebar Footer -->
+      <div class="sidebar-footer" style="margin-top: auto; padding-top: 16px; border-top: 1px solid var(--border-color);">
+        <div class="d-flex align-center justify-between">
+          <span class="text-xs text-muted">Mode Penyimpanan:</span>
+          <span id="storage-badge" class="badge badge-success">Local</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      
+      <!-- Top Bar Header -->
+      <header class="top-header">
+        <div class="header-title-container">
+          <h1 id="page-title" class="page-title">Jurnal Pembelajaran Guru</h1>
+          <p id="page-subtitle" class="page-subtitle">Halaman khusus pengisian dan dokumentasi kegiatan mengajar harian</p>
+        </div>
+
+        <div class="header-actions">
+          <button class="btn btn-icon btn-outline" id="theme-toggle-btn" onclick="toggleTheme()" title="Ubah Tema">
+            <i data-lucide="moon"></i>
+          </button>
+          
+          <a href="index.html" class="btn btn-outline btn-sm">
+            <i data-lucide="arrow-left" class="mr-1"></i> Kembali ke Dashboard
+          </a>
+        </div>
+      </header>
+
+      <!-- Content Views Container -->
+      <div class="content-container">
+
+        <!-- ================= JURNAL GURU VIEW ================= -->
+        <section id="view-jurnal-guru" class="content-view active-view" style="display: block;">
+          <!-- Form Input Jurnal -->
+          <div class="dashboard-card card-full mb-4">
+            <div class="card-header border-bottom d-flex justify-between align-center flex-wrap gap-2">
+              <div>
+                <h2 class="d-flex align-center">
+                  <span class="icon-badge mr-2" style="background: rgba(99, 102, 241, 0.15); color: var(--color-primary); width: 36px; height: 36px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center;">
+                    <i data-lucide="book-open" style="width:20px;height:20px;"></i>
+                  </span>
+                  Input Jurnal Pembelajaran Guru
+                </h2>
+                <p class="subtitle mt-1">Dokumentasi kegiatan mengajar dan rekapitulasi kehadiran kelas</p>
+              </div>
+            </div>
+
+            <div class="card-body">
+              <form id="form-jurnal-guru" onsubmit="handleJurnalSubmit(event)">
+                <input type="hidden" id="jurnal-id">
+
+                <!-- Seksi 1: Identitas Pembelajaran -->
+                <div class="form-section mb-4 p-3 rounded" style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color);">
+                  <div class="section-title font-semibold text-sm mb-3 d-flex align-center" style="color: var(--color-primary);">
+                    <i data-lucide="layers" class="mr-2" style="width:16px;height:16px;"></i> Identitas Pembelajaran
+                  </div>
+                  
+                  <div class="row mb-3">
+                    <!-- Kelas -->
+                    <div class="col-md-4 mb-2">
+                      <label for="jurnal-kelas" class="form-label font-medium">Pilih Kelas <span class="required">*</span></label>
+                      <select id="jurnal-kelas" class="form-select" onchange="updateJurnalAttendanceStats()" required>
+                        <option value="">-- Pilih Kelas --</option>
+                      </select>
+                    </div>
+
+                    <!-- Tanggal -->
+                    <div class="col-md-5 mb-2">
+                      <label for="jurnal-tanggal" class="form-label font-medium">Tanggal <span class="required">*</span></label>
+                      <input type="date" id="jurnal-tanggal" class="form-input" onchange="handleJurnalDateChange()" required>
+                    </div>
+
+                    <!-- Hari -->
+                    <div class="col-md-3 mb-2">
+                      <label for="jurnal-hari" class="form-label font-medium">Hari</label>
+                      <input type="text" id="jurnal-hari" class="form-input" readonly placeholder="Hari" style="background: rgba(255,255,255,0.05); font-weight:600;">
+                    </div>
+                  </div>
+
+                  <div class="row">
+                    <!-- Guru Pengampu -->
+                    <div class="col-md-6 mb-2">
+                      <label for="jurnal-guru-select" class="form-label font-medium">Guru Pengampu <span class="required">*</span></label>
+                      <select id="jurnal-guru-select" class="form-select" onchange="handleJurnalGuruSelectChange()" required>
+                        <option value="">-- Pilih Guru --</option>
+                      </select>
+                    </div>
+
+                    <!-- Mata Pelajaran (Mapel) - Samping Guru Pengampu -->
+                    <div class="col-md-6 mb-2">
+                      <label for="jurnal-mapel-select" class="form-label font-medium">Mata Pelajaran (Mapel) <span class="required">*</span></label>
+                      <select id="jurnal-mapel-select" class="form-select" required disabled>
+                        <option value="">-- Pilih Guru Terlebih Dahulu --</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Seksi 2: Detail Pembelajaran -->
+                <div class="form-section mb-4 p-3 rounded" style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color);">
+                  <div class="section-title font-semibold text-sm mb-3 d-flex align-center" style="color: var(--color-primary);">
+                    <i data-lucide="file-text" class="mr-2" style="width:16px;height:16px;"></i> Detail & Batas Materi
+                  </div>
+                  
+                  <!-- Batas Materi -->
+                  <div class="form-group mb-3">
+                    <label for="jurnal-materi" class="form-label font-medium">Batas Materi / Uraian Kegiatan Pembelajaran <span class="required">*</span></label>
+                    <textarea id="jurnal-materi" class="form-input" rows="2" required placeholder="Contoh: Bab 3 Persamaan Kuadrat - Mengerjakan latihan soal Halaman 45-50"></textarea>
+                  </div>
+
+                  <!-- Keterangan Lain -->
+                  <div class="form-group mb-0">
+                    <label for="jurnal-keterangan-lain" class="form-label font-medium">Keterangan Lain / Catatan Tambahan</label>
+                    <textarea id="jurnal-keterangan-lain" class="form-input" rows="2" placeholder="Catatan kondisi kelas, kendala mengajar, tugas tambahan, dll."></textarea>
+                  </div>
+                </div>
+
+                <!-- Seksi 3: Stat Kehadiran Siswa Hari Ini (Otomatis) -->
+                <div class="form-section mb-4 p-3 rounded" style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color);">
+                  <div class="d-flex justify-between align-center mb-3">
+                    <div class="section-title font-semibold text-sm d-flex align-center" style="color: var(--color-primary);">
+                      <i data-lucide="users" class="mr-2" style="width:16px;height:16px;"></i> Rekapitulasi Kehadiran Siswa
+                    </div>
+                    <small class="text-muted d-flex align-center">
+                      <i data-lucide="info" class="mr-1" style="width:14px;height:14px;"></i> Terhubung otomatis dengan Data Absensi Kelas
+                    </small>
+                  </div>
+
+                  <div class="stats-summary-box p-3 rounded" style="background: rgba(0, 0, 0, 0.15); border: 1px solid var(--border-color);">
+                    <div class="d-flex justify-between text-center gap-3 mb-3">
+                      <div class="p-3 rounded flex-1" style="background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3);">
+                        <div class="text-xs font-semibold" style="color: #34d399;">HADIR</div>
+                        <div class="h3 m-0 font-bold" id="jurnal-stat-hadir" style="color: #34d399;">0</div>
+                      </div>
+                      <div class="p-3 rounded flex-1" style="background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.3);">
+                        <div class="text-xs font-semibold" style="color: #fbbf24;">SAKIT</div>
+                        <div class="h3 m-0 font-bold" id="jurnal-stat-sakit" style="color: #fbbf24;">0</div>
+                      </div>
+                      <div class="p-3 rounded flex-1" style="background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.3);">
+                        <div class="text-xs font-semibold" style="color: #60a5fa;">IZIN</div>
+                        <div class="h3 m-0 font-bold" id="jurnal-stat-izin" style="color: #60a5fa;">0</div>
+                      </div>
+                      <div class="p-3 rounded flex-1" style="background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.3);">
+                        <div class="text-xs font-semibold" style="color: #f87171;">ALPHA</div>
+                        <div class="h3 m-0 font-bold" id="jurnal-stat-alpha" style="color: #f87171;">0</div>
+                      </div>
+                    </div>
+
+                    <!-- Rincian Nama Siswa Tidak Hadir -->
+                    <div class="attendance-names-detail text-sm pt-2 border-top" style="border-color: rgba(255,255,255,0.05)!important;">
+                      <div class="row">
+                        <div class="col-md-4 mb-1" id="jurnal-box-sakit">
+                          <span class="badge badge-warning" style="font-size:11px;">Sakit:</span>
+                          <span id="jurnal-names-sakit" class="text-muted ml-1 font-medium">Tidak ada</span>
+                        </div>
+                        <div class="col-md-4 mb-1" id="jurnal-box-izin">
+                          <span class="badge badge-info" style="font-size:11px;">Izin:</span>
+                          <span id="jurnal-names-izin" class="text-muted ml-1 font-medium">Tidak ada</span>
+                        </div>
+                        <div class="col-md-4 mb-1" id="jurnal-box-alpha">
+                          <span class="badge badge-danger" style="font-size:11px;">Alpha:</span>
+                          <span id="jurnal-names-alpha" class="text-muted ml-1 font-medium">Tidak ada</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="d-flex justify-end gap-2">
+                  <button type="submit" class="btn btn-primary btn-lg px-4">
+                    <i data-lucide="save" class="mr-1"></i> Simpan Jurnal Guru
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Riwayat Jurnal Guru (Below Form) -->
+          <div class="dashboard-card card-full">
+            <div class="card-header border-bottom d-flex justify-between align-center flex-wrap gap-3">
+              <div>
+                <h2 class="d-flex align-center">
+                  <i data-lucide="history" class="mr-2 text-primary" style="width:20px;height:20px;"></i>
+                  Riwayat Jurnal Guru
+                </h2>
+                <p class="subtitle mt-1">Daftar rekaman aktivitas mengajar harian</p>
+              </div>
+              <div class="header-filters d-flex gap-2 flex-wrap align-center">
+                <button class="btn btn-outline btn-sm" onclick="exportAllJurnalExcel()" title="Ekspor Seluruh Jurnal ke Excel">
+                  <i data-lucide="file-spreadsheet" class="mr-1" style="width:14px;height:14px;"></i> Ekspor Excel
+                </button>
+                <select id="filter-jurnal-guru" onchange="renderJurnalRiwayatTable()" class="form-select w-180">
+                  <option value="">Semua Guru</option>
+                </select>
+                <select id="filter-jurnal-mapel" onchange="renderJurnalRiwayatTable()" class="form-select w-180">
+                  <option value="">Semua Mapel</option>
+                </select>
+                <select id="filter-jurnal-kelas" onchange="renderJurnalRiwayatTable()" class="form-select w-150">
+                  <option value="">Semua Kelas</option>
+                </select>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="custom-table-container max-h-600">
+                <table class="styled-table">
+                  <thead>
+                    <tr>
+                      <th width="50" class="text-center">No</th>
+                      <th width="160">Hari, Tanggal</th>
+                      <th width="140">Kelas & Mapel</th>
+                      <th width="180">Guru Pengampu</th>
+                      <th>Materi & Kehadiran</th>
+                      <th width="70" class="text-center">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody id="jurnal-riwayat-table-body">
+                    <tr>
+                      <td colspan="6" class="text-center text-muted py-4">Belum ada riwayat jurnal yang dicatat.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Modal/Popup Notification Container -->
+  <div class="notification-toast-container" id="toast-container"></div>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" id="loading-overlay" style="display: none;">
+    <div class="spinner-container">
+      <div class="double-bounce-spinner">
+        <div class="double-bounce1"></div>
+        <div class="double-bounce2"></div>
+      </div>
+      <p id="loading-text" class="mt-3">Memuat Data...</p>
+    </div>
+  </div>
+
+
+
+  <!-- Script logic -->
+  <script src="app.js"></script>
+</body>
+</html>
