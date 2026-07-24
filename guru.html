@@ -25,6 +25,45 @@
 
 <body class="dark-theme">
 
+  <!-- ================================================================
+       LOGIN OVERLAY
+       ================================================================ -->
+  <div id="login-overlay">
+    <div class="login-card">
+      <div class="login-logo-wrap">
+        <img src="logo.png" alt="Logo SMPN 3 Batam">
+        <div class="login-app-name">SIBATA</div>
+        <div class="login-app-subtitle">Sistem Informasi Berbasis Data</div>
+        <div class="login-app-school">SMPN 3 BATAM</div>
+      </div>
+      <div class="login-title">Masuk ke Dashboard</div>
+      <div class="login-error" id="login-error-msg">
+        <i data-lucide="alert-circle" style="width:14px;height:14px;vertical-align:middle;margin-right:6px;"></i>
+        <span id="login-error-text">Username atau password salah.</span>
+      </div>
+      <form onsubmit="doLogin(event)">
+        <div class="form-group mb-3">
+          <label class="form-label font-medium">Username</label>
+          <input type="text" id="login-username" class="form-input" placeholder="Masukkan username" autocomplete="username" required>
+        </div>
+        <div class="form-group mb-4">
+          <label class="form-label font-medium">Password</label>
+          <div class="input-password-wrapper">
+            <input type="password" id="login-password" class="form-input" placeholder="Masukkan password" autocomplete="current-password" required>
+            <button type="button" class="btn-toggle-password" onclick="toggleLoginPassword()">
+              <i data-lucide="eye" id="login-eye-open"></i>
+              <i data-lucide="eye-off" id="login-eye-closed" style="display:none;"></i>
+            </button>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary w-100 btn-lg" id="btn-login-submit">
+          <i data-lucide="log-in"></i> Masuk
+        </button>
+      </form>
+      <div class="login-footer">&copy; 2025 SIBATA &mdash; SMP Negeri 3 Batam</div>
+    </div>
+  </div>
+
   <!-- Main Container -->
   <div class="app-container">
 
@@ -40,50 +79,49 @@
       </div>
 
       <nav class="sidebar-menu">
-        <button class="menu-item active" id="btn-menu-dashboard" onclick="switchMenu('dashboard')">
+        <button class="menu-item active" id="btn-menu-dashboard" data-roles="admin,guru-piket,osis" onclick="switchMenu('dashboard')">
           <i data-lucide="layout-dashboard"></i>
           <span>Dashboard</span>
         </button>
-        <button class="menu-item" id="btn-menu-upload" onclick="switchMenu('upload')">
+        <button class="menu-item" id="btn-menu-upload" data-roles="admin" onclick="switchMenu('upload')">
           <i data-lucide="file-up"></i>
           <span>Upload Data Siswa</span>
         </button>
-        <button class="menu-item" id="btn-menu-upload-guru" onclick="switchMenu('upload-guru')">
+        <button class="menu-item" id="btn-menu-upload-guru" data-roles="admin" onclick="switchMenu('upload-guru')">
           <i data-lucide="user-check"></i>
           <span>Upload Data Guru</span>
         </button>
-        <button class="menu-item" id="btn-menu-absensi" onclick="switchMenu('absensi')">
+        <button class="menu-item" id="btn-menu-absensi" data-roles="admin,guru-piket" onclick="switchMenu('absensi')">
           <i data-lucide="calendar-check"></i>
           <span>Absensi Siswa</span>
         </button>
-        <button class="menu-item" id="btn-menu-terlambat" onclick="switchMenu('terlambat')">
+        <button class="menu-item" id="btn-menu-terlambat" data-roles="admin,guru-piket,osis" onclick="switchMenu('terlambat')">
           <i data-lucide="clock"></i>
           <span>Siswa Terlambat</span>
         </button>
-        <button class="menu-item" id="btn-menu-pelanggaran" onclick="switchMenu('pelanggaran')">
+        <button class="menu-item" id="btn-menu-pelanggaran" data-roles="admin,guru-piket" onclick="switchMenu('pelanggaran')">
           <i data-lucide="shield-alert"></i>
           <span>Catatan Pelanggaran</span>
         </button>
-        <button class="menu-item" id="btn-menu-izin-pulang" onclick="switchMenu('izin-pulang')">
+        <button class="menu-item" id="btn-menu-izin-pulang" data-roles="admin,guru-piket" onclick="switchMenu('izin-pulang')">
           <i data-lucide="log-out"></i>
           <span>Izin Pulang Siswa</span>
         </button>
-        <button class="menu-item" id="btn-menu-rekap" onclick="switchMenu('rekap')">
+        <button class="menu-item" id="btn-menu-rekap" data-roles="admin" onclick="switchMenu('rekap')">
           <i data-lucide="clipboard-list"></i>
           <span>Rekap Data</span>
         </button>
-        <button class="menu-item" id="btn-menu-jurnal-guru" onclick="switchMenu('jurnal-guru')">
+        <button class="menu-item" id="btn-menu-jurnal-guru" data-roles="admin" onclick="switchMenu('jurnal-guru')">
           <i data-lucide="book-open"></i>
           <span>Jurnal Guru</span>
         </button>
-        <button class="menu-item" id="btn-menu-7kaih" onclick="switchMenu('7kaih')">
+        <button class="menu-item" id="btn-menu-7kaih" data-roles="admin" onclick="switchMenu('7kaih')">
           <i data-lucide="award"></i>
           <span>7 KAIH</span>
         </button>
 
-
-        <div class="sidebar-submenu-group" id="submenu-laporan-group">
-          <button class="menu-item" id="btn-menu-laporan" onclick="toggleLaporanSubmenu(event)">
+        <div class="sidebar-submenu-group" id="submenu-laporan-group" data-roles="admin">
+          <button class="menu-item" id="btn-menu-laporan" data-roles="admin" onclick="toggleLaporanSubmenu(event)">
             <i data-lucide="download"></i>
             <span>Unduh Laporan</span>
             <i data-lucide="chevron-down" class="submenu-chevron" id="laporan-chevron"></i>
@@ -112,10 +150,27 @@
       </nav>
 
       <div class="sidebar-footer">
-        <a href="ortu.html" target="_blank" class="menu-item" style="text-decoration: none; color: var(--text-muted);">
+        <a href="ortu.html" target="_blank" class="menu-item" data-roles="admin" style="text-decoration: none; color: var(--text-muted);">
           <i data-lucide="external-link" style="color: var(--color-success)"></i>
           <span>Portal Orang Tua</span>
         </a>
+        <div class="sidebar-submenu-group" id="submenu-akun-group" data-roles="admin">
+          <button class="menu-item" id="btn-menu-akun" data-roles="admin" onclick="toggleAkunSubmenu(event)">
+            <i data-lucide="users-round"></i>
+            <span>Pengaturan Akun</span>
+            <i data-lucide="chevron-down" class="submenu-chevron" id="akun-chevron"></i>
+          </button>
+          <div class="sidebar-submenu" id="sidebar-akun-submenu" style="display: none;">
+            <button class="submenu-item" id="btn-submenu-akun-daftar" onclick="switchAkunSubmenu('daftar')">
+              <i data-lucide="list"></i>
+              <span>Daftar Akun</span>
+            </button>
+            <button class="submenu-item" id="btn-submenu-akun-tambah" onclick="switchAkunSubmenu('tambah')">
+              <i data-lucide="user-plus"></i>
+              <span>Tambah Akun</span>
+            </button>
+          </div>
+        </div>
         <!-- Pengaturan Database dinonaktifkan untuk guru -->
         <div class="sync-badge-container">
           <div id="sync-status-indicator" class="sync-status status-offline">
@@ -144,6 +199,18 @@
             <i data-lucide="sun" id="theme-icon-light"></i>
             <i data-lucide="moon" id="theme-icon-dark" style="display: none;"></i>
           </button>
+          
+          <!-- User Profile Badge (Top Right) -->
+          <div class="sidebar-user-info" id="sidebar-user-info">
+            <div class="sidebar-user-avatar" id="sidebar-user-avatar">A</div>
+            <div class="sidebar-user-detail">
+              <div class="sidebar-user-name" id="sidebar-user-name">Admin</div>
+              <div class="sidebar-user-role role-badge-admin" id="sidebar-user-role">Admin</div>
+            </div>
+            <button class="btn-logout" onclick="doLogout()" title="Keluar">
+              <i data-lucide="log-out" style="width:14px;height:14px;"></i>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -2179,8 +2246,142 @@
 
       </div>
 
+      <!-- ================================================================
+           VIEW: PENGATURAN AKUN (Admin Only)
+           ================================================================ -->
+      <div class="content-view" id="view-akun" style="display: none;">
+        <!-- Submenu Akun Tabs -->
+        <div class="tab-container mb-4">
+          <button class="tab-button active" id="tab-akun-daftar" onclick="switchAkunTab('daftar')">
+            <i data-lucide="list" class="mr-1 v-middle"></i> Daftar Akun
+          </button>
+          <button class="tab-button" id="tab-akun-tambah" onclick="switchAkunTab('tambah')">
+            <i data-lucide="user-plus" class="mr-1 v-middle"></i> Tambah Akun
+          </button>
+        </div>
+
+        <!-- Tab 1: Daftar Akun -->
+        <div class="dashboard-card card-full akun-tab-content active" id="akun-tab-daftar-content">
+          <div class="card-header border-bottom d-flex justify-between align-center flex-wrap gap-2">
+            <div>
+              <h2 class="d-flex align-center">
+                <span class="icon-badge mr-2" style="background: rgba(251,191,36,0.15); color: #fbbf24; width: 36px; height: 36px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center;">
+                  <i data-lucide="users-round" style="width:20px;height:20px;"></i>
+                </span>
+                Manajemen Akun Pengguna
+              </h2>
+              <p class="subtitle mt-1">Kelola akun login untuk Admin, Guru Piket, dan OSIS</p>
+            </div>
+            <button class="btn btn-primary btn-icon-text" onclick="switchAkunTab('tambah')">
+              <i data-lucide="user-plus"></i>
+              <span>Tambah Akun Baru</span>
+            </button>
+          </div>
+          <div class="card-body">
+            <!-- Role Info Cards -->
+            <div class="row mb-4" style="gap: 12px; display: flex; flex-wrap: wrap;">
+              <div class="flex-1 p-3 rounded" style="background: rgba(251,191,36,0.06); border: 1px solid rgba(251,191,36,0.2); min-width: 200px;">
+                <div class="d-flex align-center gap-2 mb-1">
+                  <span class="role-pill role-pill-admin">Admin</span>
+                </div>
+                <p class="text-sm text-muted m-0">Akses penuh ke seluruh menu dan pengaturan sistem.</p>
+              </div>
+              <div class="flex-1 p-3 rounded" style="background: rgba(52,211,153,0.06); border: 1px solid rgba(52,211,153,0.2); min-width: 200px;">
+                <div class="d-flex align-center gap-2 mb-1">
+                  <span class="role-pill role-pill-guru-piket">Guru Piket</span>
+                </div>
+                <p class="text-sm text-muted m-0">Absensi, Terlambat, Pelanggaran, dan Izin Pulang Siswa.</p>
+              </div>
+              <div class="flex-1 p-3 rounded" style="background: rgba(96,165,250,0.06); border: 1px solid rgba(96,165,250,0.2); min-width: 200px;">
+                <div class="d-flex align-center gap-2 mb-1">
+                  <span class="role-pill role-pill-osis">OSIS</span>
+                </div>
+                <p class="text-sm text-muted m-0">Hanya dapat mengakses menu Siswa Terlambat.</p>
+              </div>
+            </div>
+
+            <div class="custom-table-container">
+              <table class="styled-table">
+                <thead>
+                  <tr>
+                    <th style="width: 40px;">#</th>
+                    <th>Nama Lengkap</th>
+                    <th>Username</th>
+                    <th>Role / Hak Akses</th>
+                    <th style="width: 140px; text-align: center;">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="akun-table-body">
+                  <tr>
+                    <td colspan="5" class="text-center text-muted">Memuat data akun...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Tambah Akun -->
+        <div class="dashboard-card card-full akun-tab-content" id="akun-tab-tambah-content" style="display: none;">
+          <div class="card-header border-bottom">
+            <div>
+              <h2 class="d-flex align-center">
+                <span class="icon-badge mr-2" style="background: rgba(99,102,241,0.15); color: var(--color-primary); width: 36px; height: 36px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center;">
+                  <i data-lucide="user-plus" style="width:20px;height:20px;"></i>
+                </span>
+                Tambah Akun Pengguna Baru
+              </h2>
+              <p class="subtitle mt-1">Buat akun pengguna baru dengan mengisi nama lengkap, username, password, dan role</p>
+            </div>
+          </div>
+          <div class="card-body">
+            <div style="max-width: 560px; margin: 0 auto; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; padding: 28px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+              <form id="form-inline-tambah-akun" onsubmit="handleInlineAkunSubmit(event)">
+                <div class="form-group mb-3">
+                  <label for="inline-akun-nama" class="form-label font-semibold" style="display: block; margin-bottom: 6px;">Nama Lengkap <span class="required" style="color:var(--color-danger)">*</span></label>
+                  <input type="text" id="inline-akun-nama" class="form-input" required placeholder="Contoh: Ahmad Dahlan, S.Pd.">
+                </div>
+
+                <div class="form-group mb-3">
+                  <label for="inline-akun-username" class="form-label font-semibold" style="display: block; margin-bottom: 6px;">Username <span class="required" style="color:var(--color-danger)">*</span></label>
+                  <input type="text" id="inline-akun-username" class="form-input" required placeholder="Contoh: gurupiket2">
+                </div>
+
+                <div class="form-group mb-3">
+                  <label for="inline-akun-password" class="form-label font-semibold" style="display: block; margin-bottom: 6px;">Password <span class="required" style="color:var(--color-danger)">*</span></label>
+                  <div style="position: relative;">
+                    <input type="password" id="inline-akun-password" class="form-input" required placeholder="Password" style="padding-right: 40px; width: 100%;">
+                    <button type="button" onclick="togglePasswordVisibility('inline-akun-password')" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; display: flex; align-items: center;">
+                      <i data-lucide="eye" style="width:18px;height:18px;"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="form-group mb-4">
+                  <label for="inline-akun-role" class="form-label font-semibold" style="display: block; margin-bottom: 6px;">Role / Hak Akses <span class="required" style="color:var(--color-danger)">*</span></label>
+                  <select id="inline-akun-role" class="form-select" required style="width: 100%;">
+                    <option value="admin">Admin (Akses Penuh Seluruh Sistem)</option>
+                    <option value="guru-piket" selected>Guru Piket (Absensi, Terlambat, Pelanggaran, Izin Pulang)</option>
+                    <option value="osis">OSIS (Siswa Terlambat)</option>
+                  </select>
+                </div>
+
+                <div class="d-flex gap-2 justify-end border-top pt-3" style="margin-top: 20px;">
+                  <button type="button" class="btn btn-secondary mr-2" onclick="switchAkunTab('daftar')">Batal</button>
+                  <button type="submit" class="btn btn-primary btn-icon-text">
+                    <i data-lucide="user-plus"></i>
+                    <span>Simpan & Tambah Akun</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </main>
   </div>
+
 
   <!-- Modal/Popup Notification Container -->
   <div class="notification-toast-container" id="toast-container"></div>
@@ -2260,6 +2461,47 @@
 
           <div class="modal-footer text-right">
             <button type="button" class="btn btn-secondary mr-2" onclick="closeTeacherModal()">Batal</button>
+            <button type="submit" class="btn btn-primary">Simpan</button>
+          </div>
+        </form>
+      </div>
+  <!-- User Account Add/Edit Modal -->
+  <div class="modal-overlay" id="akun-modal" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="akun-modal-title">Tambah Akun Pengguna</h3>
+        <button class="modal-close-btn" onclick="closeAkunModal()"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <form id="form-akun-detail" onsubmit="handleAkunFormSubmit(event)">
+          <input type="hidden" id="akun-modal-id">
+
+          <div class="form-group mb-3">
+            <label for="akun-modal-nama">Nama Lengkap <span class="required">*</span></label>
+            <input type="text" id="akun-modal-nama" class="form-input" required placeholder="Contoh: Budi Santoso">
+          </div>
+
+          <div class="form-group mb-3">
+            <label for="akun-modal-username">Username <span class="required">*</span></label>
+            <input type="text" id="akun-modal-username" class="form-input" required placeholder="Username untuk login">
+          </div>
+
+          <div class="form-group mb-3">
+            <label for="akun-modal-password">Password <span class="required">*</span></label>
+            <input type="password" id="akun-modal-password" class="form-input" required placeholder="Password">
+          </div>
+
+          <div class="form-group mb-4">
+            <label for="akun-modal-role">Role / Hak Akses <span class="required">*</span></label>
+            <select id="akun-modal-role" class="form-input" required>
+              <option value="admin">Admin (Akses Penuh)</option>
+              <option value="guru-piket">Guru Piket (Absensi, Terlambat, Pelanggaran, Izin Pulang)</option>
+              <option value="osis">OSIS (Siswa Terlambat)</option>
+            </select>
+          </div>
+
+          <div class="modal-footer text-right">
+            <button type="button" class="btn btn-secondary mr-2" onclick="closeAkunModal()">Batal</button>
             <button type="submit" class="btn btn-primary">Simpan</button>
           </div>
         </form>

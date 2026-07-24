@@ -801,10 +801,59 @@ function switchLaporanTab(tabName) {
   const activeContent = document.getElementById(`laporan-tab-${tabName}-content`);
   if (activeContent) activeContent.classList.add('active');
 
-  const subItems = document.querySelectorAll('.sidebar-submenu .submenu-item');
+  const subItems = document.querySelectorAll('#sidebar-laporan-submenu .submenu-item');
   subItems.forEach(s => s.classList.remove('active'));
   const activeSubBtn = document.getElementById(`btn-submenu-laporan-${tabName}`);
   if (activeSubBtn) activeSubBtn.classList.add('active');
+}
+
+function toggleAkunSubmenu(e) {
+  if (e) e.stopPropagation();
+  const group = document.getElementById('submenu-akun-group');
+  const submenu = document.getElementById('sidebar-akun-submenu');
+  if (submenu) {
+    const isHidden = submenu.style.display === 'none' || !submenu.style.display;
+    submenu.style.display = isHidden ? 'flex' : 'none';
+    if (group) {
+      if (isHidden) group.classList.add('open');
+      else group.classList.remove('open');
+    }
+  }
+}
+
+function switchAkunSubmenu(tabName) {
+  switchMenu('akun');
+  switchAkunTab(tabName);
+}
+
+function switchAkunTab(tabName) {
+  const tabs = document.querySelectorAll('#view-akun .tab-button');
+  tabs.forEach(t => t.classList.remove('active'));
+
+  const activeTabBtn = document.getElementById(`tab-akun-${tabName}`);
+  if (activeTabBtn) activeTabBtn.classList.add('active');
+
+  const contents = document.querySelectorAll('.akun-tab-content');
+  contents.forEach(c => {
+    c.style.display = 'none';
+    c.classList.remove('active');
+  });
+
+  const activeContent = document.getElementById(`akun-tab-${tabName}-content`);
+  if (activeContent) {
+    activeContent.style.display = 'block';
+    activeContent.classList.add('active');
+  }
+
+  const subItems = document.querySelectorAll('#sidebar-akun-submenu .submenu-item');
+  subItems.forEach(s => s.classList.remove('active'));
+  const activeSubBtn = document.getElementById(`btn-submenu-akun-${tabName}`);
+  if (activeSubBtn) activeSubBtn.classList.add('active');
+
+  if (tabName === 'daftar') {
+    renderAkunTable();
+  }
+  lucide.createIcons();
 }
 
 function init7KaihView() {
@@ -866,6 +915,16 @@ function switchMenu(menuName) {
   } else {
     if (submenuGroup) submenuGroup.classList.add('open');
     if (submenu) submenu.style.display = 'flex';
+  }
+
+  const akunSubmenuGroup = document.getElementById('submenu-akun-group');
+  const akunSubmenu = document.getElementById('sidebar-akun-submenu');
+  if (menuName !== 'akun') {
+    if (akunSubmenuGroup) akunSubmenuGroup.classList.remove('open');
+    if (akunSubmenu) akunSubmenu.style.display = 'none';
+  } else {
+    if (akunSubmenuGroup) akunSubmenuGroup.classList.add('open');
+    if (akunSubmenu) akunSubmenu.style.display = 'flex';
   }
 
   // Show selected view
@@ -935,7 +994,7 @@ function switchMenu(menuName) {
     } else if (menuName === '7kaih') {
       init7KaihView();
     } else if (menuName === 'akun') {
-      renderAkunTable();
+      switchAkunTab('daftar');
     }
   } catch (err) {
     console.error(`Error rendering view ${menuName}:`, err);
@@ -5698,6 +5757,47 @@ function deleteAkun(id) {
     persistData();
     renderAkunTable();
     showToast('Akun berhasil dihapus.', 'info');
+  }
+}
+
+function handleInlineAkunSubmit(e) {
+  e.preventDefault();
+  const nama = document.getElementById('inline-akun-nama').value.trim();
+  const username = document.getElementById('inline-akun-username').value.trim();
+  const password = document.getElementById('inline-akun-password').value.trim();
+  const role = document.getElementById('inline-akun-role').value;
+
+  if (!nama || !username || !password || !role) {
+    showToast('Harap isi semua kolom wajib!', 'error');
+    return;
+  }
+
+  let accounts = getAccountsList();
+
+  const existing = accounts.find(a => a.username.toLowerCase() === username.toLowerCase());
+  if (existing) {
+    showToast(`Username "${username}" sudah digunakan!`, 'error');
+    return;
+  }
+
+  const newId = String(Date.now());
+  accounts.push({ id: newId, nama, username, password, role });
+
+  state.accounts = accounts;
+  persistData();
+
+  document.getElementById('form-inline-tambah-akun').reset();
+  showToast('Akun baru berhasil ditambahkan!', 'success');
+  switchAkunTab('daftar');
+}
+
+function togglePasswordVisibility(inputId) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  if (input.type === 'password') {
+    input.type = 'text';
+  } else {
+    input.type = 'password';
   }
 }
 
