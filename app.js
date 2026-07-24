@@ -1,14 +1,14 @@
 // --- Supabase Cloud Configuration ---
 // Masukkan URL dan ANON KEY Supabase Anda di sini untuk menghubungkan database Supabase secara otomatis
 const SUPABASE_CONFIG = {
-  url: 'https://YOUR_SUPABASE_PROJECT_ID.supabase.co', // Ganti dengan Supabase Project URL Anda
-  anonKey: 'YOUR_SUPABASE_ANON_KEY'                   // Ganti dengan Supabase Anon Key Anda
+  url: 'https://wedwjlkvnzbgrrybamqm.supabase.co',
+  anonKey: (typeof process !== 'undefined' && process.env && process.env.SUPABASE_KEY) ? process.env.SUPABASE_KEY : 'YOUR_SUPABASE_ANON_KEY'
 };
 
 let supabaseClient = null;
 
 function initSupabase() {
-  if (typeof supabase !== 'undefined' && SUPABASE_CONFIG.url && !SUPABASE_CONFIG.url.includes('YOUR_SUPABASE_PROJECT_ID')) {
+  if (typeof supabase !== 'undefined' && SUPABASE_CONFIG.url && SUPABASE_CONFIG.anonKey !== 'YOUR_SUPABASE_ANON_KEY') {
     try {
       supabaseClient = supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
     } catch (e) {
