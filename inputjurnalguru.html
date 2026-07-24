@@ -22,7 +22,7 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-start;
+      justify-content: center;
       padding: 24px 16px;
     }
 
@@ -33,35 +33,6 @@
       flex-direction: column;
       align-items: center;
       gap: 20px;
-    }
-
-    .nav-top-bar {
-      width: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 8px;
-    }
-
-    .btn-back-dash {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 8px 14px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      color: var(--text-muted);
-      font-size: 13px;
-      font-weight: 600;
-      text-decoration: none;
-      transition: all 0.2s;
-    }
-
-    .btn-back-dash:hover {
-      background: rgba(99, 102, 241, 0.15);
-      color: var(--text-main);
-      border-color: rgba(99, 102, 241, 0.3);
     }
 
     .jurnal-header {
@@ -153,16 +124,7 @@
 
   <div class="jurnal-container">
     
-    <!-- Top Nav Back Link -->
-    <div class="nav-top-bar">
-      <a href="index.html" class="btn-back-dash">
-        <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
-        <span>Dashboard Utama</span>
-      </a>
-      <div id="sync-status-badge" style="font-size: 12px; font-weight: 600; color: #34d399; display: flex; align-items: center; gap: 6px;">
-        <span style="width: 8px; height: 8px; border-radius: 50%; background: #34d399;"></span> Supabase Cloud
-      </div>
-    </div>
+    <!-- Header Logo & Title -->
 
     <!-- Header Logo & Title -->
     <div class="jurnal-header">
