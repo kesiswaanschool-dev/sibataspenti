@@ -497,32 +497,42 @@ async function syncPullFromSupabase(silent = true) {
 
       if (error || !data) return false;
 
-      if (Array.isArray(data.students) && data.students.length > 0) {
-        state.students = mergeListById(state.students, data.students);
+      const cloudStudents = data.students || [];
+      const cloudAttendance = data.attendance || [];
+      const cloudLate = data.latelogs || data.lateLogs || [];
+      const cloudViolations = data.violations || [];
+      const cloudIzin = data.izinpulang || data.izinPulang || [];
+      const cloudJurnal = data.jurnalguru || data.jurnalGuru || [];
+      const cloudTeachers = data.teachers || [];
+      const cloudKaih = data.kaihlogs || data.kaihLogs || [];
+      const cloudAccounts = data.accounts || [];
+
+      if (Array.isArray(cloudStudents) && cloudStudents.length > 0) {
+        state.students = mergeListById(state.students, cloudStudents);
       }
-      if (Array.isArray(data.attendance) && data.attendance.length > 0) {
-        state.attendance = mergeListById(state.attendance, data.attendance);
+      if (Array.isArray(cloudAttendance) && cloudAttendance.length > 0) {
+        state.attendance = mergeListById(state.attendance, cloudAttendance);
       }
-      if (Array.isArray(data.lateLogs) && data.lateLogs.length > 0) {
-        state.lateLogs = mergeListById(state.lateLogs, data.lateLogs);
+      if (Array.isArray(cloudLate) && cloudLate.length > 0) {
+        state.lateLogs = mergeListById(state.lateLogs, cloudLate);
       }
-      if (Array.isArray(data.violations) && data.violations.length > 0) {
-        state.violations = mergeListById(state.violations, data.violations);
+      if (Array.isArray(cloudViolations) && cloudViolations.length > 0) {
+        state.violations = mergeListById(state.violations, cloudViolations);
       }
-      if (Array.isArray(data.izinPulang) && data.izinPulang.length > 0) {
-        state.izinPulang = mergeListById(state.izinPulang, data.izinPulang);
+      if (Array.isArray(cloudIzin) && cloudIzin.length > 0) {
+        state.izinPulang = mergeListById(state.izinPulang, cloudIzin);
       }
-      if (Array.isArray(data.jurnalGuru) && data.jurnalGuru.length > 0) {
-        state.jurnalGuru = mergeListById(state.jurnalGuru, data.jurnalGuru);
+      if (Array.isArray(cloudJurnal) && cloudJurnal.length > 0) {
+        state.jurnalGuru = mergeListById(state.jurnalGuru, cloudJurnal);
       }
-      if (Array.isArray(data.teachers) && data.teachers.length > 0) {
-        state.teachers = mergeListById(state.teachers, data.teachers);
+      if (Array.isArray(cloudTeachers) && cloudTeachers.length > 0) {
+        state.teachers = mergeListById(state.teachers, cloudTeachers);
       }
-      if (Array.isArray(data.kaihLogs) && data.kaihLogs.length > 0) {
-        state.kaihLogs = mergeListById(state.kaihLogs, data.kaihLogs);
+      if (Array.isArray(cloudKaih) && cloudKaih.length > 0) {
+        state.kaihLogs = mergeListById(state.kaihLogs, cloudKaih);
       }
-      if (Array.isArray(data.accounts) && data.accounts.length > 0) {
-        state.accounts = mergeListById(state.accounts, data.accounts, 'username');
+      if (Array.isArray(cloudAccounts) && cloudAccounts.length > 0) {
+        state.accounts = mergeListById(state.accounts, cloudAccounts, 'username');
       }
     }
 
@@ -587,17 +597,17 @@ async function syncPushToSupabase(silent = true) {
       console.warn('Sync per-tabel error:', e);
     }
 
-    // 2. Also update legacy single row as fallback
+    // 2. Also update single row school_data with both column formats for 100% compatibility
     const payload = {
       id: 1,
       students: state.students || [],
       attendance: state.attendance || [],
-      lateLogs: state.lateLogs || [],
+      latelogs: state.lateLogs || [],
       violations: state.violations || [],
-      izinPulang: state.izinPulang || [],
-      jurnalGuru: state.jurnalGuru || [],
+      izinpulang: state.izinPulang || [],
+      jurnalguru: state.jurnalGuru || [],
       teachers: state.teachers || [],
-      kaihLogs: state.kaihLogs || [],
+      kaihlogs: state.kaihLogs || [],
       accounts: getAccountsList(),
       updated_at: new Date().toISOString()
     };
