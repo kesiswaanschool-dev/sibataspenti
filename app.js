@@ -2261,10 +2261,13 @@ async function handleViolationSubmit(event) {
       if (res.error) throw new Error(res.error);
       
       // Reset Form except date
-      document.getElementById('pelanggaran-siswa-id').value = '';
-      document.getElementById('pelanggaran-search-input').value = '';
-      document.getElementById('pelanggaran-kelas-display').value = '';
-      document.getElementById('pelanggaran-keterangan').value = '';
+      const elId = document.getElementById('pelanggaran-siswa-id');
+      const elClass = document.getElementById('pelanggaran-kelas-select');
+      const elKet = document.getElementById('pelanggaran-keterangan');
+      if (elId) elId.value = '';
+      if (elClass) elClass.value = '';
+      handleViolationClassChange();
+      if (elKet) elKet.value = '';
       
       await loadData();
       showToast('Pelanggaran berhasil dicatat!', 'success');
@@ -2282,10 +2285,13 @@ async function handleViolationSubmit(event) {
       await persistData();
 
       // Reset Form except date
-      document.getElementById('pelanggaran-siswa-id').value = '';
-      document.getElementById('pelanggaran-search-input').value = '';
-      document.getElementById('pelanggaran-kelas-display').value = '';
-      document.getElementById('pelanggaran-keterangan').value = '';
+      const elId = document.getElementById('pelanggaran-siswa-id');
+      const elClass = document.getElementById('pelanggaran-kelas-select');
+      const elKet = document.getElementById('pelanggaran-keterangan');
+      if (elId) elId.value = '';
+      if (elClass) elClass.value = '';
+      handleViolationClassChange();
+      if (elKet) elKet.value = '';
       
       // Refresh list
       renderViolationsToday();
@@ -2439,11 +2445,15 @@ async function handleIzinPulangSubmit(event) {
       if (res.error) throw new Error(res.error);
       
       // Reset Form except date
-      document.getElementById('izin-pulang-siswa-id').value = '';
-      document.getElementById('izin-pulang-search-input').value = '';
-      document.getElementById('izin-pulang-kelas-display').value = '';
-      document.getElementById('izin-pulang-keterangan').value = '';
-      document.getElementById('izin-pulang-guru-piket').value = '';
+      const elId = document.getElementById('izin-pulang-siswa-id');
+      const elClass = document.getElementById('izin-pulang-kelas-select');
+      const elKet = document.getElementById('izin-pulang-keterangan');
+      const elGuru = document.getElementById('izin-pulang-guru-piket');
+      if (elId) elId.value = '';
+      if (elClass) elClass.value = '';
+      handleIzinPulangClassChange();
+      if (elKet) elKet.value = '';
+      if (elGuru) elGuru.value = '';
       
       await loadData();
       showToast('Izin pulang berhasil dicatat!', 'success');
@@ -2462,11 +2472,15 @@ async function handleIzinPulangSubmit(event) {
       await persistData();
 
       // Reset Form except date
-      document.getElementById('izin-pulang-siswa-id').value = '';
-      document.getElementById('izin-pulang-search-input').value = '';
-      document.getElementById('izin-pulang-kelas-display').value = '';
-      document.getElementById('izin-pulang-keterangan').value = '';
-      document.getElementById('izin-pulang-guru-piket').value = '';
+      const elId = document.getElementById('izin-pulang-siswa-id');
+      const elClass = document.getElementById('izin-pulang-kelas-select');
+      const elKet = document.getElementById('izin-pulang-keterangan');
+      const elGuru = document.getElementById('izin-pulang-guru-piket');
+      if (elId) elId.value = '';
+      if (elClass) elClass.value = '';
+      handleIzinPulangClassChange();
+      if (elKet) elKet.value = '';
+      if (elGuru) elGuru.value = '';
       
       // Refresh list
       renderIzinPulangToday();
