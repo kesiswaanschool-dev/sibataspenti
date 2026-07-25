@@ -83,6 +83,16 @@ document.addEventListener('DOMContentLoaded', () => {
   setupDragAndDrop();
 });
 
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 function checkUrlParamsForConfig() {
   const urlParams = new URLSearchParams(window.location.search);
   const token = urlParams.get('token');
