@@ -515,6 +515,24 @@ async function syncPullFromSupabase(silent = true) {
         .maybeSingle();
 
       if (!error && data) {
+        const lastLocalReset = localStorage.getItem('lastResetAt') || '';
+        if (data.resetAt && data.resetAt !== lastLocalReset) {
+          console.log('Detected cloud reset event at', data.resetAt);
+          localStorage.setItem('lastResetAt', data.resetAt);
+          state.students = [];
+          state.teachers = [];
+          state.attendance = [];
+          state.lateLogs = [];
+          state.violations = [];
+          state.izinPulang = [];
+          state.jurnalGuru = [];
+          state.kaihLogs = [];
+          clearDeletedStudentIds();
+          saveLocalState();
+          refreshAllUI();
+          return true;
+        }
+
         const cloudStudents = data.students || [];
         const cloudAttendance = data.attendance || [];
         const cloudLate = data.latelogs || data.lateLogs || [];
@@ -6019,15 +6037,20 @@ async function confirmResetAllData() {
     // Clear deleted blacklist
     clearDeletedStudentIds();
 
+    const resetTime = new Date().toISOString();
+
     // 2. Clear local storage
     localStorage.removeItem('schoolDb');
     localStorage.removeItem('deletedStudentIds');
+    localStorage.setItem('lastResetAt', resetTime);
 
     // 3. Clear cloud database (Supabase school_data & per-tables)
     if (supabaseClient) {
       try {
         const emptyPayload = {
           id: 1,
+          resetAt: resetTime,
+          isReset: true,
           students: [],
           attendance: [],
           latelogs: [],
@@ -6037,7 +6060,7 @@ async function confirmResetAllData() {
           teachers: [],
           kaihlogs: [],
           accounts: getAccountsList(),
-          updated_at: new Date().toISOString()
+          updated_at: resetTime
         };
         await supabaseClient.from('school_data').upsert(emptyPayload, { onConflict: 'id' });
 

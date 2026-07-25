@@ -653,8 +653,16 @@
         try {
           const { data, error } = await supabaseClient.from('school_data').select('*').eq('id', 1).maybeSingle();
           if (!error && data) {
+            const lastLocalReset = localStorage.getItem('lastResetAt') || '';
+            if (data.resetAt && data.resetAt !== lastLocalReset) {
+              localStorage.setItem('lastResetAt', data.resetAt);
+              appDb.students = Array.isArray(data.students) ? data.students : [];
+              appDb.kaihLogs = Array.isArray(data.kaihlogs) ? data.kaihlogs : [];
+              saveLocalDatabase();
+              return;
+            }
             if (Array.isArray(data.students) && data.students.length > 0) appDb.students = mergeDbArrays(data.students, appDb.students);
-            const cloudKaih = data.kaihLogs || data.kaihlogs || [];
+            const cloudKaih = data.kaihlogs || data.kaihLogs || [];
             if (Array.isArray(cloudKaih) && cloudKaih.length > 0) appDb.kaihLogs = mergeDbArrays(appDb.kaihLogs, cloudKaih);
           }
         } catch (e) {
