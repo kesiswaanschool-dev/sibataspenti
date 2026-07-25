@@ -669,21 +669,46 @@
       saveLocalDatabase();
 
       if (supabaseClient) {
+        // 1. Try per-table jurnal_guru upsert in isolated try-catch block
         try {
           if (singleEntry) {
             await supabaseClient.from('jurnal_guru').upsert(singleEntry, { onConflict: 'id' });
+          } else if (appDb.jurnalGuru && appDb.jurnalGuru.length > 0) {
+            await supabaseClient.from('jurnal_guru').upsert(appDb.jurnalGuru, { onConflict: 'id' });
           }
-
-          let existingDb = {};
-          const localDb = localStorage.getItem('schoolDb');
-          if (localDb) {
-            try { existingDb = JSON.parse(localDb); } catch(e) {}
-          }
-          existingDb.id = 1;
-          existingDb.updated_at = new Date().toISOString();
-          await supabaseClient.from('school_data').upsert(existingDb, { onConflict: 'id' });
         } catch (e) {
-          console.error('Supabase save error', e);
+          console.warn('jurnal_guru per-table save notice:', e);
+        }
+
+        // 2. Update single-row school_data JSON table with exact Postgres column names
+        try {
+          let cloudDb = {};
+          const { data } = await supabaseClient.from('school_data').select('*').eq('id', 1).maybeSingle();
+          if (data) cloudDb = data;
+
+          const existingJurnal = cloudDb.jurnalguru || cloudDb.jurnalGuru || [];
+          const mergedJurnal = mergeDbArrays(appDb.jurnalGuru, existingJurnal);
+
+          appDb.jurnalGuru = mergedJurnal;
+          saveLocalDatabase();
+
+          const payload = {
+            id: 1,
+            students: cloudDb.students || [],
+            attendance: cloudDb.attendance || [],
+            latelogs: cloudDb.latelogs || [],
+            violations: cloudDb.violations || [],
+            izinpulang: cloudDb.izinpulang || [],
+            jurnalguru: mergedJurnal,
+            teachers: cloudDb.teachers || [],
+            kaihlogs: cloudDb.kaihlogs || [],
+            accounts: cloudDb.accounts || [],
+            updated_at: new Date().toISOString()
+          };
+
+          await supabaseClient.from('school_data').upsert(payload, { onConflict: 'id' });
+        } catch (e) {
+          console.error('school_data save error in inputjurnalguru:', e);
         }
       }
     }
