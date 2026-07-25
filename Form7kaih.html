@@ -123,34 +123,126 @@
       outline: none;
     }
 
-    .custom-table-container {
+    .habits-cards-container {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
       width: 100%;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      border-radius: 12px;
+      box-sizing: border-box;
+    }
+
+    .habit-item-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: all 0.2s ease;
+      box-sizing: border-box;
+    }
+
+    .habit-item-card:focus-within, .habit-item-card:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(99, 102, 241, 0.35);
+    }
+
+    .habit-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .habit-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      user-select: none;
+      margin: 0;
+      flex: 1;
+    }
+
+    .habit-badge {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+
+    .habit-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-main, #f1f5f9);
+    }
+
+    .habit-checkbox {
+      width: 24px;
+      height: 24px;
+      cursor: pointer;
+      accent-color: #4f46e5;
+      border-radius: 6px;
+      flex-shrink: 0;
+    }
+
+    .habit-card-body {
+      width: 100%;
+    }
+
+    .habit-input {
+      width: 100%;
+      box-sizing: border-box;
+      background: rgba(0, 0, 0, 0.2) !important;
     }
 
     /* Mobile Phone Optimizations (< 640px) */
     @media (max-width: 640px) {
       body {
-        padding: 16px 10px;
+        padding: 12px 8px;
+      }
+
+      .kaih-container {
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 0;
       }
 
       .kaih-header h1 {
-        font-size: 20px !important;
+        font-size: 19px !important;
       }
 
       .kaih-header p {
-        font-size: 12.5px !important;
+        font-size: 12px !important;
       }
 
       .login-card {
-        padding: 24px 16px;
+        padding: 20px 14px;
         border-radius: 16px;
       }
 
+      .dashboard-card {
+        border-radius: 16px !important;
+        padding: 0 !important;
+      }
+
+      .card-body {
+        padding: 12px 10px !important;
+      }
+
+      .filter-bar div[style*="grid-template-columns"] {
+        grid-template-columns: 1fr !important;
+        gap: 10px !important;
+      }
+
       .student-profile-bar {
-        padding: 12px 14px;
+        padding: 12px 10px;
         flex-direction: column;
         align-items: stretch;
         text-align: center;
@@ -167,8 +259,12 @@
         justify-content: center;
       }
 
-      .form-section {
-        padding: 12px 10px !important;
+      .habit-item-card {
+        padding: 12px 10px;
+      }
+
+      .habit-name {
+        font-size: 14px;
       }
 
       .form-input, .form-select, textarea {
@@ -177,8 +273,8 @@
       }
 
       .styled-table th, .styled-table td {
-        padding: 8px 10px !important;
-        font-size: 12px !important;
+        padding: 8px 8px !important;
+        font-size: 11.5px !important;
       }
     }
   </style>
@@ -221,7 +317,7 @@
     </div>
 
     <!-- SCREEN 2: FORM 7 KAIH (AFTER LOGIN) -->
-    <div id="screen-form" style="display: none; flex-direction: column; gap: 20px;">
+    <div id="screen-form" style="display: none; flex-direction: column; gap: 20px; width: 100%;">
       
       <!-- Profile Bar -->
       <div class="student-profile-bar">
@@ -264,82 +360,100 @@
             </div>
           </div>
 
-          <!-- Table 7 Habits -->
-          <div class="custom-table-container mb-4" style="overflow-x: auto;">
-            <table class="styled-table">
-              <thead>
-                <tr>
-                  <th style="width: 200px;">Kebiasaan</th>
-                  <th style="width: 90px;" class="text-center">Checklist</th>
-                  <th>Keterangan</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style="font-weight: 600;">Bangun Pagi</td>
-                  <td class="text-center">
-                    <input type="checkbox" id="kaih-chk-1" style="width: 22px; height: 22px; cursor: pointer; accent-color: #4f46e5;">
-                  </td>
-                  <td>
-                    <input type="text" id="kaih-ket-1" class="form-input" placeholder="Tambahkan keterangan..." style="width: 100%;">
-                  </td>
-                </tr>
-                <tr>
-                  <td style="font-weight: 600;">Beribadah</td>
-                  <td class="text-center">
-                    <input type="checkbox" id="kaih-chk-2" style="width: 22px; height: 22px; cursor: pointer; accent-color: #4f46e5;">
-                  </td>
-                  <td>
-                    <input type="text" id="kaih-ket-2" class="form-input" placeholder="Tambahkan keterangan..." style="width: 100%;">
-                  </td>
-                </tr>
-                <tr>
-                  <td style="font-weight: 600;">Berolahraga</td>
-                  <td class="text-center">
-                    <input type="checkbox" id="kaih-chk-3" style="width: 22px; height: 22px; cursor: pointer; accent-color: #4f46e5;">
-                  </td>
-                  <td>
-                    <input type="text" id="kaih-ket-3" class="form-input" placeholder="Tambahkan keterangan..." style="width: 100%;">
-                  </td>
-                </tr>
-                <tr>
-                  <td style="font-weight: 600;">Makan Sehat</td>
-                  <td class="text-center">
-                    <input type="checkbox" id="kaih-chk-4" style="width: 22px; height: 22px; cursor: pointer; accent-color: #4f46e5;">
-                  </td>
-                  <td>
-                    <input type="text" id="kaih-ket-4" class="form-input" placeholder="Tambahkan keterangan..." style="width: 100%;">
-                  </td>
-                </tr>
-                <tr>
-                  <td style="font-weight: 600;">Gemar Belajar</td>
-                  <td class="text-center">
-                    <input type="checkbox" id="kaih-chk-5" style="width: 22px; height: 22px; cursor: pointer; accent-color: #4f46e5;">
-                  </td>
-                  <td>
-                    <input type="text" id="kaih-ket-5" class="form-input" placeholder="Tambahkan keterangan..." style="width: 100%;">
-                  </td>
-                </tr>
-                <tr>
-                  <td style="font-weight: 600;">Bermasyarakat</td>
-                  <td class="text-center">
-                    <input type="checkbox" id="kaih-chk-6" style="width: 22px; height: 22px; cursor: pointer; accent-color: #4f46e5;">
-                  </td>
-                  <td>
-                    <input type="text" id="kaih-ket-6" class="form-input" placeholder="Tambahkan keterangan..." style="width: 100%;">
-                  </td>
-                </tr>
-                <tr>
-                  <td style="font-weight: 600;">Tidur Cepat</td>
-                  <td class="text-center">
-                    <input type="checkbox" id="kaih-chk-7" style="width: 22px; height: 22px; cursor: pointer; accent-color: #4f46e5;">
-                  </td>
-                  <td>
-                    <input type="text" id="kaih-ket-7" class="form-input" placeholder="Tambahkan keterangan..." style="width: 100%;">
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <!-- Habit Cards Container (Mobile Native Layout) -->
+          <div class="habits-cards-container mb-4">
+            
+            <div class="habit-item-card">
+              <div class="habit-card-header">
+                <label for="kaih-chk-1" class="habit-label">
+                  <span class="habit-badge" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24;">1</span>
+                  <span class="habit-name">Bangun Pagi</span>
+                </label>
+                <input type="checkbox" id="kaih-chk-1" class="habit-checkbox">
+              </div>
+              <div class="habit-card-body">
+                <input type="text" id="kaih-ket-1" class="form-input habit-input" placeholder="Keterangan (contoh: Jam 05.00 WIB)...">
+              </div>
+            </div>
+
+            <div class="habit-item-card">
+              <div class="habit-card-header">
+                <label for="kaih-chk-2" class="habit-label">
+                  <span class="habit-badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">2</span>
+                  <span class="habit-name">Beribadah</span>
+                </label>
+                <input type="checkbox" id="kaih-chk-2" class="habit-checkbox">
+              </div>
+              <div class="habit-card-body">
+                <input type="text" id="kaih-ket-2" class="form-input habit-input" placeholder="Keterangan (contoh: Sholat Subuh)...">
+              </div>
+            </div>
+
+            <div class="habit-item-card">
+              <div class="habit-card-header">
+                <label for="kaih-chk-3" class="habit-label">
+                  <span class="habit-badge" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa;">3</span>
+                  <span class="habit-name">Berolahraga</span>
+                </label>
+                <input type="checkbox" id="kaih-chk-3" class="habit-checkbox">
+              </div>
+              <div class="habit-card-body">
+                <input type="text" id="kaih-ket-3" class="form-input habit-input" placeholder="Keterangan (contoh: Jogging 15 menit)...">
+              </div>
+            </div>
+
+            <div class="habit-item-card">
+              <div class="habit-card-header">
+                <label for="kaih-chk-4" class="habit-label">
+                  <span class="habit-badge" style="background: rgba(236, 72, 153, 0.15); color: #f472b6;">4</span>
+                  <span class="habit-name">Makan Sehat</span>
+                </label>
+                <input type="checkbox" id="kaih-chk-4" class="habit-checkbox">
+              </div>
+              <div class="habit-card-body">
+                <input type="text" id="kaih-ket-4" class="form-input habit-input" placeholder="Keterangan (contoh: Sarapan empat sehat lima sempurna)...">
+              </div>
+            </div>
+
+            <div class="habit-item-card">
+              <div class="habit-card-header">
+                <label for="kaih-chk-5" class="habit-label">
+                  <span class="habit-badge" style="background: rgba(168, 85, 247, 0.15); color: #c084fc;">5</span>
+                  <span class="habit-name">Gemar Belajar</span>
+                </label>
+                <input type="checkbox" id="kaih-chk-5" class="habit-checkbox">
+              </div>
+              <div class="habit-card-body">
+                <input type="text" id="kaih-ket-5" class="form-input habit-input" placeholder="Keterangan (contoh: Membaca buku 30 menit)...">
+              </div>
+            </div>
+
+            <div class="habit-item-card">
+              <div class="habit-card-header">
+                <label for="kaih-chk-6" class="habit-label">
+                  <span class="habit-badge" style="background: rgba(20, 184, 166, 0.15); color: #2dd4bf;">6</span>
+                  <span class="habit-name">Bermasyarakat</span>
+                </label>
+                <input type="checkbox" id="kaih-chk-6" class="habit-checkbox">
+              </div>
+              <div class="habit-card-body">
+                <input type="text" id="kaih-ket-6" class="form-input habit-input" placeholder="Keterangan (contoh: Membantu orang tua / tetangga)...">
+              </div>
+            </div>
+
+            <div class="habit-item-card">
+              <div class="habit-card-header">
+                <label for="kaih-chk-7" class="habit-label">
+                  <span class="habit-badge" style="background: rgba(99, 102, 241, 0.15); color: #818cf8;">7</span>
+                  <span class="habit-name">Tidur Cepat</span>
+                </label>
+                <input type="checkbox" id="kaih-chk-7" class="habit-checkbox">
+              </div>
+              <div class="habit-card-body">
+                <input type="text" id="kaih-ket-7" class="form-input habit-input" placeholder="Keterangan (contoh: Tidur jam 21.00 WIB)...">
+              </div>
+            </div>
+
           </div>
 
           <div class="form-actions">
