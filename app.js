@@ -482,58 +482,60 @@ async function syncPullFromSupabase(silent = true) {
         if (resAccounts.data && resAccounts.data.length > 0) {
           state.accounts = mergeListById(state.accounts, resAccounts.data, 'username');
         }
-        pulledFromTables = true;
       }
     } catch (e) {
-      console.warn('Pull per-tabel belum dibuat/error, mencoba fallback school_data:', e);
+      console.warn('Pull per-tabel notice in app.js:', e);
     }
 
-    if (!pulledFromTables) {
+    // Always merge with school_data (single-row JSON table) to guarantee data from external forms is never missed
+    try {
       const { data, error } = await supabaseClient
         .from('school_data')
         .select('*')
         .eq('id', 1)
         .maybeSingle();
 
-      if (error || !data) return false;
+      if (!error && data) {
+        const cloudStudents = data.students || [];
+        const cloudAttendance = data.attendance || [];
+        const cloudLate = data.latelogs || data.lateLogs || [];
+        const cloudViolations = data.violations || [];
+        const cloudIzin = data.izinpulang || data.izinPulang || [];
+        const cloudJurnal = data.jurnalguru || data.jurnalGuru || [];
+        const cloudTeachers = data.teachers || [];
+        const cloudKaih = data.kaihlogs || data.kaihLogs || [];
+        const cloudAccounts = data.accounts || [];
 
-      const cloudStudents = data.students || [];
-      const cloudAttendance = data.attendance || [];
-      const cloudLate = data.latelogs || data.lateLogs || [];
-      const cloudViolations = data.violations || [];
-      const cloudIzin = data.izinpulang || data.izinPulang || [];
-      const cloudJurnal = data.jurnalguru || data.jurnalGuru || [];
-      const cloudTeachers = data.teachers || [];
-      const cloudKaih = data.kaihlogs || data.kaihLogs || [];
-      const cloudAccounts = data.accounts || [];
-
-      if (Array.isArray(cloudStudents) && cloudStudents.length > 0) {
-        state.students = mergeListById(state.students, cloudStudents);
+        if (Array.isArray(cloudStudents) && cloudStudents.length > 0) {
+          state.students = mergeListById(state.students, cloudStudents);
+        }
+        if (Array.isArray(cloudAttendance) && cloudAttendance.length > 0) {
+          state.attendance = mergeListById(state.attendance, cloudAttendance, 'id');
+        }
+        if (Array.isArray(cloudLate) && cloudLate.length > 0) {
+          state.lateLogs = mergeListById(state.lateLogs, cloudLate, 'id');
+        }
+        if (Array.isArray(cloudViolations) && cloudViolations.length > 0) {
+          state.violations = mergeListById(state.violations, cloudViolations, 'id');
+        }
+        if (Array.isArray(cloudIzin) && cloudIzin.length > 0) {
+          state.izinPulang = mergeListById(state.izinPulang, cloudIzin, 'id');
+        }
+        if (Array.isArray(cloudJurnal) && cloudJurnal.length > 0) {
+          state.jurnalGuru = mergeListById(state.jurnalGuru, cloudJurnal, 'id');
+        }
+        if (Array.isArray(cloudTeachers) && cloudTeachers.length > 0) {
+          state.teachers = mergeListById(state.teachers, cloudTeachers);
+        }
+        if (Array.isArray(cloudKaih) && cloudKaih.length > 0) {
+          state.kaihLogs = mergeListById(state.kaihLogs, cloudKaih, 'id');
+        }
+        if (Array.isArray(cloudAccounts) && cloudAccounts.length > 0) {
+          state.accounts = mergeListById(state.accounts, cloudAccounts, 'username');
+        }
       }
-      if (Array.isArray(cloudAttendance) && cloudAttendance.length > 0) {
-        state.attendance = mergeListById(state.attendance, cloudAttendance, 'id');
-      }
-      if (Array.isArray(cloudLate) && cloudLate.length > 0) {
-        state.lateLogs = mergeListById(state.lateLogs, cloudLate, 'id');
-      }
-      if (Array.isArray(cloudViolations) && cloudViolations.length > 0) {
-        state.violations = mergeListById(state.violations, cloudViolations, 'id');
-      }
-      if (Array.isArray(cloudIzin) && cloudIzin.length > 0) {
-        state.izinPulang = mergeListById(state.izinPulang, cloudIzin, 'id');
-      }
-      if (Array.isArray(cloudJurnal) && cloudJurnal.length > 0) {
-        state.jurnalGuru = mergeListById(state.jurnalGuru, cloudJurnal, 'id');
-      }
-      if (Array.isArray(cloudTeachers) && cloudTeachers.length > 0) {
-        state.teachers = mergeListById(state.teachers, cloudTeachers);
-      }
-      if (Array.isArray(cloudKaih) && cloudKaih.length > 0) {
-        state.kaihLogs = mergeListById(state.kaihLogs, cloudKaih, 'id');
-      }
-      if (Array.isArray(cloudAccounts) && cloudAccounts.length > 0) {
-        state.accounts = mergeListById(state.accounts, cloudAccounts, 'username');
-      }
+    } catch (e) {
+      console.warn('Pull school_data notice in app.js:', e);
     }
 
     saveLocalState();
@@ -4854,6 +4856,7 @@ function init7KaihView() {
   });
 
   on7KaihFilterKelasChange();
+  on7KaihLaporanKelasChange();
   on7KaihKelasChange();
   render7KaihHistoryTable();
   render7KaihLaporanTable();
@@ -4902,6 +4905,32 @@ function on7KaihFilterKelasChange() {
     opt.textContent = `${student.nama} (${student.kelas})`;
     filterSiswaSelect.appendChild(opt);
   });
+
+  filter7KaihHistory();
+}
+
+function on7KaihLaporanKelasChange() {
+  const kelasSelect = document.getElementById('7kaih-lap-kelas');
+  const siswaSelect = document.getElementById('7kaih-lap-siswa');
+  if (!kelasSelect || !siswaSelect) return;
+
+  const selectedKelas = kelasSelect.value;
+  siswaSelect.innerHTML = '<option value="">-- Semua Murid --</option>';
+
+  let filteredStudents = state.students || [];
+  if (selectedKelas) {
+    filteredStudents = filteredStudents.filter(s => s.kelas === selectedKelas);
+  }
+  filteredStudents.sort((a, b) => a.nama.localeCompare(b.nama));
+
+  filteredStudents.forEach(student => {
+    const opt = document.createElement('option');
+    opt.value = student.id;
+    opt.textContent = `${student.nama} (${student.kelas})`;
+    siswaSelect.appendChild(opt);
+  });
+
+  render7KaihLaporanTable();
 }
 
 function save7KaihEntry() {
@@ -5072,16 +5101,20 @@ function render7KaihLaporanTable() {
 
   const searchNama = document.getElementById('7kaih-lap-nama')?.value.toLowerCase().trim() || '';
   const filterKelas = document.getElementById('7kaih-lap-kelas')?.value || '';
+  const filterSiswa = document.getElementById('7kaih-lap-siswa')?.value || '';
   const filterRentang = document.getElementById('7kaih-lap-rentang')?.value || 'semua';
   const filterSemester = document.getElementById('7kaih-lap-semester')?.value || '';
 
   let logs = state.kaihLogs || [];
 
-  if (searchNama) {
-    logs = logs.filter(l => (l.nama || '').toLowerCase().includes(searchNama));
-  }
   if (filterKelas) {
     logs = logs.filter(l => l.kelas === filterKelas);
+  }
+  if (filterSiswa) {
+    logs = logs.filter(l => String(l.student_id) === String(filterSiswa) || (l.nama && l.nama.toLowerCase().includes(filterSiswa.toLowerCase())));
+  }
+  if (searchNama) {
+    logs = logs.filter(l => (l.nama || '').toLowerCase().includes(searchNama));
   }
   if (filterSemester) {
     logs = logs.filter(l => l.semester === filterSemester);

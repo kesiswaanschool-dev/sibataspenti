@@ -627,17 +627,25 @@
       localStorage.setItem('schoolDb', JSON.stringify(existingDb));
     }
 
-    async function saveDatabase() {
+    async function saveDatabase(singleEntry = null) {
       saveLocalDatabase();
 
       if (supabaseClient) {
         try {
+          if (singleEntry) {
+            await supabaseClient.from('kaih_logs').upsert(singleEntry, { onConflict: 'id' });
+          } else if (appDb.kaihLogs && appDb.kaihLogs.length > 0) {
+            await supabaseClient.from('kaih_logs').upsert(appDb.kaihLogs, { onConflict: 'id' });
+          }
+
           let existingDb = {};
           const localDb = localStorage.getItem('schoolDb');
           if (localDb) {
             try { existingDb = JSON.parse(localDb); } catch(e) {}
           }
           existingDb.id = 1;
+          existingDb.kaihLogs = appDb.kaihLogs;
+          existingDb.kaihlogs = appDb.kaihLogs;
           existingDb.updated_at = new Date().toISOString();
           await supabaseClient.from('school_data').upsert(existingDb, { onConflict: 'id' });
         } catch (e) {
@@ -741,7 +749,7 @@
       if (!appDb.kaihLogs) appDb.kaihLogs = [];
       appDb.kaihLogs.unshift(logData);
 
-      saveDatabase();
+      saveDatabase(logData);
       showToast('Data 7 KAIH berhasil disimpan!', 'success');
 
       // Reset form

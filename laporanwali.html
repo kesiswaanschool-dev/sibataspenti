@@ -1090,11 +1090,21 @@
     function renderStudentKaihTable() {
       if (!currentStudent) return;
       const tbody = document.getElementById('tbody-kaih');
-      const stdIdStr = String(currentStudent.id);
-      const nisnStr = String(currentStudent.nisn);
+      if (!tbody) return;
+
+      const stdIdStr = String(currentStudent.id || '').trim();
+      const nisnStr = String(currentStudent.nisn || '').trim();
+      const studentNamaLower = String(currentStudent.nama || '').trim().toLowerCase();
 
       const list = (appDb.kaihLogs || [])
-        .filter(k => String(k.student_id) === stdIdStr || String(k.student_id) === nisnStr)
+        .filter(k => {
+          if (!k) return false;
+          const kStudId = String(k.student_id || '').trim();
+          const kNama = String(k.nama || '').trim().toLowerCase();
+          return (stdIdStr && kStudId === stdIdStr) || 
+                 (nisnStr && kStudId === nisnStr) || 
+                 (studentNamaLower && kNama === studentNamaLower);
+        })
         .sort((a, b) => b.tanggal.localeCompare(a.tanggal));
 
       if (list.length === 0) {
@@ -1102,20 +1112,37 @@
         return;
       }
 
-      tbody.innerHTML = list.map((k, idx) => `
-        <tr>
-          <td class="text-center">${idx + 1}</td>
-          <td><strong>${k.tanggal}</strong></td>
-          <td class="text-center">${k.point1 ? '✅' : '❌'}</td>
-          <td class="text-center">${k.point2 ? '✅' : '❌'}</td>
-          <td class="text-center">${k.point3 ? '✅' : '❌'}</td>
-          <td class="text-center">${k.point4 ? '✅' : '❌'}</td>
-          <td class="text-center">${k.point5 ? '✅' : '❌'}</td>
-          <td class="text-center">${k.point6 ? '✅' : '❌'}</td>
-          <td class="text-center">${k.point7 ? '✅' : '❌'}</td>
-          <td>${k.keterangan || '-'}</td>
-        </tr>
-      `).join('');
+      const habitKeys = ['bangunPagi', 'beribadah', 'berolahraga', 'makanSehat', 'gemarBelajar', 'bermasyarakat', 'tidurCepat'];
+
+      tbody.innerHTML = list.map((k, idx) => {
+        const habits = k.habits || {};
+        const isChecked = (key, legacyPoint) => {
+          if (habits[key] && typeof habits[key].checked !== 'undefined') return habits[key].checked;
+          return !!k[legacyPoint];
+        };
+
+        const getKet = (key) => {
+          if (habits[key] && habits[key].keterangan) return habits[key].keterangan;
+          return '';
+        };
+
+        const notes = habitKeys.map(key => getKet(key)).filter(Boolean).join(', ') || k.keterangan || '-';
+
+        return `
+          <tr>
+            <td class="text-center">${idx + 1}</td>
+            <td><strong>${k.tanggal}</strong></td>
+            <td class="text-center">${isChecked('bangunPagi', 'point1') ? '✅' : '❌'}</td>
+            <td class="text-center">${isChecked('beribadah', 'point2') ? '✅' : '❌'}</td>
+            <td class="text-center">${isChecked('berolahraga', 'point3') ? '✅' : '❌'}</td>
+            <td class="text-center">${isChecked('makanSehat', 'point4') ? '✅' : '❌'}</td>
+            <td class="text-center">${isChecked('gemarBelajar', 'point5') ? '✅' : '❌'}</td>
+            <td class="text-center">${isChecked('bermasyarakat', 'point6') ? '✅' : '❌'}</td>
+            <td class="text-center">${isChecked('tidurCepat', 'point7') ? '✅' : '❌'}</td>
+            <td style="max-width: 200px; white-space: normal;">${notes}</td>
+          </tr>
+        `;
+      }).join('');
     }
 
     function showToast(message, type = 'info') {

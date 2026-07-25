@@ -1628,24 +1628,20 @@
                   <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 16px;">Filter Laporan</h3>
                   <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
                     <div class="filter-group">
-                      <label style="font-weight: 600; margin-bottom: 6px; display: block; font-size: 13px;">Nama
-                        Siswa</label>
-                      <input type="text" id="7kaih-lap-nama" class="form-input" placeholder="Cari nama..."
-                        onkeyup="render7KaihLaporanTable()" style="width: 100%;">
-                    </div>
-                    <div class="filter-group">
-                      <label
-                        style="font-weight: 600; margin-bottom: 6px; display: block; font-size: 13px;">Kelas</label>
-                      <select id="7kaih-lap-kelas" class="form-select" onchange="render7KaihLaporanTable()"
-                        style="width: 100%;">
+                      <label style="font-weight: 600; margin-bottom: 6px; display: block; font-size: 13px;">Pilih Kelas</label>
+                      <select id="7kaih-lap-kelas" class="form-select" onchange="on7KaihLaporanKelasChange()" style="width: 100%;">
                         <option value="">Semua Kelas</option>
                       </select>
                     </div>
                     <div class="filter-group">
-                      <label style="font-weight: 600; margin-bottom: 6px; display: block; font-size: 13px;">Rentang
-                        Waktu</label>
-                      <select id="7kaih-lap-rentang" class="form-select" onchange="render7KaihLaporanTable()"
-                        style="width: 100%;">
+                      <label style="font-weight: 600; margin-bottom: 6px; display: block; font-size: 13px;">Pilih / Cari Siswa</label>
+                      <select id="7kaih-lap-siswa" class="form-select" onchange="render7KaihLaporanTable()" style="width: 100%;">
+                        <option value="">Semua Murid</option>
+                      </select>
+                    </div>
+                    <div class="filter-group">
+                      <label style="font-weight: 600; margin-bottom: 6px; display: block; font-size: 13px;">Rentang Waktu</label>
+                      <select id="7kaih-lap-rentang" class="form-select" onchange="render7KaihLaporanTable()" style="width: 100%;">
                         <option value="semua">Semua</option>
                         <option value="semester" selected>Per Semester</option>
                         <option value="bulan">Per Bulan</option>
