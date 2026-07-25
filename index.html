@@ -173,6 +173,10 @@
             </button>
           </div>
         </div>
+        <button class="menu-item" id="btn-menu-reset-sidebar" data-roles="admin" onclick="confirmResetAllData()" style="color: #ef4444; border: 1px dashed rgba(239, 68, 68, 0.4); margin-top: 8px;">
+          <i data-lucide="trash-2" style="color: #ef4444;"></i>
+          <span>Reset Semua Data</span>
+        </button>
         <div class="sync-badge-container">
           <div id="sync-status-indicator" class="sync-status status-offline">
             <span class="status-dot"></span>
@@ -199,6 +203,11 @@
           <button class="theme-toggle" id="btn-theme-toggle" onclick="toggleTheme()" title="Ganti Tema">
             <i data-lucide="sun" id="theme-icon-light"></i>
             <i data-lucide="moon" id="theme-icon-dark" style="display: none;"></i>
+          </button>
+
+          <button class="btn-reset-app" id="btn-reset-app" data-roles="admin" onclick="confirmResetAllData()" title="Reset Seluruh Data Aplikasi">
+            <i data-lucide="rotate-ccw" style="width:14px;height:14px;"></i>
+            <span>Reset Data</span>
           </button>
           
           <!-- User Profile Badge (Top Right) -->

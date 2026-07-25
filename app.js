@@ -5983,4 +5983,93 @@ function togglePasswordVisibility(inputId) {
   }
 }
 
+async function confirmResetAllData() {
+  const confirmed1 = confirm(
+    "⚠️ PERINGATAN KERAS / WARNING ⚠️\n\n" +
+    "Apakah Anda YAKIN ingin MERESET SELURUH DATA di dalam aplikasi?\n\n" +
+    "Tindakan ini akan MENGHAPUS PERMANEN:\n" +
+    "1. Seluruh Data Siswa & Data Guru\n" +
+    "2. Seluruh Catatan Absensi, Keterlambatan, Pelanggaran & Izin Pulang\n" +
+    "3. Seluruh Jurnal Guru & Catatan 7 KAIH Siswa\n" +
+    "4. Seluruh Data di Local Storage & Server Cloud Supabase\n\n" +
+    "Klik OK jika Anda benar-benar yakin."
+  );
+
+  if (!confirmed1) return;
+
+  const confirmText = prompt("Ketik kata 'RESET' (dengan huruf besar) untuk mengonfirmasi penghapusan seluruh data aplikasi:");
+  if (confirmText !== 'RESET') {
+    showToast('Reset dibatalkan. Kata konfirmasi tidak sesuai.', 'info');
+    return;
+  }
+
+  toggleLoader(true, 'Mereset seluruh data aplikasi & server cloud...');
+
+  try {
+    // 1. Clear state
+    state.students = [];
+    state.teachers = [];
+    state.attendance = [];
+    state.lateLogs = [];
+    state.violations = [];
+    state.izinPulang = [];
+    state.jurnalGuru = [];
+    state.kaihLogs = [];
+
+    // Clear deleted blacklist
+    clearDeletedStudentIds();
+
+    // 2. Clear local storage
+    localStorage.removeItem('schoolDb');
+    localStorage.removeItem('deletedStudentIds');
+
+    // 3. Clear cloud database (Supabase school_data & per-tables)
+    if (supabaseClient) {
+      try {
+        const emptyPayload = {
+          id: 1,
+          students: [],
+          attendance: [],
+          latelogs: [],
+          violations: [],
+          izinpulang: [],
+          jurnalguru: [],
+          teachers: [],
+          kaihlogs: [],
+          accounts: getAccountsList(),
+          updated_at: new Date().toISOString()
+        };
+        await supabaseClient.from('school_data').upsert(emptyPayload, { onConflict: 'id' });
+
+        await Promise.allSettled([
+          supabaseClient.from('students').delete().neq('id', '___none___'),
+          supabaseClient.from('teachers').delete().neq('id', '___none___'),
+          supabaseClient.from('attendance').delete().neq('id', '___none___'),
+          supabaseClient.from('late_logs').delete().neq('id', '___none___'),
+          supabaseClient.from('violations').delete().neq('id', '___none___'),
+          supabaseClient.from('izin_pulang').delete().neq('id', '___none___'),
+          supabaseClient.from('jurnal_guru').delete().neq('id', '___none___'),
+          supabaseClient.from('kaih_logs').delete().neq('id', '___none___')
+        ]);
+      } catch (e) {
+        console.warn('Cloud reset notice:', e);
+      }
+    }
+
+    saveLocalState();
+    refreshAllUI();
+
+    showToast('Seluruh data aplikasi & cloud berhasil di-reset bersih!', 'success');
+
+    setTimeout(() => {
+      window.location.reload();
+    }, 1500);
+
+  } catch (error) {
+    showToast(`Gagal mereset data: ${error.message}`, 'error');
+  } finally {
+    toggleLoader(false);
+  }
+}
+
 
