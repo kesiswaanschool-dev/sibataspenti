@@ -345,11 +345,6 @@
           </div>
         </div>
       </div>
-      <div class="no-print">
-        <a href="index.html" class="btn btn-secondary btn-sm" style="border-radius: 12px; padding: 10px 16px;">
-          <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i> Kembali ke Utama
-        </a>
-      </div>
     </header>
 
     <!-- 2. Search Section -->
@@ -365,8 +360,7 @@
       <div style="display: flex; gap: 12px; flex-wrap: wrap;">
         <div class="search-input-wrapper">
           <i data-lucide="search" class="search-icon-inside" style="width: 18px; height: 18px;"></i>
-          <input type="text" id="input-search-student" class="custom-search-input" list="student-datalist" placeholder="Ketik NISN atau Nama Lengkap Siswa..." autocomplete="off" onkeypress="handleSearchKeyPress(event)">
-          <datalist id="student-datalist"></datalist>
+          <input type="text" id="input-search-student" class="custom-search-input" placeholder="" autocomplete="off" onkeypress="handleSearchKeyPress(event)">
         </div>
 
         <button class="btn-search-glow" onclick="searchStudentReport()">
@@ -734,7 +728,6 @@
         } catch (e) {}
       }
 
-      populateDatalist();
       checkUrlParams();
     }
 
@@ -745,15 +738,6 @@
       localArr.forEach(i => { if (i) map.set(String(i.id || i.nisn).trim(), i); });
       cloudArr.forEach(i => { if (i) map.set(String(i.id || i.nisn).trim(), i); });
       return Array.from(map.values());
-    }
-
-    function populateDatalist() {
-      const datalist = document.getElementById('student-datalist');
-      if (!datalist || !appDb.students) return;
-
-      datalist.innerHTML = appDb.students.map(s => 
-        `<option value="${s.nisn}">${s.nama} - Kelas ${s.kelas}</option>`
-      ).join('');
     }
 
     function checkUrlParams() {
