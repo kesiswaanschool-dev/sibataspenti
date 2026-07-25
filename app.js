@@ -599,42 +599,17 @@ async function syncPushToSupabase(silent = true) {
       console.warn('Sync per-tabel error:', e);
     }
 
-    // 2. Also update single row school_data with merged arrays to prevent overwriting external entries
-    let cloudData = {};
-    try {
-      const { data } = await supabaseClient.from('school_data').select('*').eq('id', 1).maybeSingle();
-      if (data) cloudData = data;
-    } catch(e) {}
-
-    const mergedStudents = mergeListById(state.students, cloudData.students || []);
-    const mergedAttendance = mergeListById(state.attendance, cloudData.attendance || [], 'id');
-    const mergedLate = mergeListById(state.lateLogs, cloudData.latelogs || cloudData.lateLogs || [], 'id');
-    const mergedViolations = mergeListById(state.violations, cloudData.violations || [], 'id');
-    const mergedIzin = mergeListById(state.izinPulang, cloudData.izinpulang || cloudData.izinPulang || [], 'id');
-    const mergedJurnal = mergeListById(state.jurnalGuru, cloudData.jurnalguru || cloudData.jurnalGuru || [], 'id');
-    const mergedTeachers = mergeListById(state.teachers, cloudData.teachers || []);
-    const mergedKaih = mergeListById(state.kaihLogs, cloudData.kaihlogs || cloudData.kaihLogs || [], 'id');
-
-    state.students = mergedStudents;
-    state.attendance = mergedAttendance;
-    state.lateLogs = mergedLate;
-    state.violations = mergedViolations;
-    state.izinPulang = mergedIzin;
-    state.jurnalGuru = mergedJurnal;
-    state.teachers = mergedTeachers;
-    state.kaihLogs = mergedKaih;
-    saveLocalState();
-
+    // 2. Also update single row school_data with state arrays
     const payload = {
       id: 1,
-      students: mergedStudents,
-      attendance: mergedAttendance,
-      latelogs: mergedLate,
-      violations: mergedViolations,
-      izinpulang: mergedIzin,
-      jurnalguru: mergedJurnal,
-      teachers: mergedTeachers,
-      kaihlogs: mergedKaih,
+      students: state.students || [],
+      attendance: state.attendance || [],
+      latelogs: state.lateLogs || [],
+      violations: state.violations || [],
+      izinpulang: state.izinPulang || [],
+      jurnalguru: state.jurnalGuru || [],
+      teachers: state.teachers || [],
+      kaihlogs: state.kaihLogs || [],
       accounts: getAccountsList(),
       updated_at: new Date().toISOString()
     };
@@ -1364,17 +1339,27 @@ async function deleteStudent(id) {
       renderStudentListTable();
       showToast('Data siswa berhasil dihapus!', 'success');
     } else {
-      const std = state.students.find(s => s.id === id);
-      const stdNisn = std ? std.nisn : id;
+      const targetId = String(id).trim();
+      const std = state.students.find(s => String(s.id).trim() === targetId || String(s.nisn).trim() === targetId);
+      const stdId = std ? String(std.id).trim() : targetId;
+      const stdNisn = std ? String(std.nisn).trim() : targetId;
 
       // 1. Delete student
-      state.students = state.students.filter(s => s.id !== id);
+      state.students = state.students.filter(s => String(s.id).trim() !== stdId && String(s.nisn).trim() !== stdNisn);
       // 2. Cascade delete all associated logs for this student
-      state.attendance = state.attendance.filter(a => a.student_id !== id && a.student_id !== stdNisn);
-      state.lateLogs = state.lateLogs.filter(l => l.student_id !== id && l.student_id !== stdNisn);
-      state.violations = state.violations.filter(v => v.student_id !== id && v.student_id !== stdNisn);
-      state.izinPulang = state.izinPulang.filter(i => i.student_id !== id && i.student_id !== stdNisn);
-      state.kaihLogs = state.kaihLogs.filter(k => k.student_id !== id && k.student_id !== stdNisn);
+      state.attendance = state.attendance.filter(a => String(a.student_id).trim() !== stdId && String(a.student_id).trim() !== stdNisn);
+      state.lateLogs = state.lateLogs.filter(l => String(l.student_id).trim() !== stdId && String(l.student_id).trim() !== stdNisn);
+      state.violations = state.violations.filter(v => String(v.student_id).trim() !== stdId && String(v.student_id).trim() !== stdNisn);
+      state.izinPulang = state.izinPulang.filter(i => String(i.student_id).trim() !== stdId && String(i.student_id).trim() !== stdNisn);
+      state.kaihLogs = state.kaihLogs.filter(k => String(k.student_id).trim() !== stdId && String(k.student_id).trim() !== stdNisn);
+
+      if (supabaseClient) {
+        try {
+          await supabaseClient.from('students').delete().or(`id.eq.${stdId},nisn.eq.${stdNisn}`);
+        } catch (e) {
+          console.warn('Per-table student delete notice:', e);
+        }
+      }
 
       await persistData();
       renderStudentListTable();
@@ -1810,7 +1795,12 @@ async function deleteTeacher(id) {
       await fetch(`/api/guru/${id}`, { method: 'DELETE' });
       await loadData();
     } else {
-      state.teachers = state.teachers.filter(t => t.id !== String(id));
+      state.teachers = state.teachers.filter(t => String(t.id).trim() !== String(id).trim() && String(t.nip || '').trim() !== String(id).trim());
+      if (supabaseClient) {
+        try {
+          await supabaseClient.from('teachers').delete().or(`id.eq.${id},nip.eq.${id}`);
+        } catch (e) {}
+      }
       await persistData();
     }
 
