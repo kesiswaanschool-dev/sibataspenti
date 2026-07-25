@@ -1223,8 +1223,8 @@ function downloadExcelTemplate() {
 // Render registered students list in table below
 function renderStudentListTable() {
   const body = document.getElementById('student-list-body');
-  const searchName = document.getElementById('search-siswa-nama').value.toLowerCase().trim();
-  const filterClass = document.getElementById('filter-siswa-kelas').value;
+  const searchName = (document.getElementById('search-siswa-nama')?.value || '').toLowerCase().trim();
+  const filterClass = (document.getElementById('filter-siswa-kelas')?.value || '');
 
   body.innerHTML = '';
 
@@ -1294,10 +1294,10 @@ function closeStudentModal() {
 
 async function handleStudentFormSubmit(event) {
   event.preventDefault();
-  const id = document.getElementById('student-modal-id').value;
-  const nama = document.getElementById('student-modal-nama').value.trim();
-  const nisn = document.getElementById('student-modal-nisn').value.trim();
-  const kelas = document.getElementById('student-modal-kelas').value.trim();
+  const id = (document.getElementById('student-modal-id')?.value || '');
+  const nama = (document.getElementById('student-modal-nama')?.value || '').trim();
+  const nisn = (document.getElementById('student-modal-nisn')?.value || '').trim();
+  const kelas = (document.getElementById('student-modal-kelas')?.value || '').trim();
 
   if (!nama || !nisn || !kelas) {
     showToast('Harap isi semua kolom wajib!', 'warning');
@@ -1764,10 +1764,10 @@ function closeTeacherModal() {
 
 async function handleTeacherFormSubmit(e) {
   e.preventDefault();
-  const id = document.getElementById('teacher-modal-id').value;
+  const id = (document.getElementById('teacher-modal-id')?.value || '');
   const nip = document.getElementById('teacher-modal-nip')?.value.trim() || '';
-  const nama = document.getElementById('teacher-modal-nama').value.trim();
-  const mapel = document.getElementById('teacher-modal-mapel').value.trim();
+  const nama = (document.getElementById('teacher-modal-nama')?.value || '').trim();
+  const mapel = (document.getElementById('teacher-modal-mapel')?.value || '').trim();
 
   if (!nama || !mapel) {
     showToast('Nama Guru dan Mapel wajib diisi!', 'warning');
@@ -1988,7 +1988,7 @@ function loadAttendanceGrid() {
 }
 
 function bulkSetAttendance(status) {
-  const selectKelas = document.getElementById('absensi-kelas').value;
+  const selectKelas = (document.getElementById('absensi-kelas')?.value || '');
   const classStudents = state.students.filter(s => s.kelas === selectKelas);
   classStudents.forEach(std => {
     const radio = document.getElementById(`${status}-${std.id}`);
@@ -1998,8 +1998,8 @@ function bulkSetAttendance(status) {
 }
 
 async function saveAttendance() {
-  const selectKelas = document.getElementById('absensi-kelas').value;
-  const tanggal = document.getElementById('absensi-tanggal').value;
+  const selectKelas = (document.getElementById('absensi-kelas')?.value || '');
+  const tanggal = (document.getElementById('absensi-tanggal')?.value || '');
   
   if (!selectKelas || !tanggal) return;
 
@@ -2110,10 +2110,10 @@ function handleLateStudentChange() {
 async function handleLateSubmit(event) {
   event.preventDefault();
 
-  const studentId = document.getElementById('terlambat-siswa-id').value;
-  const tanggal = document.getElementById('terlambat-tanggal').value;
-  const jam = document.getElementById('terlambat-jam').value;
-  const keterangan = document.getElementById('terlambat-keterangan').value.trim();
+  const studentId = (document.getElementById('terlambat-siswa-id')?.value || '');
+  const tanggal = (document.getElementById('terlambat-tanggal')?.value || '');
+  const jam = (document.getElementById('terlambat-jam')?.value || '');
+  const keterangan = (document.getElementById('terlambat-keterangan')?.value || '').trim();
 
   if (!studentId || !tanggal || !jam) {
     showToast('Harap pilih siswa, tanggal, dan jam terlambat!', 'warning');
@@ -2176,7 +2176,7 @@ async function handleLateSubmit(event) {
 }
 
 function renderLateLogsToday() {
-  const tanggal = document.getElementById('terlambat-tanggal').value;
+  const tanggal = (document.getElementById('terlambat-tanggal')?.value || '');
   const body = document.getElementById('late-today-table-body');
   const badge = document.getElementById('late-today-badge');
 
@@ -2284,10 +2284,10 @@ function handleViolationStudentChange() {
 async function handleViolationSubmit(event) {
   event.preventDefault();
 
-  const studentId = document.getElementById('pelanggaran-siswa-id').value;
-  const tanggal = document.getElementById('pelanggaran-tanggal').value;
-  const jam = document.getElementById('pelanggaran-jam').value;
-  const keterangan = document.getElementById('pelanggaran-keterangan').value.trim();
+  const studentId = (document.getElementById('pelanggaran-siswa-id')?.value || '');
+  const tanggal = (document.getElementById('pelanggaran-tanggal')?.value || '');
+  const jam = (document.getElementById('pelanggaran-jam')?.value || '');
+  const keterangan = (document.getElementById('pelanggaran-keterangan')?.value || '').trim();
 
   if (!studentId || !tanggal || !jam || !keterangan) {
     showToast('Harap pilih siswa, tanggal, jam, dan isi keterangan pelanggaran!', 'warning');
@@ -2357,7 +2357,7 @@ async function handleViolationSubmit(event) {
 }
 
 function renderViolationsToday() {
-  const tanggal = document.getElementById('pelanggaran-tanggal').value;
+  const tanggal = (document.getElementById('pelanggaran-tanggal')?.value || '');
   const body = document.getElementById('pelanggaran-today-table-body');
   const badge = document.getElementById('pelanggaran-today-badge');
 
@@ -2466,11 +2466,11 @@ function handleIzinPulangStudentChange() {
 async function handleIzinPulangSubmit(event) {
   event.preventDefault();
 
-  const studentId = document.getElementById('izin-pulang-siswa-id').value;
-  const tanggal = document.getElementById('izin-pulang-tanggal').value;
-  const jam = document.getElementById('izin-pulang-jam').value;
-  const keterangan = document.getElementById('izin-pulang-keterangan').value.trim();
-  const guruPiket = document.getElementById('izin-pulang-guru-piket').value.trim();
+  const studentId = (document.getElementById('izin-pulang-siswa-id')?.value || '');
+  const tanggal = (document.getElementById('izin-pulang-tanggal')?.value || '');
+  const jam = (document.getElementById('izin-pulang-jam')?.value || '');
+  const keterangan = (document.getElementById('izin-pulang-keterangan')?.value || '').trim();
+  const guruPiket = (document.getElementById('izin-pulang-guru-piket')?.value || '').trim();
 
   if (!studentId || !tanggal || !jam || !keterangan || !guruPiket) {
     showToast('Harap isi semua kolom wajib untuk izin pulang!', 'warning');
@@ -2546,7 +2546,7 @@ async function handleIzinPulangSubmit(event) {
 }
 
 function renderIzinPulangToday() {
-  const tanggal = document.getElementById('izin-pulang-tanggal').value;
+  const tanggal = (document.getElementById('izin-pulang-tanggal')?.value || '');
   const body = document.getElementById('izin-pulang-today-table-body');
   const badge = document.getElementById('izin-pulang-today-badge');
 
@@ -2630,12 +2630,12 @@ function switchRekapTab(tabName) {
 }
 
 function loadRekapData() {
-  const periodType = document.getElementById('rekap-period-type').value;
-  const semester = document.getElementById('rekap-semester').value;
-  const bulan = document.getElementById('rekap-bulan').value;
-  const tahun = document.getElementById('rekap-tahun').value;
-  const kelas = document.getElementById('rekap-kelas').value;
-  const search = document.getElementById('rekap-search').value.toLowerCase().trim();
+  const periodType = (document.getElementById('rekap-period-type')?.value || '');
+  const semester = (document.getElementById('rekap-semester')?.value || '');
+  const bulan = (document.getElementById('rekap-bulan')?.value || '');
+  const tahun = (document.getElementById('rekap-tahun')?.value || '');
+  const kelas = (document.getElementById('rekap-kelas')?.value || '');
+  const search = (document.getElementById('rekap-search')?.value || '').toLowerCase().trim();
   
   // Update subtitle text to reflect period
   updateRekapSubtitle(periodType, bulan, semester, tahun, kelas);
@@ -2679,7 +2679,7 @@ function updateRekapSubtitle(periodType, bulan, semester, tahun, kelas) {
 }
 
 function handleRekapPeriodTypeChange() {
-  const type = document.getElementById('rekap-period-type').value;
+  const type = (document.getElementById('rekap-period-type')?.value || '');
   const bulanContainer = document.getElementById('rekap-bulan-container');
   const semesterContainer = document.getElementById('rekap-semester-container');
   
@@ -3175,11 +3175,11 @@ function downloadSingleStudentLaporan(reportType, studentId, studentName) {
 }
 
 function downloadLaporanAbsensi() {
-  const periodType = document.getElementById('laporan-absen-period-type').value;
-  const bulan = document.getElementById('laporan-absen-bulan').value;
-  const semester = document.getElementById('laporan-absen-semester').value;
-  const tahun = document.getElementById('laporan-absen-tahun').value;
-  const scope = document.getElementById('laporan-absen-scope').value;
+  const periodType = (document.getElementById('laporan-absen-period-type')?.value || '');
+  const bulan = (document.getElementById('laporan-absen-bulan')?.value || '');
+  const semester = (document.getElementById('laporan-absen-semester')?.value || '');
+  const tahun = (document.getElementById('laporan-absen-tahun')?.value || '');
+  const scope = (document.getElementById('laporan-absen-scope')?.value || '');
 
   let labelPeriode = '';
   let filenameSuffix = '';
@@ -3201,7 +3201,7 @@ function downloadLaporanAbsensi() {
   let titleSuffix = 'Semua_Siswa_Dan_Kelas';
 
   if (scope === 'kelas') {
-    const kelas = document.getElementById('laporan-absen-kelas').value;
+    const kelas = (document.getElementById('laporan-absen-kelas')?.value || '');
     if (!kelas) {
       showToast('Harap pilih kelas terlebih dahulu!', 'warning');
       return;
@@ -3209,8 +3209,8 @@ function downloadLaporanAbsensi() {
     filteredStudents = filteredStudents.filter(s => s.kelas === kelas);
     titleSuffix = `Kelas_${kelas.replace(/\s+/g, '_')}`;
   } else if (scope === 'siswa') {
-    const studentId = document.getElementById('laporan-absen-siswa-id').value;
-    const searchInput = document.getElementById('laporan-absen-siswa-search').value.trim();
+    const studentId = (document.getElementById('laporan-absen-siswa-id')?.value || '');
+    const searchInput = (document.getElementById('laporan-absen-siswa-search')?.value || '').trim();
     if (!studentId) {
       showToast('Harap pilih siswa terlebih dahulu!', 'warning');
       return;
@@ -3292,11 +3292,11 @@ function downloadLaporanAbsensi() {
 }
 
 function downloadLaporanTerlambat() {
-  const periodType = document.getElementById('laporan-terlambat-period-type').value;
-  const bulan = document.getElementById('laporan-terlambat-bulan').value;
-  const semester = document.getElementById('laporan-terlambat-semester').value;
-  const tahun = document.getElementById('laporan-terlambat-tahun').value;
-  const scope = document.getElementById('laporan-terlambat-scope').value;
+  const periodType = (document.getElementById('laporan-terlambat-period-type')?.value || '');
+  const bulan = (document.getElementById('laporan-terlambat-bulan')?.value || '');
+  const semester = (document.getElementById('laporan-terlambat-semester')?.value || '');
+  const tahun = (document.getElementById('laporan-terlambat-tahun')?.value || '');
+  const scope = (document.getElementById('laporan-terlambat-scope')?.value || '');
 
   let labelPeriode = '';
   let filenameSuffix = '';
@@ -3318,7 +3318,7 @@ function downloadLaporanTerlambat() {
   let titleSuffix = 'Semua_Siswa_Dan_Kelas';
 
   if (scope === 'kelas') {
-    const kelas = document.getElementById('laporan-terlambat-kelas').value;
+    const kelas = (document.getElementById('laporan-terlambat-kelas')?.value || '');
     if (!kelas) {
       showToast('Harap pilih kelas terlebih dahulu!', 'warning');
       return;
@@ -3326,8 +3326,8 @@ function downloadLaporanTerlambat() {
     filteredStudents = filteredStudents.filter(s => s.kelas === kelas);
     titleSuffix = `Kelas_${kelas.replace(/\s+/g, '_')}`;
   } else if (scope === 'siswa') {
-    const studentId = document.getElementById('laporan-terlambat-siswa-id').value;
-    const searchInput = document.getElementById('laporan-terlambat-siswa-search').value.trim();
+    const studentId = (document.getElementById('laporan-terlambat-siswa-id')?.value || '');
+    const searchInput = (document.getElementById('laporan-terlambat-siswa-search')?.value || '').trim();
     if (!studentId) {
       showToast('Harap pilih siswa terlebih dahulu!', 'warning');
       return;
@@ -3402,11 +3402,11 @@ function downloadLaporanTerlambat() {
 }
 
 function downloadLaporanPelanggaran() {
-  const periodType = document.getElementById('laporan-pelanggaran-period-type').value;
-  const bulan = document.getElementById('laporan-pelanggaran-bulan').value;
-  const semester = document.getElementById('laporan-pelanggaran-semester').value;
-  const tahun = document.getElementById('laporan-pelanggaran-tahun').value;
-  const scope = document.getElementById('laporan-pelanggaran-scope').value;
+  const periodType = (document.getElementById('laporan-pelanggaran-period-type')?.value || '');
+  const bulan = (document.getElementById('laporan-pelanggaran-bulan')?.value || '');
+  const semester = (document.getElementById('laporan-pelanggaran-semester')?.value || '');
+  const tahun = (document.getElementById('laporan-pelanggaran-tahun')?.value || '');
+  const scope = (document.getElementById('laporan-pelanggaran-scope')?.value || '');
 
   let labelPeriode = '';
   let filenameSuffix = '';
@@ -3428,7 +3428,7 @@ function downloadLaporanPelanggaran() {
   let titleSuffix = 'Semua_Siswa_Dan_Kelas';
 
   if (scope === 'kelas') {
-    const kelas = document.getElementById('laporan-pelanggaran-kelas').value;
+    const kelas = (document.getElementById('laporan-pelanggaran-kelas')?.value || '');
     if (!kelas) {
       showToast('Harap pilih kelas terlebih dahulu!', 'warning');
       return;
@@ -3436,8 +3436,8 @@ function downloadLaporanPelanggaran() {
     filteredStudents = filteredStudents.filter(s => s.kelas === kelas);
     titleSuffix = `Kelas_${kelas.replace(/\s+/g, '_')}`;
   } else if (scope === 'siswa') {
-    const studentId = document.getElementById('laporan-pelanggaran-siswa-id').value;
-    const searchInput = document.getElementById('laporan-pelanggaran-siswa-search').value.trim();
+    const studentId = (document.getElementById('laporan-pelanggaran-siswa-id')?.value || '');
+    const searchInput = (document.getElementById('laporan-pelanggaran-siswa-search')?.value || '').trim();
     if (!studentId) {
       showToast('Harap pilih siswa terlebih dahulu!', 'warning');
       return;
@@ -3513,11 +3513,11 @@ function downloadLaporanPelanggaran() {
 }
 
 function downloadLaporanIzinPulang() {
-  const periodType = document.getElementById('laporan-izin-pulang-period-type').value;
-  const bulan = document.getElementById('laporan-izin-pulang-bulan').value;
-  const semester = document.getElementById('laporan-izin-pulang-semester').value;
-  const tahun = document.getElementById('laporan-izin-pulang-tahun').value;
-  const scope = document.getElementById('laporan-izin-pulang-scope').value;
+  const periodType = (document.getElementById('laporan-izin-pulang-period-type')?.value || '');
+  const bulan = (document.getElementById('laporan-izin-pulang-bulan')?.value || '');
+  const semester = (document.getElementById('laporan-izin-pulang-semester')?.value || '');
+  const tahun = (document.getElementById('laporan-izin-pulang-tahun')?.value || '');
+  const scope = (document.getElementById('laporan-izin-pulang-scope')?.value || '');
 
   let labelPeriode = '';
   let filenameSuffix = '';
@@ -3539,7 +3539,7 @@ function downloadLaporanIzinPulang() {
   let titleSuffix = 'Semua_Siswa_Dan_Kelas';
 
   if (scope === 'kelas') {
-    const kelas = document.getElementById('laporan-izin-pulang-kelas').value;
+    const kelas = (document.getElementById('laporan-izin-pulang-kelas')?.value || '');
     if (!kelas) {
       showToast('Harap pilih kelas terlebih dahulu!', 'warning');
       return;
@@ -3547,8 +3547,8 @@ function downloadLaporanIzinPulang() {
     filteredStudents = filteredStudents.filter(s => s.kelas === kelas);
     titleSuffix = `Kelas_${kelas.replace(/\s+/g, '_')}`;
   } else if (scope === 'siswa') {
-    const studentId = document.getElementById('laporan-izin-pulang-siswa-id').value;
-    const searchInput = document.getElementById('laporan-izin-pulang-siswa-search').value.trim();
+    const studentId = (document.getElementById('laporan-izin-pulang-siswa-id')?.value || '');
+    const searchInput = (document.getElementById('laporan-izin-pulang-siswa-search')?.value || '').trim();
     if (!studentId) {
       showToast('Harap pilih siswa terlebih dahulu!', 'warning');
       return;
@@ -3949,10 +3949,10 @@ function initJurnalGuruForm() {
 }
 
 function updateJurnalTotal() {
-  const hadir = parseInt(document.getElementById('jurnal-hadir').value) || 0;
-  const sakit = parseInt(document.getElementById('jurnal-sakit').value) || 0;
-  const izin  = parseInt(document.getElementById('jurnal-izin').value) || 0;
-  const alpha = parseInt(document.getElementById('jurnal-alpha').value) || 0;
+  const hadir = parseInt((document.getElementById('jurnal-hadir')?.value || '')) || 0;
+  const sakit = parseInt((document.getElementById('jurnal-sakit')?.value || '')) || 0;
+  const izin  = parseInt((document.getElementById('jurnal-izin')?.value || '')) || 0;
+  const alpha = parseInt((document.getElementById('jurnal-alpha')?.value || '')) || 0;
   const total = hadir + sakit + izin + alpha;
 
   const summaryEl = document.getElementById('jurnal-kehadiran-summary');
@@ -3971,24 +3971,24 @@ async function handleJurnalSubmit(event) {
 
   const entry = {
     id: 'j_' + Date.now(),
-    tanggal: document.getElementById('jurnal-tanggal').value,
-    namaGuru: document.getElementById('jurnal-nama-guru').value.trim(),
-    mataPelajaran: document.getElementById('jurnal-mata-pelajaran').value.trim(),
-    kelas: document.getElementById('jurnal-kelas').value.trim(),
-    jamKe: document.getElementById('jurnal-jam-ke').value.trim(),
-    materi: document.getElementById('jurnal-materi').value.trim(),
-    tujuan: document.getElementById('jurnal-tujuan').value.trim(),
-    aktivitas: document.getElementById('jurnal-aktivitas').value.trim(),
-    metode: document.getElementById('jurnal-metode').value.trim(),
-    media: document.getElementById('jurnal-media').value.trim(),
-    hadir: parseInt(document.getElementById('jurnal-hadir').value) || 0,
-    sakit: parseInt(document.getElementById('jurnal-sakit').value) || 0,
-    izin: parseInt(document.getElementById('jurnal-izin').value) || 0,
-    alpha: parseInt(document.getElementById('jurnal-alpha').value) || 0,
-    kendala: document.getElementById('jurnal-kendala').value.trim(),
-    solusi: document.getElementById('jurnal-solusi').value.trim(),
-    catatan: document.getElementById('jurnal-catatan').value.trim(),
-    lampiran: document.getElementById('jurnal-lampiran').value.trim(),
+    tanggal: (document.getElementById('jurnal-tanggal')?.value || ''),
+    namaGuru: (document.getElementById('jurnal-nama-guru')?.value || '').trim(),
+    mataPelajaran: (document.getElementById('jurnal-mata-pelajaran')?.value || '').trim(),
+    kelas: (document.getElementById('jurnal-kelas')?.value || '').trim(),
+    jamKe: (document.getElementById('jurnal-jam-ke')?.value || '').trim(),
+    materi: (document.getElementById('jurnal-materi')?.value || '').trim(),
+    tujuan: (document.getElementById('jurnal-tujuan')?.value || '').trim(),
+    aktivitas: (document.getElementById('jurnal-aktivitas')?.value || '').trim(),
+    metode: (document.getElementById('jurnal-metode')?.value || '').trim(),
+    media: (document.getElementById('jurnal-media')?.value || '').trim(),
+    hadir: parseInt((document.getElementById('jurnal-hadir')?.value || '')) || 0,
+    sakit: parseInt((document.getElementById('jurnal-sakit')?.value || '')) || 0,
+    izin: parseInt((document.getElementById('jurnal-izin')?.value || '')) || 0,
+    alpha: parseInt((document.getElementById('jurnal-alpha')?.value || '')) || 0,
+    kendala: (document.getElementById('jurnal-kendala')?.value || '').trim(),
+    solusi: (document.getElementById('jurnal-solusi')?.value || '').trim(),
+    catatan: (document.getElementById('jurnal-catatan')?.value || '').trim(),
+    lampiran: (document.getElementById('jurnal-lampiran')?.value || '').trim(),
     createdAt: new Date().toISOString()
   };
 
@@ -4001,7 +4001,7 @@ async function handleJurnalSubmit(event) {
 }
 
 function resetJurnalForm() {
-  document.getElementById('form-jurnal-guru').reset();
+  document.getElementById('form-jurnal-guru')?.reset();
   const todayISO = new Date().toISOString().split('T')[0];
   const tgl = document.getElementById('jurnal-tanggal');
   if (tgl) tgl.value = todayISO;
@@ -4240,24 +4240,24 @@ function exportAllJurnalExcel() {
 
 function exportJurnalToPDF() {
   // Collect form values to build a print preview
-  const tanggal = document.getElementById('jurnal-tanggal').value;
-  const namaGuru = document.getElementById('jurnal-nama-guru').value.trim();
-  const mapel = document.getElementById('jurnal-mata-pelajaran').value.trim();
-  const kelas = document.getElementById('jurnal-kelas').value.trim();
-  const jamKe = document.getElementById('jurnal-jam-ke').value.trim();
-  const materi = document.getElementById('jurnal-materi').value.trim();
-  const tujuan = document.getElementById('jurnal-tujuan').value.trim();
-  const aktivitas = document.getElementById('jurnal-aktivitas').value.trim();
-  const metode = document.getElementById('jurnal-metode').value.trim();
-  const media = document.getElementById('jurnal-media').value.trim();
-  const hadir = document.getElementById('jurnal-hadir').value || '0';
-  const sakit = document.getElementById('jurnal-sakit').value || '0';
-  const izin = document.getElementById('jurnal-izin').value || '0';
-  const alpha = document.getElementById('jurnal-alpha').value || '0';
-  const kendala = document.getElementById('jurnal-kendala').value.trim();
-  const solusi = document.getElementById('jurnal-solusi').value.trim();
-  const catatan = document.getElementById('jurnal-catatan').value.trim();
-  const lampiran = document.getElementById('jurnal-lampiran').value.trim();
+  const tanggal = (document.getElementById('jurnal-tanggal')?.value || '');
+  const namaGuru = (document.getElementById('jurnal-nama-guru')?.value || '').trim();
+  const mapel = (document.getElementById('jurnal-mata-pelajaran')?.value || '').trim();
+  const kelas = (document.getElementById('jurnal-kelas')?.value || '').trim();
+  const jamKe = (document.getElementById('jurnal-jam-ke')?.value || '').trim();
+  const materi = (document.getElementById('jurnal-materi')?.value || '').trim();
+  const tujuan = (document.getElementById('jurnal-tujuan')?.value || '').trim();
+  const aktivitas = (document.getElementById('jurnal-aktivitas')?.value || '').trim();
+  const metode = (document.getElementById('jurnal-metode')?.value || '').trim();
+  const media = (document.getElementById('jurnal-media')?.value || '').trim();
+  const hadir = (document.getElementById('jurnal-hadir')?.value || '') || '0';
+  const sakit = (document.getElementById('jurnal-sakit')?.value || '') || '0';
+  const izin = (document.getElementById('jurnal-izin')?.value || '') || '0';
+  const alpha = (document.getElementById('jurnal-alpha')?.value || '') || '0';
+  const kendala = (document.getElementById('jurnal-kendala')?.value || '').trim();
+  const solusi = (document.getElementById('jurnal-solusi')?.value || '').trim();
+  const catatan = (document.getElementById('jurnal-catatan')?.value || '').trim();
+  const lampiran = (document.getElementById('jurnal-lampiran')?.value || '').trim();
 
   if (!namaGuru || !mapel || !kelas) {
     showToast('Isi minimal Nama Guru, Mata Pelajaran, dan Kelas sebelum ekspor.', 'warning');
@@ -4569,25 +4569,25 @@ function updateJurnalAttendanceStats() {
 async function handleJurnalSubmit(e) {
   e.preventDefault();
 
-  const id = document.getElementById('jurnal-id').value;
-  const kelas = document.getElementById('jurnal-kelas').value;
-  const tanggal = document.getElementById('jurnal-tanggal').value;
-  const hari = document.getElementById('jurnal-hari').value;
+  const id = (document.getElementById('jurnal-id')?.value || '');
+  const kelas = (document.getElementById('jurnal-kelas')?.value || '');
+  const tanggal = (document.getElementById('jurnal-tanggal')?.value || '');
+  const hari = (document.getElementById('jurnal-hari')?.value || '');
   const jam = document.getElementById('jurnal-jam')?.value.trim() || '';
-  const guru = document.getElementById('jurnal-guru-select').value;
+  const guru = (document.getElementById('jurnal-guru-select')?.value || '');
   const mapelSelect = document.getElementById('jurnal-mapel-select');
   const mapel = mapelSelect ? mapelSelect.value.trim() : '';
-  const materi = document.getElementById('jurnal-materi').value.trim();
-  const keteranganLain = document.getElementById('jurnal-keterangan-lain').value.trim();
+  const materi = (document.getElementById('jurnal-materi')?.value || '').trim();
+  const keteranganLain = (document.getElementById('jurnal-keterangan-lain')?.value || '').trim();
 
-  const hadir = parseInt(document.getElementById('jurnal-stat-hadir').textContent) || 0;
-  const sakit = parseInt(document.getElementById('jurnal-stat-sakit').textContent) || 0;
-  const izin = parseInt(document.getElementById('jurnal-stat-izin').textContent) || 0;
-  const alpha = parseInt(document.getElementById('jurnal-stat-alpha').textContent) || 0;
+  const hadir = parseInt((document.getElementById('jurnal-stat-hadir')?.textContent || '')) || 0;
+  const sakit = parseInt((document.getElementById('jurnal-stat-sakit')?.textContent || '')) || 0;
+  const izin = parseInt((document.getElementById('jurnal-stat-izin')?.textContent || '')) || 0;
+  const alpha = parseInt((document.getElementById('jurnal-stat-alpha')?.textContent || '')) || 0;
 
-  const namaSakit = document.getElementById('jurnal-names-sakit').textContent;
-  const namaIzin = document.getElementById('jurnal-names-izin').textContent;
-  const namaAlpha = document.getElementById('jurnal-names-alpha').textContent;
+  const namaSakit = (document.getElementById('jurnal-names-sakit')?.textContent || '');
+  const namaIzin = (document.getElementById('jurnal-names-izin')?.textContent || '');
+  const namaAlpha = (document.getElementById('jurnal-names-alpha')?.textContent || '');
 
   if (!kelas || !tanggal || !jam || !guru || !mapel || !materi) {
     showToast('Harap lengkapi seluruh kolom wajib jurnal!', 'warning');
@@ -5867,11 +5867,11 @@ function closeAkunModal() {
 
 async function handleAkunFormSubmit(e) {
   e.preventDefault();
-  const id = document.getElementById('akun-modal-id').value;
-  const nama = document.getElementById('akun-modal-nama').value.trim();
-  const username = document.getElementById('akun-modal-username').value.trim();
-  const password = document.getElementById('akun-modal-password').value.trim();
-  const role = document.getElementById('akun-modal-role').value;
+  const id = (document.getElementById('akun-modal-id')?.value || '');
+  const nama = (document.getElementById('akun-modal-nama')?.value || '').trim();
+  const username = (document.getElementById('akun-modal-username')?.value || '').trim();
+  const password = (document.getElementById('akun-modal-password')?.value || '').trim();
+  const role = (document.getElementById('akun-modal-role')?.value || '');
 
   if (!nama || !username || !password || !role) {
     showToast('Harap isi semua kolom wajib!', 'error');
@@ -5932,10 +5932,10 @@ async function deleteAkun(id) {
 
 async function handleInlineAkunSubmit(e) {
   e.preventDefault();
-  const nama = document.getElementById('inline-akun-nama').value.trim();
-  const username = document.getElementById('inline-akun-username').value.trim();
-  const password = document.getElementById('inline-akun-password').value.trim();
-  const role = document.getElementById('inline-akun-role').value;
+  const nama = (document.getElementById('inline-akun-nama')?.value || '').trim();
+  const username = (document.getElementById('inline-akun-username')?.value || '').trim();
+  const password = (document.getElementById('inline-akun-password')?.value || '').trim();
+  const role = (document.getElementById('inline-akun-role')?.value || '');
 
   if (!nama || !username || !password || !role) {
     showToast('Harap isi semua kolom wajib!', 'error');
@@ -5968,7 +5968,7 @@ async function handleInlineAkunSubmit(e) {
   state.accounts = accounts;
   await persistData();
 
-  document.getElementById('form-inline-tambah-akun').reset();
+  document.getElementById('form-inline-tambah-akun')?.reset();
   showToast('Akun baru berhasil ditambahkan!', 'success');
   switchAkunTab('daftar');
 }
