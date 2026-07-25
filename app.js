@@ -266,13 +266,13 @@ function mergeListById(localList = [], cloudList = [], idKey = 'id') {
   const map = new Map();
   localList.forEach(item => {
     if (!item) return;
-    const key = String(item[idKey] || item.id || item.nisn || item.username).trim();
+    const key = String(item[idKey] !== undefined ? item[idKey] : (item.id || item.nisn || item.username)).trim();
     if (key) map.set(key, item);
   });
 
   cloudList.forEach(item => {
     if (!item) return;
-    const key = String(item[idKey] || item.id || item.nisn || item.username).trim();
+    const key = String(item[idKey] !== undefined ? item[idKey] : (item.id || item.nisn || item.username)).trim();
     if (key) {
       const existing = map.get(key);
       map.set(key, existing ? { ...existing, ...item } : item);
@@ -473,12 +473,12 @@ async function syncPullFromSupabase(silent = true) {
       if (!resStudents.error && !resTeachers.error && !resAttendance.error && hasPerTableData) {
         state.students = mergeListById(state.students, resStudents.data || []);
         state.teachers = mergeListById(state.teachers, resTeachers.data || []);
-        state.attendance = mergeListById(state.attendance, resAttendance.data || []);
-        state.lateLogs = mergeListById(state.lateLogs, resLate.data || []);
-        state.violations = mergeListById(state.violations, resViolations.data || []);
-        state.izinPulang = mergeListById(state.izinPulang, resIzin.data || []);
-        state.jurnalGuru = mergeListById(state.jurnalGuru, resJurnal.data || []);
-        state.kaihLogs = mergeListById(state.kaihLogs, resKaih.data || []);
+        state.attendance = mergeListById(state.attendance, resAttendance.data || [], 'id');
+        state.lateLogs = mergeListById(state.lateLogs, resLate.data || [], 'id');
+        state.violations = mergeListById(state.violations, resViolations.data || [], 'id');
+        state.izinPulang = mergeListById(state.izinPulang, resIzin.data || [], 'id');
+        state.jurnalGuru = mergeListById(state.jurnalGuru, resJurnal.data || [], 'id');
+        state.kaihLogs = mergeListById(state.kaihLogs, resKaih.data || [], 'id');
         if (resAccounts.data && resAccounts.data.length > 0) {
           state.accounts = mergeListById(state.accounts, resAccounts.data, 'username');
         }
@@ -511,25 +511,25 @@ async function syncPullFromSupabase(silent = true) {
         state.students = mergeListById(state.students, cloudStudents);
       }
       if (Array.isArray(cloudAttendance) && cloudAttendance.length > 0) {
-        state.attendance = mergeListById(state.attendance, cloudAttendance);
+        state.attendance = mergeListById(state.attendance, cloudAttendance, 'id');
       }
       if (Array.isArray(cloudLate) && cloudLate.length > 0) {
-        state.lateLogs = mergeListById(state.lateLogs, cloudLate);
+        state.lateLogs = mergeListById(state.lateLogs, cloudLate, 'id');
       }
       if (Array.isArray(cloudViolations) && cloudViolations.length > 0) {
-        state.violations = mergeListById(state.violations, cloudViolations);
+        state.violations = mergeListById(state.violations, cloudViolations, 'id');
       }
       if (Array.isArray(cloudIzin) && cloudIzin.length > 0) {
-        state.izinPulang = mergeListById(state.izinPulang, cloudIzin);
+        state.izinPulang = mergeListById(state.izinPulang, cloudIzin, 'id');
       }
       if (Array.isArray(cloudJurnal) && cloudJurnal.length > 0) {
-        state.jurnalGuru = mergeListById(state.jurnalGuru, cloudJurnal);
+        state.jurnalGuru = mergeListById(state.jurnalGuru, cloudJurnal, 'id');
       }
       if (Array.isArray(cloudTeachers) && cloudTeachers.length > 0) {
         state.teachers = mergeListById(state.teachers, cloudTeachers);
       }
       if (Array.isArray(cloudKaih) && cloudKaih.length > 0) {
-        state.kaihLogs = mergeListById(state.kaihLogs, cloudKaih);
+        state.kaihLogs = mergeListById(state.kaihLogs, cloudKaih, 'id');
       }
       if (Array.isArray(cloudAccounts) && cloudAccounts.length > 0) {
         state.accounts = mergeListById(state.accounts, cloudAccounts, 'username');
@@ -879,7 +879,9 @@ function switchMenu(menuName) {
       renderTeacherListTable();
     } else if (menuName === 'absensi') {
       populateClassSelect('absensi-kelas');
+      populateClassSelect('absensi-riwayat-kelas');
       loadAttendanceGrid();
+      renderAttendanceHistoryTable();
     } else if (menuName === 'terlambat') {
       populateClassSelect('terlambat-kelas-select');
       renderLateLogsToday();
@@ -887,6 +889,8 @@ function switchMenu(menuName) {
       populateClassSelect('pelanggaran-kelas-select');
       renderViolationsToday();
     } else if (menuName === 'izin-pulang') {
+      populateClassSelect('izin-pulang-kelas-select');
+      handleIzinPulangClassChange();
       renderIzinPulangToday();
     } else if (menuName === 'rekap') {
       populateClassSelect('rekap-kelas');
@@ -924,7 +928,7 @@ function refreshAllUI() {
   if (state.currentView === 'dashboard') renderDashboard();
   if (state.currentView === 'upload') renderStudentListTable();
   if (state.currentView === 'upload-guru') renderTeacherListTable();
-  if (state.currentView === 'absensi') loadAttendanceGrid();
+  if (state.currentView === 'absensi') { loadAttendanceGrid(); renderAttendanceHistoryTable(); }
   if (state.currentView === 'terlambat') renderLateLogsToday();
   if (state.currentView === 'pelanggaran') renderViolationsToday();
   if (state.currentView === 'izin-pulang') renderIzinPulangToday();
@@ -944,7 +948,7 @@ function populateClassSelect(elementId) {
   // Get distinct classes
   const classes = [...new Set(state.students.map(s => s.kelas))].sort();
   
-  if (elementId === 'rekap-kelas' || elementId === 'filter-siswa-kelas') {
+  if (elementId === 'rekap-kelas' || elementId === 'filter-siswa-kelas' || elementId === 'absensi-riwayat-kelas') {
     const optAll = document.createElement('option');
     optAll.value = '';
     optAll.textContent = 'Semua Kelas';
@@ -952,7 +956,7 @@ function populateClassSelect(elementId) {
   } else {
     const optSelect = document.createElement('option');
     optSelect.value = '';
-    optSelect.textContent = 'Pilih Kelas';
+    optSelect.textContent = '-- Pilih Kelas --';
     select.appendChild(optSelect);
   }
 
@@ -1333,16 +1337,63 @@ async function deleteStudent(id) {
       renderStudentListTable();
       showToast('Data siswa berhasil dihapus!', 'success');
     } else {
+      const std = state.students.find(s => s.id === id);
+      const stdNisn = std ? std.nisn : id;
+
       // 1. Delete student
       state.students = state.students.filter(s => s.id !== id);
-      // 2. Cascade delete attendance and late logs
-      state.attendance = state.attendance.filter(a => a.student_id !== id);
-      state.lateLogs = state.lateLogs.filter(l => l.student_id !== id);
+      // 2. Cascade delete all associated logs for this student
+      state.attendance = state.attendance.filter(a => a.student_id !== id && a.student_id !== stdNisn);
+      state.lateLogs = state.lateLogs.filter(l => l.student_id !== id && l.student_id !== stdNisn);
+      state.violations = state.violations.filter(v => v.student_id !== id && v.student_id !== stdNisn);
+      state.izinPulang = state.izinPulang.filter(i => i.student_id !== id && i.student_id !== stdNisn);
+      state.kaihLogs = state.kaihLogs.filter(k => k.student_id !== id && k.student_id !== stdNisn);
 
       await persistData();
       renderStudentListTable();
-      showToast('Data siswa berhasil dihapus!', 'success');
+      showToast('Data siswa beserta riwayatnya berhasil dihapus!', 'success');
     }
+  } catch (error) {
+    showToast(`Gagal menghapus: ${error.message}`, 'error');
+  } finally {
+    toggleLoader(false);
+  }
+}
+
+async function deleteAllStudents() {
+  if (!confirm('Apakah Anda YAKIN ingin menghapus SELURUH data siswa?\n\nPERINGATAN: Seluruh data absensi, keterlambatan, pelanggaran, izin pulang, dan 7 KAIH juga akan IKUT TERHAPUS BERSIH! Data tidak dapat dikembalikan.')) {
+    return;
+  }
+
+  toggleLoader(true, 'Menghapus seluruh data siswa dan riwayat log...');
+  try {
+    state.students = [];
+    state.attendance = [];
+    state.lateLogs = [];
+    state.violations = [];
+    state.izinPulang = [];
+    state.kaihLogs = [];
+
+    await persistData();
+
+    if (supabaseClient) {
+      try {
+        await Promise.all([
+          supabaseClient.from('students').delete().neq('id', '___none___'),
+          supabaseClient.from('attendance').delete().neq('id', '___none___'),
+          supabaseClient.from('late_logs').delete().neq('id', '___none___'),
+          supabaseClient.from('violations').delete().neq('id', '___none___'),
+          supabaseClient.from('izin_pulang').delete().neq('id', '___none___'),
+          supabaseClient.from('kaih_logs').delete().neq('id', '___none___')
+        ]);
+      } catch (e) {
+        console.warn('Delete cloud tables error:', e);
+      }
+    }
+
+    renderStudentListTable();
+    refreshAllUI();
+    showToast('Seluruh data siswa dan riwayat log berhasil dihapus bersih!', 'info');
   } catch (error) {
     showToast(`Gagal menghapus: ${error.message}`, 'error');
   } finally {
@@ -1749,6 +1800,67 @@ async function deleteTeacher(id) {
 // ==========================================================================
 // MENU 2: ABSENSI SISWA
 // ==========================================================================
+
+function renderAttendanceHistoryTable() {
+  const tbody = document.getElementById('attendance-history-table-body');
+  const classSelect = document.getElementById('absensi-riwayat-kelas');
+  const monthSelect = document.getElementById('absensi-riwayat-bulan');
+  
+  if (classSelect && classSelect.options.length <= 1) {
+    populateClassSelect('absensi-riwayat-kelas');
+  }
+
+  const classFilter = classSelect ? classSelect.value : '';
+  const monthFilter = monthSelect ? monthSelect.value : '';
+
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  state.attendance = state.attendance || [];
+  let list = [...state.attendance];
+
+  if (classFilter) {
+    list = list.filter(a => {
+      const student = state.students.find(s => String(s.id) === String(a.student_id) || String(s.nisn) === String(a.student_id));
+      return student && student.kelas === classFilter;
+    });
+  }
+
+  if (monthFilter) {
+    list = list.filter(a => {
+      if (!a.tanggal) return false;
+      const parts = a.tanggal.split('-'); // YYYY-MM-DD
+      return parts.length >= 2 && parts[1] === monthFilter;
+    });
+  }
+
+  list.sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || ''));
+
+  if (list.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">Belum ada riwayat log absensi sesuai filter.</td></tr>`;
+    return;
+  }
+
+  list.forEach((log, idx) => {
+    const student = state.students.find(s => String(s.id) === String(log.student_id) || String(s.nisn) === String(log.student_id)) || { nama: 'Siswa Terhapus', kelas: '-' };
+    let badgeClass = 'badge-success';
+    if (log.status === 'sakit') badgeClass = 'badge-warning';
+    if (log.status === 'izin') badgeClass = 'badge-info';
+    if (log.status === 'alpha') badgeClass = 'badge-danger';
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="text-center">${idx + 1}</td>
+      <td><strong>${log.tanggal || '-'}</strong></td>
+      <td class="font-semibold">${student.nama}</td>
+      <td><span class="badge badge-success" style="background-color: var(--color-primary-glow); color: var(--color-primary);">${student.kelas}</span></td>
+      <td class="text-center"><span class="badge ${badgeClass}">${(log.status || 'hadir').toUpperCase()}</span></td>
+      <td>${log.keterangan || '-'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+  lucide.createIcons();
+}
 
 function loadAttendanceGrid() {
   const selectKelas = document.getElementById('absensi-kelas');
@@ -2251,51 +2363,46 @@ async function deleteViolationLog(logId) {
 // MENU: SISWA IZIN PULANG
 // ==========================================================================
 
-function showIzinPulangStudentDropdown() {
-  const list = document.getElementById('izin-pulang-dropdown-list');
-  list.innerHTML = '';
-  
-  if (state.students.length === 0) {
-    list.innerHTML = '<div class="dropdown-item text-muted">Belum ada data siswa. Impor dahulu.</div>';
-    list.style.display = 'block';
+function handleIzinPulangClassChange() {
+  const classSelect = document.getElementById('izin-pulang-kelas-select');
+  const studentSelect = document.getElementById('izin-pulang-siswa-select');
+  const hiddenId = document.getElementById('izin-pulang-siswa-id');
+  const selectedClass = classSelect ? classSelect.value : '';
+
+  if (!studentSelect) return;
+  studentSelect.innerHTML = '';
+  if (hiddenId) hiddenId.value = '';
+
+  if (!selectedClass) {
+    studentSelect.innerHTML = '<option value="">-- Pilih Kelas Terlebih Dahulu --</option>';
+    studentSelect.disabled = true;
     return;
   }
 
-  filterIzinPulangStudentDropdown();
-  list.style.display = 'block';
-}
-
-function filterIzinPulangStudentDropdown() {
-  const query = document.getElementById('izin-pulang-search-input').value.toLowerCase().trim();
-  const list = document.getElementById('izin-pulang-dropdown-list');
-  list.innerHTML = '';
-
-  const filtered = state.students.filter(s => 
-    s.nama.toLowerCase().includes(query) || s.nisn.includes(query) || s.kelas.toLowerCase().includes(query)
-  ).slice(0, 8);
-
-  if (filtered.length === 0) {
-    list.innerHTML = '<div class="dropdown-item text-muted">Siswa tidak ditemukan</div>';
+  const classStudents = state.students.filter(s => s.kelas === selectedClass);
+  if (classStudents.length === 0) {
+    studentSelect.innerHTML = '<option value="">-- Tidak ada siswa di kelas ini --</option>';
+    studentSelect.disabled = true;
     return;
   }
 
-  filtered.forEach(std => {
-    const item = document.createElement('div');
-    item.className = 'dropdown-item';
-    item.innerHTML = `
-      <span class="item-nama font-semibold">${std.nama}</span>
-      <span class="item-kelas">${std.kelas}</span>
-    `;
-    item.onclick = () => selectStudentForIzinPulang(std);
-    list.appendChild(item);
+  studentSelect.innerHTML = '<option value="">-- Pilih Siswa --</option>';
+  classStudents.forEach(s => {
+    const opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = `${s.nama} (${s.nisn})`;
+    studentSelect.appendChild(opt);
   });
+
+  studentSelect.disabled = false;
 }
 
-function selectStudentForIzinPulang(student) {
-  document.getElementById('izin-pulang-search-input').value = student.nama;
-  document.getElementById('izin-pulang-siswa-id').value = student.id;
-  document.getElementById('izin-pulang-kelas-display').value = student.kelas;
-  document.getElementById('izin-pulang-dropdown-list').style.display = 'none';
+function handleIzinPulangStudentChange() {
+  const studentSelect = document.getElementById('izin-pulang-siswa-select');
+  const hiddenId = document.getElementById('izin-pulang-siswa-id');
+  if (studentSelect && hiddenId) {
+    hiddenId.value = studentSelect.value;
+  }
 }
 
 async function handleIzinPulangSubmit(event) {

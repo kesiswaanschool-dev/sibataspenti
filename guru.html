@@ -616,6 +616,57 @@
             <h2>Silakan pilih Kelas dan Tanggal</h2>
             <p class="text-muted">Pilih kelas dan tanggal di panel atas untuk memuat lembar absensi siswa.</p>
           </div>
+
+          <!-- Riwayat Log Absensi Siswa (Filter Per-Kelas & Per-Bulan) -->
+          <div class="dashboard-card card-full mt-4">
+            <div class="card-header border-bottom d-flex justify-between align-center flex-wrap gap-2">
+              <div>
+                <h2>Riwayat Log Absensi Siswa</h2>
+                <p class="subtitle mt-1">Filter riwayat absensi berdasarkan kelas dan bulan</p>
+              </div>
+              <div class="header-filters d-flex align-center gap-2">
+                <select id="absensi-riwayat-kelas" onchange="renderAttendanceHistoryTable()" class="form-select w-150">
+                  <option value="">Semua Kelas</option>
+                </select>
+                <select id="absensi-riwayat-bulan" onchange="renderAttendanceHistoryTable()" class="form-select w-150">
+                  <option value="">Semua Bulan</option>
+                  <option value="01">Januari</option>
+                  <option value="02">Februari</option>
+                  <option value="03">Maret</option>
+                  <option value="04">April</option>
+                  <option value="05">Mei</option>
+                  <option value="06">Juni</option>
+                  <option value="07">Juli</option>
+                  <option value="08">Agustus</option>
+                  <option value="09">September</option>
+                  <option value="10">Oktober</option>
+                  <option value="11">November</option>
+                  <option value="12">Desember</option>
+                </select>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="custom-table-container max-h-500">
+                <table class="styled-table">
+                  <thead>
+                    <tr>
+                      <th width="50" class="text-center">No</th>
+                      <th width="120">Tanggal</th>
+                      <th>Nama Siswa</th>
+                      <th width="100">Kelas</th>
+                      <th width="120" class="text-center">Status</th>
+                      <th>Keterangan</th>
+                    </tr>
+                  </thead>
+                  <tbody id="attendance-history-table-body">
+                    <tr>
+                      <td colspan="6" class="text-center text-muted">Belum ada riwayat log absensi.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         </section>
 
         <!-- ================= SISWA TERLAMBAT VIEW ================= -->
@@ -808,26 +859,22 @@
             <div class="card-body">
               <form id="form-izin-pulang" onsubmit="handleIzinPulangSubmit(event)">
                 <div class="row">
-                  <div class="col-md-8">
+                  <div class="col-md-6">
                     <div class="form-group mb-3">
-                      <label for="izin-pulang-siswa-select">Pilih Siswa <span class="required">*</span></label>
-                      <div class="searchable-select-container">
-                        <input type="text" id="izin-pulang-search-input" class="form-input"
-                          placeholder="Cari nama atau NISN siswa..." onfocus="showIzinPulangStudentDropdown()"
-                          onkeyup="filterIzinPulangStudentDropdown()">
-                        <div class="select-dropdown-list" id="izin-pulang-dropdown-list" style="display: none;">
-                          <!-- Populated by JS -->
-                        </div>
-                        <input type="hidden" id="izin-pulang-siswa-id" required>
-                      </div>
+                      <label for="izin-pulang-kelas-select">Pilih Kelas <span class="required">*</span></label>
+                      <select id="izin-pulang-kelas-select" class="form-select" onchange="handleIzinPulangClassChange()" required>
+                        <option value="">-- Pilih Kelas Terlebih Dahulu --</option>
+                      </select>
                     </div>
                   </div>
 
-                  <div class="col-md-4">
+                  <div class="col-md-6">
                     <div class="form-group mb-3">
-                      <label for="izin-pulang-kelas-display">Kelas</label>
-                      <input type="text" id="izin-pulang-kelas-display" class="form-input" readonly
-                        placeholder="Terisi otomatis..." style="background: rgba(255,255,255,0.05)">
+                      <label for="izin-pulang-siswa-select">Pilih Siswa <span class="required">*</span></label>
+                      <select id="izin-pulang-siswa-select" class="form-select" onchange="handleIzinPulangStudentChange()" disabled required>
+                        <option value="">-- Pilih Kelas Terlebih Dahulu --</option>
+                      </select>
+                      <input type="hidden" id="izin-pulang-siswa-id" required>
                     </div>
                   </div>
                 </div>
