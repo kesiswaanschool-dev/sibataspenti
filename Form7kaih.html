@@ -499,6 +499,52 @@
 
   </div>
 
+  <!-- Modal Registration for Unregistered NISN -->
+  <div class="modal-overlay" id="modal-new-student" style="display: none; align-items: center; justify-content: center; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 9999;">
+    <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 20px; padding: 24px; max-width: 400px; width: 90%; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+      <h3 style="font-size: 17px; font-weight: 700; margin-bottom: 8px; color: var(--text-main);">NISN Belum Terdaftar</h3>
+      <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+        NISN <strong id="new-student-nisn-display" style="color: var(--color-primary);"></strong> belum ada di database. Silakan isi Nama Lengkap dan Kelas Anda untuk langsung mendaftar:
+      </p>
+
+      <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px;">
+        <div>
+          <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 4px; text-align: left;">Nama Lengkap Siswa</label>
+          <input type="text" id="new-student-nama" class="form-input" placeholder="Contoh: Muhammad Rizky" style="width: 100%;">
+        </div>
+        <div>
+          <label style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 4px; text-align: left;">Kelas</label>
+          <select id="new-student-kelas" class="form-select" style="width: 100%;">
+            <option value="">-- Pilih Kelas --</option>
+            <option value="VII A">VII A</option>
+            <option value="VII B">VII B</option>
+            <option value="VII C">VII C</option>
+            <option value="VII D">VII D</option>
+            <option value="VII E">VII E</option>
+            <option value="VII F">VII F</option>
+            <option value="VIII A">VIII A</option>
+            <option value="VIII B">VIII B</option>
+            <option value="VIII C">VIII C</option>
+            <option value="VIII D">VIII D</option>
+            <option value="VIII E">VIII E</option>
+            <option value="VIII F">VIII F</option>
+            <option value="IX A">IX A</option>
+            <option value="IX B">IX B</option>
+            <option value="IX C">IX C</option>
+            <option value="IX D">IX D</option>
+            <option value="IX E">IX E</option>
+            <option value="IX F">IX F</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 8px; justify-content: flex-end;">
+        <button class="btn btn-secondary btn-sm" onclick="closeNewStudentModal()">Batal</button>
+        <button class="btn btn-primary btn-sm" onclick="confirmRegisterNewStudent()" style="background: #4f46e5;">Daftar & Masuk</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification -->
   <div id="toast-notif" class="toast">
     <i id="toast-icon"></i>
@@ -548,6 +594,9 @@
           const found = appDb.students.find(s => String(s.id) === String(student.id) || s.nisn === student.nisn);
           if (found) {
             showStudentForm(found);
+          } else {
+            appDb.students.push(student);
+            showStudentForm(student);
           }
         } catch (e) {}
       }
@@ -631,15 +680,18 @@
       saveLocalDatabase();
 
       if (supabaseClient) {
-        // 1. Try per-table kaih_logs upsert in isolated try-catch block
+        // 1. Try per-table kaih_logs & students upsert in isolated try-catch block
         try {
           if (singleEntry) {
             await supabaseClient.from('kaih_logs').upsert(singleEntry, { onConflict: 'id' });
           } else if (appDb.kaihLogs && appDb.kaihLogs.length > 0) {
             await supabaseClient.from('kaih_logs').upsert(appDb.kaihLogs, { onConflict: 'id' });
           }
+          if (appDb.students && appDb.students.length > 0) {
+            await supabaseClient.from('students').upsert(appDb.students, { onConflict: 'id' });
+          }
         } catch (e) {
-          console.warn('kaih_logs per-table save notice:', e);
+          console.warn('kaih_logs / students per-table save notice:', e);
         }
 
         // 2. Always update single-row school_data JSON table
@@ -657,13 +709,18 @@
           const existingKaih = cloudDb.kaihLogs || cloudDb.kaihlogs || [];
           const mergedKaih = mergeDbArrays(appDb.kaihLogs, existingKaih);
 
+          const existingStudents = cloudDb.students || [];
+          const mergedStudents = mergeDbArrays(appDb.students, existingStudents);
+
           appDb.kaihLogs = mergedKaih;
+          appDb.students = mergedStudents;
           saveLocalDatabase();
 
           const payload = {
             ...cloudDb,
             ...localDb,
             id: 1,
+            students: mergedStudents,
             kaihLogs: mergedKaih,
             kaihlogs: mergedKaih,
             updated_at: new Date().toISOString()
@@ -680,6 +737,8 @@
       if (e.key === 'Enter') loginStudent();
     }
 
+    let pendingNisnInput = '';
+
     function loginStudent() {
       const rawInput = document.getElementById('input-nisn').value.trim();
       if (!rawInput) {
@@ -694,14 +753,52 @@
         const sId = String(s.id || '').replace(/\s+/g, '').toLowerCase();
         return (sNisn && sNisn === cleanInput) || (sId && sId === cleanInput);
       });
+
       if (!student) {
-        showToast('NISN tidak terdaftar dalam sistem sekolah.', 'error');
+        pendingNisnInput = rawInput;
+        document.getElementById('new-student-nisn-display').textContent = rawInput;
+        document.getElementById('modal-new-student').style.display = 'flex';
         return;
       }
 
       sessionStorage.setItem('loggedStudent7Kaih', JSON.stringify(student));
       showStudentForm(student);
       showToast(`Selamat datang, ${student.nama}!`, 'success');
+    }
+
+    function confirmRegisterNewStudent() {
+      const nama = document.getElementById('new-student-nama').value.trim();
+      const kelas = document.getElementById('new-student-kelas').value.trim();
+
+      if (!nama) {
+        showToast('Harap masukkan nama lengkap Anda!', 'warning');
+        return;
+      }
+      if (!kelas) {
+        showToast('Harap pilih kelas Anda!', 'warning');
+        return;
+      }
+
+      const newStudent = {
+        id: pendingNisnInput || ('std-' + Date.now()),
+        nisn: pendingNisnInput,
+        nama: nama,
+        kelas: kelas
+      };
+
+      if (!appDb.students) appDb.students = [];
+      appDb.students.push(newStudent);
+
+      saveDatabase();
+      closeNewStudentModal();
+
+      sessionStorage.setItem('loggedStudent7Kaih', JSON.stringify(newStudent));
+      showStudentForm(newStudent);
+      showToast(`Pendaftaran berhasil! Selamat datang, ${nama}`, 'success');
+    }
+
+    function closeNewStudentModal() {
+      document.getElementById('modal-new-student').style.display = 'none';
     }
 
     function showStudentForm(student) {
