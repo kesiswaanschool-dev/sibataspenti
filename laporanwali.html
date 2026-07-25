@@ -8,263 +8,487 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <!-- Lucide Icons (CDN) -->
+  <!-- Lucide Icons CDN -->
   <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- Supabase JS Client (CDN) -->
+  <!-- Supabase JS Client CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- Stylesheet -->
+  <!-- Main Stylesheet -->
   <link rel="stylesheet" href="style.css">
+  
   <style>
+    :root {
+      --bg-gradient: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #0f172a 60%, #070b13 100%);
+      --card-glass: rgba(15, 23, 42, 0.75);
+      --card-border: rgba(255, 255, 255, 0.12);
+      --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      --accent-glow: rgba(99, 102, 241, 0.35);
+    }
+
     body {
-      background-color: var(--bg-app, #070b13);
-      color: var(--text-main, #f1f5f9);
+      background: var(--bg-gradient);
+      background-attachment: fixed;
+      color: #f8fafc;
+      font-family: 'Inter', sans-serif;
       min-height: 100vh;
+      margin: 0;
+      padding: 32px 16px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 24px 16px;
     }
 
-    .wali-container {
+    .wali-wrapper {
       width: 100%;
-      max-width: 1000px;
+      max-width: 1050px;
       display: flex;
       flex-direction: column;
+      gap: 24px;
+    }
+
+    /* --- Header Section --- */
+    .header-banner {
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: 24px;
+      padding: 24px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .header-branding {
+      display: flex;
+      align-items: center;
       gap: 20px;
     }
 
-    .wali-header {
-      text-align: center;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 8px;
-    }
-
-    .logo-img {
-      width: 64px;
-      height: 64px;
+    .school-logo {
+      width: 68px;
+      height: 68px;
       object-fit: contain;
       border-radius: 50%;
-      box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3);
+      padding: 4px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(99, 102, 241, 0.4);
+      box-shadow: 0 0 25px rgba(99, 102, 241, 0.3);
     }
 
-    .search-card {
-      background: var(--bg-card, rgba(21, 32, 54, 0.65));
-      backdrop-filter: blur(16px);
-      border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-      border-radius: 20px;
-      padding: 24px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    .school-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 26px;
+      font-weight: 800;
+      margin: 0;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
 
-    .search-box-row {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    .search-input-group {
-      flex: 1;
-      min-width: 260px;
-      position: relative;
-    }
-
-    .profile-card {
-      background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(168, 85, 247, 0.1) 100%);
+    .portal-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(99, 102, 241, 0.15);
       border: 1px solid rgba(99, 102, 241, 0.3);
+      color: #a5b4fc;
+      padding: 4px 12px;
       border-radius: 20px;
-      padding: 20px 24px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 6px;
+    }
+
+    /* --- Search Card --- */
+    .search-card-container {
+      background: var(--card-glass);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--card-border);
+      border-radius: 24px;
+      padding: 28px;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
+    }
+
+    .search-input-wrapper {
+      position: relative;
+      flex: 1;
+    }
+
+    .search-icon-inside {
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #64748b;
+      pointer-events: none;
+    }
+
+    .custom-search-input {
+      width: 100%;
+      padding: 14px 16px 14px 48px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 14px;
+      color: #fff;
+      font-size: 14px;
+      font-family: inherit;
+      transition: all 0.2s ease;
+      box-sizing: border-box;
+    }
+
+    .custom-search-input:focus {
+      outline: none;
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+      background: rgba(15, 23, 42, 0.95);
+    }
+
+    .btn-search-glow {
+      background: var(--accent-gradient);
+      color: #fff;
+      border: none;
+      padding: 14px 28px;
+      border-radius: 14px;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 8px 20px var(--accent-glow);
+      transition: all 0.2s ease;
+    }
+
+    .btn-search-glow:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 25px rgba(99, 102, 241, 0.5);
+    }
+
+    /* --- Profile Hero Card --- */
+    .student-hero-card {
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.9) 100%);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      border-radius: 24px;
+      padding: 24px 32px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       flex-wrap: wrap;
-      gap: 16px;
+      gap: 20px;
+      box-shadow: 0 15px 30px rgba(0,0,0,0.3);
     }
 
-    .student-avatar {
-      width: 56px;
-      height: 56px;
-      border-radius: 16px;
-      background: var(--color-primary, #6366f1);
-      color: white;
-      font-size: 24px;
-      font-weight: 700;
+    .student-avatar-box {
+      width: 64px;
+      height: 64px;
+      border-radius: 20px;
+      background: var(--accent-gradient);
+      color: #fff;
+      font-family: 'Outfit', sans-serif;
+      font-size: 28px;
+      font-weight: 800;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+      box-shadow: 0 8px 20px var(--accent-glow);
     }
 
-    .nav-tabs-container {
+    /* --- KPI Stat Cards --- */
+    .stat-card-kpi {
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 18px;
+      padding: 16px 20px;
       display: flex;
-      gap: 8px;
-      overflow-x: auto;
-      padding-bottom: 4px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      align-items: center;
+      gap: 16px;
+      transition: all 0.2s ease;
     }
 
-    .tab-btn {
+    .stat-card-kpi:hover {
+      transform: translateY(-3px);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .kpi-icon-box {
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+
+    /* --- Tab Navigation --- */
+    .tab-pills-bar {
+      background: rgba(15, 23, 42, 0.8);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      padding: 6px;
+      border-radius: 18px;
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+    }
+
+    .tab-pill-btn {
+      flex: 1;
+      min-width: 130px;
       background: transparent;
       border: none;
-      color: var(--text-muted, #94a3b8);
-      padding: 10px 16px;
-      border-radius: 12px;
+      color: #94a3b8;
+      padding: 12px 16px;
+      border-radius: 14px;
       font-weight: 600;
       font-size: 13px;
       cursor: pointer;
-      display: flex;
+      display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 8px;
       white-space: nowrap;
       transition: all 0.2s ease;
     }
 
-    .tab-btn:hover {
+    .tab-pill-btn:hover {
       color: #fff;
       background: rgba(255, 255, 255, 0.05);
     }
 
-    .tab-btn.active {
-      background: var(--color-primary, #6366f1);
+    .tab-pill-btn.active {
+      background: var(--accent-gradient);
       color: #fff;
-      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+      box-shadow: 0 6px 16px var(--accent-glow);
     }
 
-    .filter-bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 12px;
-      background: rgba(15, 23, 42, 0.4);
+    /* --- Table Styling --- */
+    .styled-table-card {
+      background: var(--card-glass);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: 24px;
+      padding: 24px;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+    }
+
+    .custom-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0 6px;
+    }
+
+    .custom-table th {
+      background: transparent;
+      color: #94a3b8;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
       padding: 12px 16px;
-      border-radius: 14px;
-      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     }
 
+    .custom-table td {
+      background: rgba(30, 41, 59, 0.4);
+      padding: 14px 16px;
+      font-size: 13px;
+      color: #e2e8f0;
+      border-top: 1px solid rgba(255, 255, 255, 0.04);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .custom-table tr td:first-child {
+      border-top-left-radius: 12px;
+      border-bottom-left-radius: 12px;
+      border-left: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .custom-table tr td:last-child {
+      border-top-right-radius: 12px;
+      border-bottom-right-radius: 12px;
+      border-right: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .custom-table tr:hover td {
+      background: rgba(51, 65, 85, 0.5);
+    }
+
+    /* Print styling */
     @media print {
-      body { background: #fff !important; color: #000 !important; }
+      body { background: #fff !important; color: #000 !important; padding: 0 !important; }
       .no-print { display: none !important; }
-      .search-card, .profile-card, .table-container { box-shadow: none !important; border: 1px solid #ccc !important; }
+      .styled-table-card, .student-hero-card { border: 1px solid #ddd !important; box-shadow: none !important; background: #fff !important; color: #000 !important; }
+      .custom-table td { background: #fff !important; color: #000 !important; border: 1px solid #eee !important; }
+      .school-title { color: #000 !important; -webkit-text-fill-color: #000 !important; }
     }
   </style>
 </head>
 <body>
 
-  <div class="wali-container">
-    <!-- Header -->
-    <header class="wali-header">
-      <img src="logo.png" alt="Logo Sekolah" class="logo-img" onerror="this.src='https://ui-avatars.com/api/?name=SMPN+3+Batam&background=6366f1&color=fff'">
-      <div>
-        <h1 style="font-size: 24px; font-weight: 800; margin: 0; background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">SMP NEGERI 3 BATAM</h1>
-        <p style="margin: 4px 0 0; color: var(--color-primary-light, #c7d2fe); font-weight: 600; font-size: 14px;">PORTAL LAPORAN WALI SISWA (SIBATA)</p>
+  <div class="wali-wrapper">
+    
+    <!-- 1. Header Banner -->
+    <header class="header-banner">
+      <div class="header-branding">
+        <img src="logo.png" alt="Logo Sekolah" class="school-logo" onerror="this.src='https://ui-avatars.com/api/?name=SMPN+3+Batam&background=6366f1&color=fff'">
+        <div>
+          <h1 class="school-title">SMP NEGERI 3 BATAM</h1>
+          <div class="portal-tag">
+            <i data-lucide="shield-check" style="width: 14px; height: 14px;"></i>
+            PORTAL LAPORAN ORANG TUA & WALI SISWA (SIBATA)
+          </div>
+        </div>
+      </div>
+      <div class="no-print">
+        <a href="index.html" class="btn btn-secondary btn-sm" style="border-radius: 12px; padding: 10px 16px;">
+          <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i> Kembali ke Utama
+        </a>
       </div>
     </header>
 
-    <!-- Search Section -->
-    <div class="search-card no-print">
-      <label style="font-size: 13px; font-weight: 600; color: #a5b4fc; margin-bottom: 8px; display: block;">
-        <i data-lucide="search" style="width: 14px; height: 14px; vertical-align: middle;"></i> Cari Siswa (Masukkan NISN atau Nama):
-      </label>
-      <div class="search-box-row">
-        <div class="search-input-group">
-          <input type="text" id="input-search-student" class="form-control" list="student-datalist" placeholder="Ketik NISN atau Nama Siswa..." autocomplete="off" onkeypress="handleSearchKeyPress(event)">
+    <!-- 2. Search Section -->
+    <div class="search-card-container no-print">
+      <div style="margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+        <label style="font-size: 14px; font-weight: 700; color: #c7d2fe; display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="user-search" style="width: 18px; height: 18px; color: #818cf8;"></i>
+          Cari Data Siswa (Masukkan NISN atau Nama):
+        </label>
+        <span style="font-size: 12px; color: #64748b;">Hanya data siswa terkait yang ditampilkan</span>
+      </div>
+
+      <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <div class="search-input-wrapper">
+          <i data-lucide="search" class="search-icon-inside" style="width: 18px; height: 18px;"></i>
+          <input type="text" id="input-search-student" class="custom-search-input" list="student-datalist" placeholder="Ketik NISN atau Nama Lengkap Siswa..." autocomplete="off" onkeypress="handleSearchKeyPress(event)">
           <datalist id="student-datalist"></datalist>
         </div>
-        <button class="btn btn-primary" onclick="searchStudentReport()">
-          <i data-lucide="search"></i> Cari Laporan
+
+        <button class="btn-search-glow" onclick="searchStudentReport()">
+          <i data-lucide="search" style="width: 18px; height: 18px;"></i> Cari Laporan
         </button>
-        <button class="btn btn-secondary" onclick="resetStudentSearch()" title="Bersihkan pencarian">
-          <i data-lucide="refresh-cw"></i> Reset
+
+        <button class="btn btn-secondary" style="border-radius: 14px; padding: 0 20px;" onclick="resetStudentSearch()" title="Bersihkan Pencarian">
+          <i data-lucide="refresh-cw" style="width: 16px; height: 16px;"></i> Reset
         </button>
       </div>
     </div>
 
-    <!-- Empty State Prompt -->
-    <div id="section-empty-prompt" class="card text-center py-5" style="border-radius: 20px;">
-      <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(99, 102, 241, 0.1); color: var(--color-primary); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px;">
-        <i data-lucide="user-check" style="width: 32px; height: 32px;"></i>
+    <!-- 3. Empty Prompt (Tampilan Awal) -->
+    <div id="section-empty-prompt" class="styled-table-card text-center py-5" style="border-radius: 24px;">
+      <div style="width: 72px; height: 72px; border-radius: 24px; background: rgba(99, 102, 241, 0.12); color: #818cf8; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 16px; border: 1px solid rgba(99, 102, 241, 0.25);">
+        <i data-lucide="search-code" style="width: 36px; height: 36px;"></i>
       </div>
-      <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 6px;">Silakan Cari Data Siswa</h3>
-      <p style="color: #94a3b8; font-size: 13px; max-width: 480px; margin: 0 auto;">
-        Ketikkan <strong>NISN</strong> atau <strong>Nama Siswa</strong> pada kolom pencarian di atas untuk melihat laporan lengkap Absensi, Keterlambatan, Pelanggaran, Izin Pulang, dan 7 KAIH.
+      <h3 style="font-family: 'Outfit', sans-serif; font-size: 20px; font-weight: 700; margin: 0 0 8px; color: #fff;">Silakan Cari Data Putra/Putri Anda</h3>
+      <p style="color: #94a3b8; font-size: 14px; max-width: 520px; margin: 0 auto 20px; line-height: 1.6;">
+        Masukkan **NISN** atau **Nama Lengkap Siswa** pada pencarian di atas untuk melihat laporan lengkap Absensi, Keterlambatan, Pelanggaran, Izin Pulang, dan 7 KAIH.
       </p>
     </div>
 
-    <!-- Active Student Report View -->
-    <div id="section-student-report" style="display: none; flex-direction: column; gap: 20px;">
+    <!-- 4. Active Student Report View -->
+    <div id="section-student-report" style="display: none; flex-direction: column; gap: 24px;">
       
-      <!-- Profile Card -->
-      <div class="profile-card">
-        <div style="display: flex; align-items: center; gap: 16px;">
-          <div class="student-avatar" id="prof-avatar">A</div>
+      <!-- Student Profile Hero Card -->
+      <div class="student-hero-card">
+        <div style="display: flex; align-items: center; gap: 20px;">
+          <div class="student-avatar-box" id="prof-avatar">S</div>
           <div>
-            <h2 id="prof-nama" style="font-size: 20px; font-weight: 700; margin: 0; color: #fff;">-</h2>
-            <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px; font-size: 13px;">
-              <span class="badge badge-info" id="prof-kelas">-</span>
-              <span style="color: #94a3b8;">NISN: <code id="prof-nisn" style="color: #c7d2fe; font-weight: 600;">-</code></span>
+            <h2 id="prof-nama" style="font-family: 'Outfit', sans-serif; font-size: 24px; font-weight: 800; margin: 0; color: #fff;">-</h2>
+            <div style="display: flex; gap: 10px; align-items: center; margin-top: 8px;">
+              <span class="badge badge-info" id="prof-kelas" style="padding: 6px 12px; font-size: 12px; border-radius: 8px;">-</span>
+              <span style="color: #94a3b8; font-size: 13px;">NISN: <code id="prof-nisn" style="color: #a5b4fc; font-weight: 700; font-size: 14px;">-</code></span>
             </div>
           </div>
         </div>
 
-        <div style="display: flex; gap: 12px; flex-wrap: wrap;" class="no-print">
-          <button class="btn btn-secondary btn-sm" onclick="window.print()">
-            <i data-lucide="printer"></i> Cetak Laporan
+        <div class="no-print" style="display: flex; gap: 12px;">
+          <button class="btn btn-secondary" style="border-radius: 12px; font-size: 13px; font-weight: 600;" onclick="window.print()">
+            <i data-lucide="printer" style="width: 16px; height: 16px;"></i> Cetak Laporan
           </button>
         </div>
       </div>
 
-      <!-- Quick Summary Cards -->
-      <div class="grid grid-cols-4 gap-3">
-        <div class="card p-3 text-center" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2);">
-          <div style="font-size: 11px; color: #6ee7b7; font-weight: 600;">TOTAL HADIR</div>
-          <div id="stat-hadir" style="font-size: 22px; font-weight: 800; color: #10b981;">0</div>
+      <!-- Quick KPI Stats Grid -->
+      <div class="grid grid-cols-4 gap-4">
+        <!-- Hadir -->
+        <div class="stat-card-kpi">
+          <div class="kpi-icon-box" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);">
+            <i data-lucide="user-check"></i>
+          </div>
+          <div>
+            <div style="font-size: 11px; color: #6ee7b7; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Presensi Hadir</div>
+            <div id="stat-hadir" style="font-family: 'Outfit', sans-serif; font-size: 26px; font-weight: 800; color: #fff;">0</div>
+          </div>
         </div>
-        <div class="card p-3 text-center" style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2);">
-          <div style="font-size: 11px; color: #fcd34d; font-weight: 600;">SAKIT / IZIN / ALPHA</div>
-          <div id="stat-non-hadir" style="font-size: 22px; font-weight: 800; color: #f59e0b;">0</div>
+
+        <!-- Sakit/Izin/Alpha -->
+        <div class="stat-card-kpi">
+          <div class="kpi-icon-box" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);">
+            <i data-lucide="calendar-x"></i>
+          </div>
+          <div>
+            <div style="font-size: 11px; color: #fcd34d; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Sakit / Izin / Alpha</div>
+            <div id="stat-non-hadir" style="font-family: 'Outfit', sans-serif; font-size: 26px; font-weight: 800; color: #fff;">0</div>
+          </div>
         </div>
-        <div class="card p-3 text-center" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2);">
-          <div style="font-size: 11px; color: #fca5a5; font-weight: 600;">KETERLAMBATAN</div>
-          <div id="stat-terlambat" style="font-size: 22px; font-weight: 800; color: #ef4444;">0</div>
+
+        <!-- Keterlambatan -->
+        <div class="stat-card-kpi">
+          <div class="kpi-icon-box" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3);">
+            <i data-lucide="clock"></i>
+          </div>
+          <div>
+            <div style="font-size: 11px; color: #fca5a5; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Keterlambatan</div>
+            <div id="stat-terlambat" style="font-family: 'Outfit', sans-serif; font-size: 26px; font-weight: 800; color: #fff;">0</div>
+          </div>
         </div>
-        <div class="card p-3 text-center" style="background: rgba(168, 85, 247, 0.1); border: 1px solid rgba(168, 85, 247, 0.2);">
-          <div style="font-size: 11px; color: #d8b4fe; font-weight: 600;">PELANGGARAN</div>
-          <div id="stat-pelanggaran" style="font-size: 22px; font-weight: 800; color: #a855f7;">0</div>
+
+        <!-- Pelanggaran -->
+        <div class="stat-card-kpi">
+          <div class="kpi-icon-box" style="background: rgba(168, 85, 247, 0.15); color: #a855f7; border: 1px solid rgba(168, 85, 247, 0.3);">
+            <i data-lucide="alert-circle"></i>
+          </div>
+          <div>
+            <div style="font-size: 11px; color: #d8b4fe; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Pelanggaran</div>
+            <div id="stat-pelanggaran" style="font-family: 'Outfit', sans-serif; font-size: 26px; font-weight: 800; color: #fff;">0</div>
+          </div>
         </div>
       </div>
 
-      <!-- Report Tabs Navigation -->
-      <div class="nav-tabs-container no-print">
-        <button class="tab-btn active" onclick="switchWaliTab('absensi')">
-          <i data-lucide="calendar"></i> Absensi Siswa
+      <!-- Tab Pills Bar -->
+      <div class="tab-pills-bar no-print">
+        <button class="tab-pill-btn active" onclick="switchWaliTab('absensi')">
+          <i data-lucide="calendar" style="width: 16px; height: 16px;"></i> Absensi Siswa
         </button>
-        <button class="tab-btn" onclick="switchWaliTab('terlambat')">
-          <i data-lucide="clock"></i> Keterlambatan
+        <button class="tab-pill-btn" onclick="switchWaliTab('terlambat')">
+          <i data-lucide="clock" style="width: 16px; height: 16px;"></i> Keterlambatan
         </button>
-        <button class="tab-btn" onclick="switchWaliTab('pelanggaran')">
-          <i data-lucide="alert-triangle"></i> Pelanggaran
+        <button class="tab-pill-btn" onclick="switchWaliTab('pelanggaran')">
+          <i data-lucide="alert-triangle" style="width: 16px; height: 16px;"></i> Pelanggaran
         </button>
-        <button class="tab-btn" onclick="switchWaliTab('izin-pulang')">
-          <i data-lucide="log-out"></i> Izin Pulang
+        <button class="tab-pill-btn" onclick="switchWaliTab('izin-pulang')">
+          <i data-lucide="log-out" style="width: 16px; height: 16px;"></i> Izin Pulang
         </button>
-        <button class="tab-btn" onclick="switchWaliTab('kaih')">
-          <i data-lucide="star"></i> Laporan 7 KAIH
+        <button class="tab-pill-btn" onclick="switchWaliTab('kaih')">
+          <i data-lucide="star" style="width: 16px; height: 16px;"></i> Laporan 7 KAIH
         </button>
       </div>
 
-      <!-- TAB 1: ABSENSI SISWA -->
+      <!-- TAB 1: ABSENSI -->
       <div id="tab-content-absensi" class="tab-pane">
-        <div class="card p-4" style="display: flex; flex-direction: column; gap: 16px;">
-          <!-- Filter Bar -->
-          <div class="filter-bar no-print">
-            <div style="display: flex; align-items: center; gap: 10px;">
-              <i data-lucide="filter" style="width: 16px; height: 16px; color: #a5b4fc;"></i>
-              <span style="font-size: 13px; font-weight: 600; color: #c7d2fe;">Filter Bulan Absensi:</span>
-              <select id="filter-absensi-bulan" class="form-control" style="width: auto; padding: 6px 12px; font-size: 13px;" onchange="renderStudentAttendanceTable()">
-                <option value="">Semua Bulan</option>
+        <div class="styled-table-card">
+          <!-- Filter Header Bar -->
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 20px; background: rgba(15, 23, 42, 0.5); padding: 14px 20px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.06);" class="no-print">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <i data-lucide="filter" style="width: 18px; height: 18px; color: #818cf8;"></i>
+              <span style="font-size: 14px; font-weight: 700; color: #c7d2fe;">Filter Bulan Absensi:</span>
+              <select id="filter-absensi-bulan" class="custom-search-input" style="width: auto; padding: 8px 16px; font-size: 13px;" onchange="renderStudentAttendanceTable()">
+                <option value="">Semua Bulan (Tahun Ini)</option>
                 <option value="01">Januari</option>
                 <option value="02">Februari</option>
                 <option value="03">Maret</option>
@@ -279,19 +503,19 @@
                 <option value="12">Desember</option>
               </select>
             </div>
-            <div id="count-absensi-filtered" style="font-size: 12px; color: #94a3b8; font-weight: 500;">
+            <div id="count-absensi-filtered" style="font-size: 13px; color: #94a3b8; font-weight: 600;">
               Menampilkan data absensi
             </div>
           </div>
 
-          <!-- Attendance Table -->
-          <div class="table-container">
-            <table>
+          <!-- Table -->
+          <div style="overflow-x: auto;">
+            <table class="custom-table">
               <thead>
                 <tr>
                   <th width="60" class="text-center">No</th>
-                  <th>Tanggal</th>
-                  <th width="140" class="text-center">Status Presensi</th>
+                  <th width="160">Tanggal</th>
+                  <th width="160" class="text-center">Status Presensi</th>
                   <th>Keterangan / Alasan</th>
                 </tr>
               </thead>
@@ -303,19 +527,19 @@
         </div>
       </div>
 
-      <!-- TAB 2: KETERLAMBATAN -->
+      <!-- TAB 2: TERLAMBAT -->
       <div id="tab-content-terlambat" class="tab-pane" style="display: none;">
-        <div class="card p-4">
-          <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 12px; color: #fca5a5;">
-            <i data-lucide="clock" style="width: 16px; height: 16px; vertical-align: middle;"></i> Riwayat Keterlambatan Siswa
+        <div class="styled-table-card">
+          <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; margin: 0 0 16px; color: #fca5a5; display: flex; align-items: center; gap: 8px;">
+            <i data-lucide="clock" style="width: 18px; height: 18px;"></i> Riwayat Keterlambatan Siswa
           </h3>
-          <div class="table-container">
-            <table>
+          <div style="overflow-x: auto;">
+            <table class="custom-table">
               <thead>
                 <tr>
                   <th width="60" class="text-center">No</th>
-                  <th width="140">Tanggal</th>
-                  <th width="100" class="text-center">Jam</th>
+                  <th width="160">Tanggal</th>
+                  <th width="120" class="text-center">Jam Datang</th>
                   <th>Keterangan / Alasan Terlambat</th>
                 </tr>
               </thead>
@@ -329,17 +553,17 @@
 
       <!-- TAB 3: PELANGGARAN -->
       <div id="tab-content-pelanggaran" class="tab-pane" style="display: none;">
-        <div class="card p-4">
-          <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 12px; color: #d8b4fe;">
-            <i data-lucide="alert-triangle" style="width: 16px; height: 16px; vertical-align: middle;"></i> Catatan Pelanggaran Siswa
+        <div class="styled-table-card">
+          <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; margin: 0 0 16px; color: #d8b4fe; display: flex; align-items: center; gap: 8px;">
+            <i data-lucide="alert-triangle" style="width: 18px; height: 18px;"></i> Catatan Pelanggaran Siswa
           </h3>
-          <div class="table-container">
-            <table>
+          <div style="overflow-x: auto;">
+            <table class="custom-table">
               <thead>
                 <tr>
                   <th width="60" class="text-center">No</th>
-                  <th width="140">Tanggal</th>
-                  <th width="100" class="text-center">Jam</th>
+                  <th width="160">Tanggal</th>
+                  <th width="120" class="text-center">Jam Incident</th>
                   <th>Deskripsi Catatan Pelanggaran</th>
                 </tr>
               </thead>
@@ -353,19 +577,19 @@
 
       <!-- TAB 4: IZIN PULANG -->
       <div id="tab-content-izin-pulang" class="tab-pane" style="display: none;">
-        <div class="card p-4">
-          <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 12px; color: #6ee7b7;">
-            <i data-lucide="log-out" style="width: 16px; height: 16px; vertical-align: middle;"></i> Riwayat Izin Pulang Sebelum Waktu
+        <div class="styled-table-card">
+          <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; margin: 0 0 16px; color: #6ee7b7; display: flex; align-items: center; gap: 8px;">
+            <i data-lucide="log-out" style="width: 18px; height: 18px;"></i> Riwayat Izin Pulang Sebelum Waktu
           </h3>
-          <div class="table-container">
-            <table>
+          <div style="overflow-x: auto;">
+            <table class="custom-table">
               <thead>
                 <tr>
                   <th width="60" class="text-center">No</th>
-                  <th width="140">Tanggal</th>
-                  <th width="100" class="text-center">Jam</th>
+                  <th width="160">Tanggal</th>
+                  <th width="120" class="text-center">Jam Izin</th>
                   <th>Alasan Izin Pulang</th>
-                  <th width="160">Guru Piket</th>
+                  <th width="180">Guru Piket Pemberi Izin</th>
                 </tr>
               </thead>
               <tbody id="tbody-izin-pulang">
@@ -378,26 +602,26 @@
 
       <!-- TAB 5: LAPORAN 7 KAIH -->
       <div id="tab-content-kaih" class="tab-pane" style="display: none;">
-        <div class="card p-4">
-          <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 12px; color: #fcd34d;">
-            <i data-lucide="star" style="width: 16px; height: 16px; vertical-align: middle;"></i> Laporan 7 Karakter Anak Indonesia Hebat (7 KAIH)
+        <div class="styled-table-card">
+          <h3 style="font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 700; margin: 0 0 8px; color: #fcd34d; display: flex; align-items: center; gap: 8px;">
+            <i data-lucide="star" style="width: 18px; height: 18px;"></i> Laporan 7 Karakter Anak Indonesia Hebat (7 KAIH)
           </h3>
-          <p style="font-size: 12px; color: #94a3b8; margin-bottom: 12px;">
+          <p style="font-size: 13px; color: #94a3b8; margin-bottom: 16px;">
             Poin 1: Bangun Pagi | P2: Ibadah | P3: Olahraga | P4: Makan Sehat | P5: Belajar | P6: Bermasyarakat | P7: Tidur Cepat
           </p>
-          <div class="table-container">
-            <table>
+          <div style="overflow-x: auto;">
+            <table class="custom-table">
               <thead>
                 <tr>
                   <th width="50" class="text-center">No</th>
-                  <th width="120">Tanggal</th>
-                  <th width="40" class="text-center">P1</th>
-                  <th width="40" class="text-center">P2</th>
-                  <th width="40" class="text-center">P3</th>
-                  <th width="40" class="text-center">P4</th>
-                  <th width="40" class="text-center">P5</th>
-                  <th width="40" class="text-center">P6</th>
-                  <th width="40" class="text-center">P7</th>
+                  <th width="130">Tanggal</th>
+                  <th width="45" class="text-center">P1</th>
+                  <th width="45" class="text-center">P2</th>
+                  <th width="45" class="text-center">P3</th>
+                  <th width="45" class="text-center">P4</th>
+                  <th width="45" class="text-center">P5</th>
+                  <th width="45" class="text-center">P6</th>
+                  <th width="45" class="text-center">P7</th>
                   <th>Catatan / Keterangan</th>
                 </tr>
               </thead>
@@ -576,7 +800,7 @@
       reportSec.style.display = 'flex';
 
       // Profile info
-      document.getElementById('prof-avatar').textContent = (student.nama || 'A').charAt(0).toUpperCase();
+      document.getElementById('prof-avatar').textContent = (student.nama || 'S').charAt(0).toUpperCase();
       document.getElementById('prof-nama').textContent = student.nama;
       document.getElementById('prof-nisn').textContent = student.nisn || student.id || '-';
       document.getElementById('prof-kelas').textContent = `Kelas ${student.kelas}`;
@@ -616,10 +840,10 @@
     }
 
     function switchWaliTab(tabName) {
-      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-pill-btn').forEach(btn => btn.classList.remove('active'));
       document.querySelectorAll('.tab-pane').forEach(pane => pane.style.display = 'none');
 
-      const targetBtn = document.querySelector(`.tab-btn[onclick*="${tabName}"]`);
+      const targetBtn = document.querySelector(`.tab-pill-btn[onclick*="${tabName}"]`);
       if (targetBtn) targetBtn.classList.add('active');
 
       const targetPane = document.getElementById(`tab-content-${tabName}`);
