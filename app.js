@@ -259,40 +259,64 @@ function loadSettings() {
   updateSyncBadge();
 }
 
+function mergeListById(localList = [], cloudList = [], idKey = 'id') {
+  if (!cloudList || cloudList.length === 0) return localList || [];
+  if (!localList || localList.length === 0) return cloudList || [];
+
+  const map = new Map();
+  localList.forEach(item => {
+    if (!item) return;
+    const key = String(item[idKey] || item.id || item.nisn || item.username).trim();
+    if (key) map.set(key, item);
+  });
+
+  cloudList.forEach(item => {
+    if (!item) return;
+    const key = String(item[idKey] || item.id || item.nisn || item.username).trim();
+    if (key) {
+      const existing = map.get(key);
+      map.set(key, existing ? { ...existing, ...item } : item);
+    }
+  });
+
+  return Array.from(map.values());
+}
+
 async function loadData() {
   initSupabase();
 
-  let loadedFromSupabase = false;
-  if (supabaseClient) {
-    loadedFromSupabase = await syncPullFromSupabase(true);
+  // 1. Read LocalStorage baseline first so local data is never lost
+  const localDb = localStorage.getItem('schoolDb');
+  if (localDb) {
+    try {
+      const parsed = JSON.parse(localDb);
+      if (Array.isArray(parsed.students)) state.students = parsed.students;
+      if (Array.isArray(parsed.attendance)) state.attendance = parsed.attendance;
+      if (Array.isArray(parsed.lateLogs)) state.lateLogs = parsed.lateLogs;
+      if (Array.isArray(parsed.violations)) state.violations = parsed.violations;
+      if (Array.isArray(parsed.izinPulang)) state.izinPulang = parsed.izinPulang;
+      if (Array.isArray(parsed.jurnalGuru)) state.jurnalGuru = parsed.jurnalGuru;
+      if (Array.isArray(parsed.teachers)) state.teachers = parsed.teachers;
+      if (Array.isArray(parsed.kaihLogs)) state.kaihLogs = parsed.kaihLogs;
+      if (Array.isArray(parsed.accounts) && parsed.accounts.length > 0) state.accounts = parsed.accounts;
+    } catch (e) {
+      console.error('Error parsing local DB', e);
+    }
   }
 
-  // Load from LocalStorage fallback if Supabase didn't load or was empty
-  if (!loadedFromSupabase) {
-    const localDb = localStorage.getItem('schoolDb');
-    if (localDb) {
-      try {
-        const parsed = JSON.parse(localDb);
-        state.students = parsed.students || [];
-        state.attendance = parsed.attendance || [];
-        state.lateLogs = parsed.lateLogs || [];
-        state.violations = parsed.violations || [];
-        state.izinPulang = parsed.izinPulang || [];
-        state.jurnalGuru = parsed.jurnalGuru || [];
-        state.teachers = parsed.teachers || [];
-        state.kaihLogs = parsed.kaihLogs || [];
-        state.accounts = parsed.accounts || getDefaultAccounts();
-      } catch (e) {
-        console.error('Error parsing local DB', e);
-        showToast('Gagal memuat database lokal, file rusak.', 'error');
-      }
-    } else {
-      state.accounts = getDefaultAccounts();
-    }
+  if (!state.accounts || state.accounts.length === 0) {
+    state.accounts = getDefaultAccounts();
+  }
 
-    // Only push to Supabase if local state actually contains data to avoid wiping cloud database
-    const hasLocalData = state.students.length > 0 || state.teachers.length > 0 || state.attendance.length > 0;
-    if (supabaseClient && hasLocalData) {
+  // 2. Pull and merge cloud data
+  if (supabaseClient) {
+    await syncPullFromSupabase(true);
+    
+    // Ensure local data is also synced up to cloud if cloud is missing entries
+    const hasData = (state.students && state.students.length > 0) ||
+                    (state.teachers && state.teachers.length > 0) ||
+                    (state.jurnalGuru && state.jurnalGuru.length > 0);
+    if (hasData) {
       syncPushToSupabase(true);
     }
   }
@@ -442,16 +466,16 @@ async function syncPullFromSupabase(silent = true) {
       ]);
 
       if (!resStudents.error && !resTeachers.error && !resAttendance.error) {
-        state.students = resStudents.data || [];
-        state.teachers = resTeachers.data || [];
-        state.attendance = resAttendance.data || [];
-        state.lateLogs = resLate.data || [];
-        state.violations = resViolations.data || [];
-        state.izinPulang = resIzin.data || [];
-        state.jurnalGuru = resJurnal.data || [];
-        state.kaihLogs = resKaih.data || [];
+        state.students = mergeListById(state.students, resStudents.data || []);
+        state.teachers = mergeListById(state.teachers, resTeachers.data || []);
+        state.attendance = mergeListById(state.attendance, resAttendance.data || []);
+        state.lateLogs = mergeListById(state.lateLogs, resLate.data || []);
+        state.violations = mergeListById(state.violations, resViolations.data || []);
+        state.izinPulang = mergeListById(state.izinPulang, resIzin.data || []);
+        state.jurnalGuru = mergeListById(state.jurnalGuru, resJurnal.data || []);
+        state.kaihLogs = mergeListById(state.kaihLogs, resKaih.data || []);
         if (resAccounts.data && resAccounts.data.length > 0) {
-          state.accounts = resAccounts.data;
+          state.accounts = mergeListById(state.accounts, resAccounts.data);
         }
         pulledFromTables = true;
       }
@@ -468,15 +492,33 @@ async function syncPullFromSupabase(silent = true) {
 
       if (error || !data) return false;
 
-      if (Array.isArray(data.students)) state.students = data.students;
-      if (Array.isArray(data.attendance)) state.attendance = data.attendance;
-      if (Array.isArray(data.lateLogs)) state.lateLogs = data.lateLogs;
-      if (Array.isArray(data.violations)) state.violations = data.violations;
-      if (Array.isArray(data.izinPulang)) state.izinPulang = data.izinPulang;
-      if (Array.isArray(data.jurnalGuru)) state.jurnalGuru = data.jurnalGuru;
-      if (Array.isArray(data.teachers)) state.teachers = data.teachers;
-      if (Array.isArray(data.kaihLogs)) state.kaihLogs = data.kaihLogs;
-      if (Array.isArray(data.accounts) && data.accounts.length > 0) state.accounts = data.accounts;
+      if (Array.isArray(data.students) && data.students.length > 0) {
+        state.students = mergeListById(state.students, data.students);
+      }
+      if (Array.isArray(data.attendance) && data.attendance.length > 0) {
+        state.attendance = mergeListById(state.attendance, data.attendance);
+      }
+      if (Array.isArray(data.lateLogs) && data.lateLogs.length > 0) {
+        state.lateLogs = mergeListById(state.lateLogs, data.lateLogs);
+      }
+      if (Array.isArray(data.violations) && data.violations.length > 0) {
+        state.violations = mergeListById(state.violations, data.violations);
+      }
+      if (Array.isArray(data.izinPulang) && data.izinPulang.length > 0) {
+        state.izinPulang = mergeListById(state.izinPulang, data.izinPulang);
+      }
+      if (Array.isArray(data.jurnalGuru) && data.jurnalGuru.length > 0) {
+        state.jurnalGuru = mergeListById(state.jurnalGuru, data.jurnalGuru);
+      }
+      if (Array.isArray(data.teachers) && data.teachers.length > 0) {
+        state.teachers = mergeListById(state.teachers, data.teachers);
+      }
+      if (Array.isArray(data.kaihLogs) && data.kaihLogs.length > 0) {
+        state.kaihLogs = mergeListById(state.kaihLogs, data.kaihLogs);
+      }
+      if (Array.isArray(data.accounts) && data.accounts.length > 0) {
+        state.accounts = mergeListById(state.accounts, data.accounts);
+      }
     }
 
     saveLocalState();

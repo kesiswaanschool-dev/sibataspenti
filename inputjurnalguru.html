@@ -438,7 +438,40 @@
       } catch (e) {}
     }
 
+    function mergeDbArrays(localArr = [], cloudArr = [], key = 'id') {
+      if (!cloudArr || cloudArr.length === 0) return localArr || [];
+      if (!localArr || localArr.length === 0) return cloudArr || [];
+      const map = new Map();
+      localArr.forEach(item => {
+        if (!item) return;
+        const k = String(item[key] || item.id || item.nisn || item.nip).trim();
+        if (k) map.set(k, item);
+      });
+      cloudArr.forEach(item => {
+        if (!item) return;
+        const k = String(item[key] || item.id || item.nisn || item.nip).trim();
+        if (k) {
+          const existing = map.get(k);
+          map.set(k, existing ? { ...existing, ...item } : item);
+        }
+      });
+      return Array.from(map.values());
+    }
+
     async function loadDatabase() {
+      // 1. Read LocalStorage baseline first
+      const localDb = localStorage.getItem('schoolDb');
+      if (localDb) {
+        try {
+          const parsed = JSON.parse(localDb);
+          if (Array.isArray(parsed.teachers)) appDb.teachers = parsed.teachers;
+          if (Array.isArray(parsed.students)) appDb.students = parsed.students;
+          if (Array.isArray(parsed.attendance)) appDb.attendance = parsed.attendance;
+          if (Array.isArray(parsed.jurnalGuru)) appDb.jurnalGuru = parsed.jurnalGuru;
+        } catch (e) {}
+      }
+
+      // 2. Fetch and merge cloud data
       if (supabaseClient) {
         try {
           const [resJurnal, resTeachers, resStudents, resAttendance] = await Promise.all([
@@ -449,10 +482,10 @@
           ]);
 
           if (!resJurnal.error && !resTeachers.error) {
-            appDb.jurnalGuru = resJurnal.data || [];
-            appDb.teachers = resTeachers.data || [];
-            appDb.students = resStudents.data || [];
-            appDb.attendance = resAttendance.data || [];
+            appDb.jurnalGuru = mergeDbArrays(appDb.jurnalGuru, resJurnal.data || []);
+            appDb.teachers = mergeDbArrays(appDb.teachers, resTeachers.data || []);
+            appDb.students = mergeDbArrays(appDb.students, resStudents.data || []);
+            appDb.attendance = mergeDbArrays(appDb.attendance, resAttendance.data || []);
             saveLocalDatabase();
             setupInputRealtime();
             return;
@@ -464,24 +497,13 @@
         try {
           const { data, error } = await supabaseClient.from('school_data').select('*').eq('id', 1).maybeSingle();
           if (!error && data) {
-            if (data.teachers) appDb.teachers = data.teachers;
-            if (data.students) appDb.students = data.students;
-            if (data.attendance) appDb.attendance = data.attendance;
-            if (data.jurnalGuru) appDb.jurnalGuru = data.jurnalGuru;
+            if (Array.isArray(data.teachers) && data.teachers.length > 0) appDb.teachers = mergeDbArrays(appDb.teachers, data.teachers);
+            if (Array.isArray(data.students) && data.students.length > 0) appDb.students = mergeDbArrays(appDb.students, data.students);
+            if (Array.isArray(data.attendance) && data.attendance.length > 0) appDb.attendance = mergeDbArrays(appDb.attendance, data.attendance);
+            if (Array.isArray(data.jurnalGuru) && data.jurnalGuru.length > 0) appDb.jurnalGuru = mergeDbArrays(appDb.jurnalGuru, data.jurnalGuru);
             saveLocalDatabase();
             return;
           }
-        } catch (e) {}
-      }
-
-      const localDb = localStorage.getItem('schoolDb');
-      if (localDb) {
-        try {
-          const parsed = JSON.parse(localDb);
-          appDb.teachers = parsed.teachers || [];
-          appDb.students = parsed.students || [];
-          appDb.attendance = parsed.attendance || [];
-          appDb.jurnalGuru = parsed.jurnalGuru || [];
         } catch (e) {}
       }
     }
