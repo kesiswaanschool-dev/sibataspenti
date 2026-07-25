@@ -414,8 +414,53 @@
       }
     });
 
+    let realtimeInputChannel = null;
+
+    function setupInputRealtime() {
+      if (!supabaseClient || realtimeInputChannel) return;
+      try {
+        realtimeInputChannel = supabaseClient
+          .channel('input-jurnal-changes')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'jurnal_guru' }, (payload) => {
+            const { eventType, new: newRow, old: oldRow } = payload;
+            if (eventType === 'INSERT' || eventType === 'UPDATE') {
+              if (!newRow || !newRow.id) return;
+              const idx = (appDb.jurnalGuru || []).findIndex(j => String(j.id) === String(newRow.id));
+              if (idx >= 0) appDb.jurnalGuru[idx] = { ...appDb.jurnalGuru[idx], ...newRow };
+              else appDb.jurnalGuru.unshift(newRow);
+            } else if (eventType === 'DELETE' && oldRow) {
+              appDb.jurnalGuru = (appDb.jurnalGuru || []).filter(j => String(j.id) !== String(oldRow.id));
+            }
+            saveLocalDatabase();
+            if (typeof renderMyJournalHistory === 'function') renderMyJournalHistory();
+          })
+          .subscribe();
+      } catch (e) {}
+    }
+
     async function loadDatabase() {
       if (supabaseClient) {
+        try {
+          const [resJurnal, resTeachers, resStudents, resAttendance] = await Promise.all([
+            supabaseClient.from('jurnal_guru').select('*'),
+            supabaseClient.from('teachers').select('*'),
+            supabaseClient.from('students').select('*'),
+            supabaseClient.from('attendance').select('*')
+          ]);
+
+          if (!resJurnal.error && !resTeachers.error) {
+            appDb.jurnalGuru = resJurnal.data || [];
+            appDb.teachers = resTeachers.data || [];
+            appDb.students = resStudents.data || [];
+            appDb.attendance = resAttendance.data || [];
+            saveLocalDatabase();
+            setupInputRealtime();
+            return;
+          }
+        } catch (e) {
+          console.warn('Per-table fetch fallback in inputjurnalguru:', e);
+        }
+
         try {
           const { data, error } = await supabaseClient.from('school_data').select('*').eq('id', 1).maybeSingle();
           if (!error && data) {
@@ -453,11 +498,15 @@
       localStorage.setItem('schoolDb', JSON.stringify(existingDb));
     }
 
-    async function saveDatabase() {
+    async function saveDatabase(singleEntry = null) {
       saveLocalDatabase();
 
       if (supabaseClient) {
         try {
+          if (singleEntry) {
+            await supabaseClient.from('jurnal_guru').upsert(singleEntry, { onConflict: 'id' });
+          }
+
           let existingDb = {};
           const localDb = localStorage.getItem('schoolDb');
           if (localDb) {
@@ -663,7 +712,7 @@
       if (!appDb.jurnalGuru) appDb.jurnalGuru = [];
       appDb.jurnalGuru.unshift(entry);
 
-      saveDatabase();
+      saveDatabase(entry);
       showToast('Jurnal Guru berhasil disimpan!', 'success');
 
       // Reset fields

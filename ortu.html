@@ -801,18 +801,49 @@
       // 0. Try Supabase Cloud Database first
       if (supabaseClient) {
         try {
-          const { data, error } = await supabaseClient.from('school_data').select('*').eq('id', 1).maybeSingle();
-          if (!error && data) {
-            appDb = {
-              students: data.students || [],
-              attendance: data.attendance || [],
-              lateLogs: data.lateLogs || [],
-              violations: data.violations || [],
-              izinPulang: data.izinPulang || [],
-              jurnalGuru: data.jurnalGuru || [],
-              teachers: data.teachers || [],
-              kaihLogs: data.kaihLogs || []
-            };
+          let loadedFromTables = false;
+          try {
+            const [resStudents, resAttendance, resLate, resViolations, resIzin] = await Promise.all([
+              supabaseClient.from('students').select('*'),
+              supabaseClient.from('attendance').select('*'),
+              supabaseClient.from('late_logs').select('*'),
+              supabaseClient.from('violations').select('*'),
+              supabaseClient.from('izin_pulang').select('*')
+            ]);
+
+            if (!resStudents.error && !resAttendance.error) {
+              appDb = {
+                students: resStudents.data || [],
+                attendance: resAttendance.data || [],
+                lateLogs: resLate.data || [],
+                violations: resViolations.data || [],
+                izinPulang: resIzin.data || [],
+                jurnalGuru: [],
+                teachers: [],
+                kaihLogs: []
+              };
+              loadedFromTables = true;
+            }
+          } catch (e) {}
+
+          if (!loadedFromTables) {
+            const { data, error } = await supabaseClient.from('school_data').select('*').eq('id', 1).maybeSingle();
+            if (!error && data) {
+              appDb = {
+                students: data.students || [],
+                attendance: data.attendance || [],
+                lateLogs: data.lateLogs || [],
+                violations: data.violations || [],
+                izinPulang: data.izinPulang || [],
+                jurnalGuru: data.jurnalGuru || [],
+                teachers: data.teachers || [],
+                kaihLogs: data.kaihLogs || []
+              };
+              loadedFromTables = true;
+            }
+          }
+
+          if (loadedFromTables) {
             dbSource = 'supabase';
             if (connDot) connDot.className = 'connection-dot conn-github';
             if (connText) connText.textContent = `Supabase Cloud (Aktif - ${appDb.students.length} Siswa)`;

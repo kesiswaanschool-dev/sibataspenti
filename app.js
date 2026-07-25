@@ -332,6 +332,8 @@ async function persistData() {
 }
 
 // --- Supabase Cloud Sync Engine ---
+let realtimeChannel = null;
+
 function updateSyncBadge() {
   const indicator = document.getElementById('sync-status-indicator');
   const text = document.getElementById('sync-status-text');
@@ -351,31 +353,137 @@ function updateSyncBadge() {
   }
 }
 
+function setupSupabaseRealtime() {
+  if (!supabaseClient || realtimeChannel) return;
+  try {
+    realtimeChannel = supabaseClient
+      .channel('public-schema-changes')
+      .on('postgres_changes', { event: '*', schema: 'public' }, (payload) => {
+        handleRealtimePayload(payload);
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('Realtime Supabase Active');
+        }
+      });
+  } catch (e) {
+    console.warn('Gagal mengaktifkan Realtime Supabase:', e);
+  }
+}
+
+function handleRealtimePayload(payload) {
+  const { table, eventType, new: newRow, old: oldRow } = payload;
+  if (!table) return;
+
+  const tableToKey = {
+    'students': 'students',
+    'teachers': 'teachers',
+    'attendance': 'attendance',
+    'late_logs': 'lateLogs',
+    'violations': 'violations',
+    'izin_pulang': 'izinPulang',
+    'jurnal_guru': 'jurnalGuru',
+    'kaih_logs': 'kaihLogs',
+    'accounts': 'accounts'
+  };
+
+  const key = tableToKey[table];
+  if (!key) {
+    // Legacy school_data or unknown table
+    syncPullFromSupabase(true);
+    return;
+  }
+
+  if (eventType === 'INSERT' || eventType === 'UPDATE') {
+    if (!newRow || !newRow.id) return;
+    const list = state[key] || [];
+    const idx = list.findIndex(i => String(i.id) === String(newRow.id));
+    if (idx >= 0) {
+      list[idx] = { ...list[idx], ...newRow };
+    } else {
+      list.unshift(newRow);
+    }
+    state[key] = list;
+  } else if (eventType === 'DELETE') {
+    if (oldRow && oldRow.id) {
+      state[key] = (state[key] || []).filter(i => String(i.id) !== String(oldRow.id));
+    }
+  }
+
+  saveLocalState();
+  refreshAllUI();
+}
+
 async function syncPullFromSupabase(silent = true) {
   if (!supabaseClient) return false;
   try {
-    const { data, error } = await supabaseClient
-      .from('school_data')
-      .select('*')
-      .eq('id', 1)
-      .maybeSingle();
+    let pulledFromTables = false;
+    try {
+      const [
+        resStudents,
+        resTeachers,
+        resAttendance,
+        resLate,
+        resViolations,
+        resIzin,
+        resJurnal,
+        resKaih,
+        resAccounts
+      ] = await Promise.all([
+        supabaseClient.from('students').select('*'),
+        supabaseClient.from('teachers').select('*'),
+        supabaseClient.from('attendance').select('*'),
+        supabaseClient.from('late_logs').select('*'),
+        supabaseClient.from('violations').select('*'),
+        supabaseClient.from('izin_pulang').select('*'),
+        supabaseClient.from('jurnal_guru').select('*'),
+        supabaseClient.from('kaih_logs').select('*'),
+        supabaseClient.from('accounts').select('*')
+      ]);
 
-    if (error || !data) return false;
+      if (!resStudents.error && !resTeachers.error && !resAttendance.error) {
+        state.students = resStudents.data || [];
+        state.teachers = resTeachers.data || [];
+        state.attendance = resAttendance.data || [];
+        state.lateLogs = resLate.data || [];
+        state.violations = resViolations.data || [];
+        state.izinPulang = resIzin.data || [];
+        state.jurnalGuru = resJurnal.data || [];
+        state.kaihLogs = resKaih.data || [];
+        if (resAccounts.data && resAccounts.data.length > 0) {
+          state.accounts = resAccounts.data;
+        }
+        pulledFromTables = true;
+      }
+    } catch (e) {
+      console.warn('Pull per-tabel belum dibuat/error, mencoba fallback school_data:', e);
+    }
 
-    // Pull arrays from Supabase if present
-    if (Array.isArray(data.students)) state.students = data.students;
-    if (Array.isArray(data.attendance)) state.attendance = data.attendance;
-    if (Array.isArray(data.lateLogs)) state.lateLogs = data.lateLogs;
-    if (Array.isArray(data.violations)) state.violations = data.violations;
-    if (Array.isArray(data.izinPulang)) state.izinPulang = data.izinPulang;
-    if (Array.isArray(data.jurnalGuru)) state.jurnalGuru = data.jurnalGuru;
-    if (Array.isArray(data.teachers)) state.teachers = data.teachers;
-    if (Array.isArray(data.kaihLogs)) state.kaihLogs = data.kaihLogs;
-    if (Array.isArray(data.accounts) && data.accounts.length > 0) state.accounts = data.accounts;
+    if (!pulledFromTables) {
+      const { data, error } = await supabaseClient
+        .from('school_data')
+        .select('*')
+        .eq('id', 1)
+        .maybeSingle();
+
+      if (error || !data) return false;
+
+      if (Array.isArray(data.students)) state.students = data.students;
+      if (Array.isArray(data.attendance)) state.attendance = data.attendance;
+      if (Array.isArray(data.lateLogs)) state.lateLogs = data.lateLogs;
+      if (Array.isArray(data.violations)) state.violations = data.violations;
+      if (Array.isArray(data.izinPulang)) state.izinPulang = data.izinPulang;
+      if (Array.isArray(data.jurnalGuru)) state.jurnalGuru = data.jurnalGuru;
+      if (Array.isArray(data.teachers)) state.teachers = data.teachers;
+      if (Array.isArray(data.kaihLogs)) state.kaihLogs = data.kaihLogs;
+      if (Array.isArray(data.accounts) && data.accounts.length > 0) state.accounts = data.accounts;
+    }
 
     saveLocalState();
     refreshAllUI();
     checkAuthStatus();
+    setupSupabaseRealtime();
+
     if (!silent) showToast('Data terbaru berhasil dimuat dari Supabase Cloud!', 'success');
     return true;
   } catch (err) {
@@ -387,12 +495,6 @@ async function syncPullFromSupabase(silent = true) {
 async function syncPushToSupabase(silent = true) {
   if (!supabaseClient) return;
 
-  // Don't push completely empty state to Supabase if Supabase already has data
-  const isStateEmpty = (!state.students || state.students.length === 0) &&
-                       (!state.teachers || state.teachers.length === 0) &&
-                       (!state.attendance || state.attendance.length === 0) &&
-                       (!state.jurnalGuru || state.jurnalGuru.length === 0);
-
   const indicator = document.getElementById('sync-status-indicator');
   const text = document.getElementById('sync-status-text');
   if (indicator) {
@@ -401,20 +503,44 @@ async function syncPushToSupabase(silent = true) {
   }
 
   try {
-    if (isStateEmpty) {
-      const { data: existing } = await supabaseClient
-        .from('school_data')
-        .select('*')
-        .eq('id', 1)
-        .maybeSingle();
-
-      if (existing && ((existing.students && existing.students.length > 0) || (existing.teachers && existing.teachers.length > 0))) {
-        // Supabase has data, pull instead of overwriting with empty
-        await syncPullFromSupabase(true);
-        return;
+    // 1. Try Upserting to individual tables
+    try {
+      const promises = [];
+      if (state.students && state.students.length > 0) {
+        promises.push(supabaseClient.from('students').upsert(state.students, { onConflict: 'id' }));
       }
+      if (state.teachers && state.teachers.length > 0) {
+        promises.push(supabaseClient.from('teachers').upsert(state.teachers, { onConflict: 'id' }));
+      }
+      if (state.attendance && state.attendance.length > 0) {
+        promises.push(supabaseClient.from('attendance').upsert(state.attendance, { onConflict: 'id' }));
+      }
+      if (state.lateLogs && state.lateLogs.length > 0) {
+        promises.push(supabaseClient.from('late_logs').upsert(state.lateLogs, { onConflict: 'id' }));
+      }
+      if (state.violations && state.violations.length > 0) {
+        promises.push(supabaseClient.from('violations').upsert(state.violations, { onConflict: 'id' }));
+      }
+      if (state.izinPulang && state.izinPulang.length > 0) {
+        promises.push(supabaseClient.from('izin_pulang').upsert(state.izinPulang, { onConflict: 'id' }));
+      }
+      if (state.jurnalGuru && state.jurnalGuru.length > 0) {
+        promises.push(supabaseClient.from('jurnal_guru').upsert(state.jurnalGuru, { onConflict: 'id' }));
+      }
+      if (state.kaihLogs && state.kaihLogs.length > 0) {
+        promises.push(supabaseClient.from('kaih_logs').upsert(state.kaihLogs, { onConflict: 'id' }));
+      }
+      if (state.accounts && state.accounts.length > 0) {
+        promises.push(supabaseClient.from('accounts').upsert(getAccountsList(), { onConflict: 'id' }));
+      }
+      if (promises.length > 0) {
+        await Promise.all(promises);
+      }
+    } catch (e) {
+      console.warn('Sync per-tabel error:', e);
     }
 
+    // 2. Also update legacy single row as fallback
     const payload = {
       id: 1,
       students: state.students || [],
