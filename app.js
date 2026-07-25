@@ -5635,7 +5635,7 @@ function closeAkunModal() {
   if (modal) modal.style.display = 'none';
 }
 
-function handleAkunFormSubmit(e) {
+async function handleAkunFormSubmit(e) {
   e.preventDefault();
   const id = document.getElementById('akun-modal-id').value;
   const nama = document.getElementById('akun-modal-nama').value.trim();
@@ -5663,14 +5663,26 @@ function handleAkunFormSubmit(e) {
     accounts.push({ id: newId, nama, username, password, role });
   }
 
+  // Ensure a corresponding entry in state.teachers if user is a teacher/guru
+  if (!state.teachers) state.teachers = [];
+  const existingTeacher = state.teachers.find(t => (t.nip && t.nip === username) || t.nama.toLowerCase() === nama.toLowerCase());
+  if (!existingTeacher) {
+    state.teachers.push({
+      id: 'guru_' + Date.now(),
+      nip: username,
+      nama: nama,
+      mapel: role === 'guru-piket' ? 'Guru Piket' : 'Guru'
+    });
+  }
+
   state.accounts = accounts;
-  persistData();
+  await persistData();
   renderAkunTable();
   closeAkunModal();
   showToast(id ? 'Akun berhasil diperbarui!' : 'Akun baru berhasil ditambahkan!', 'success');
 }
 
-function deleteAkun(id) {
+async function deleteAkun(id) {
   let accounts = getAccountsList();
   const acc = accounts.find(a => String(a.id) === String(id));
   if (!acc) return;
@@ -5682,13 +5694,13 @@ function deleteAkun(id) {
 
   if (confirm(`Apakah Anda yakin ingin menghapus akun "${acc.nama}" (${acc.username})?`)) {
     state.accounts = accounts.filter(a => String(a.id) !== String(id));
-    persistData();
+    await persistData();
     renderAkunTable();
     showToast('Akun berhasil dihapus.', 'info');
   }
 }
 
-function handleInlineAkunSubmit(e) {
+async function handleInlineAkunSubmit(e) {
   e.preventDefault();
   const nama = document.getElementById('inline-akun-nama').value.trim();
   const username = document.getElementById('inline-akun-username').value.trim();
@@ -5711,8 +5723,20 @@ function handleInlineAkunSubmit(e) {
   const newId = String(Date.now());
   accounts.push({ id: newId, nama, username, password, role });
 
+  // Ensure a corresponding entry in state.teachers if user is a teacher/guru
+  if (!state.teachers) state.teachers = [];
+  const existingTeacher = state.teachers.find(t => (t.nip && t.nip === username) || t.nama.toLowerCase() === nama.toLowerCase());
+  if (!existingTeacher) {
+    state.teachers.push({
+      id: 'guru_' + Date.now(),
+      nip: username,
+      nama: nama,
+      mapel: role === 'guru-piket' ? 'Guru Piket' : 'Guru'
+    });
+  }
+
   state.accounts = accounts;
-  persistData();
+  await persistData();
 
   document.getElementById('form-inline-tambah-akun').reset();
   showToast('Akun baru berhasil ditambahkan!', 'success');
