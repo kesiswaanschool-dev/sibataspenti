@@ -599,17 +599,44 @@ async function syncPushToSupabase(silent = true) {
       console.warn('Sync per-tabel error:', e);
     }
 
-    // 2. Also update single row school_data with both column formats for 100% compatibility
+    // 2. Also update single row school_data with merged arrays to prevent overwriting external entries
+    let cloudData = {};
+    try {
+      const { data } = await supabaseClient.from('school_data').select('*').eq('id', 1).maybeSingle();
+      if (data) cloudData = data;
+    } catch(e) {}
+
+    const mergedStudents = mergeListById(state.students, cloudData.students || []);
+    const mergedAttendance = mergeListById(state.attendance, cloudData.attendance || [], 'id');
+    const mergedLate = mergeListById(state.lateLogs, cloudData.latelogs || cloudData.lateLogs || [], 'id');
+    const mergedViolations = mergeListById(state.violations, cloudData.violations || [], 'id');
+    const mergedIzin = mergeListById(state.izinPulang, cloudData.izinpulang || cloudData.izinPulang || [], 'id');
+    const mergedJurnal = mergeListById(state.jurnalGuru, cloudData.jurnalguru || cloudData.jurnalGuru || [], 'id');
+    const mergedTeachers = mergeListById(state.teachers, cloudData.teachers || []);
+    const mergedKaih = mergeListById(state.kaihLogs, cloudData.kaihlogs || cloudData.kaihLogs || [], 'id');
+
+    state.students = mergedStudents;
+    state.attendance = mergedAttendance;
+    state.lateLogs = mergedLate;
+    state.violations = mergedViolations;
+    state.izinPulang = mergedIzin;
+    state.jurnalGuru = mergedJurnal;
+    state.teachers = mergedTeachers;
+    state.kaihLogs = mergedKaih;
+    saveLocalState();
+
     const payload = {
+      ...cloudData,
       id: 1,
-      students: state.students || [],
-      attendance: state.attendance || [],
-      latelogs: state.lateLogs || [],
-      violations: state.violations || [],
-      izinpulang: state.izinPulang || [],
-      jurnalguru: state.jurnalGuru || [],
-      teachers: state.teachers || [],
-      kaihlogs: state.kaihLogs || [],
+      students: mergedStudents,
+      attendance: mergedAttendance,
+      latelogs: mergedLate,
+      violations: mergedViolations,
+      izinpulang: mergedIzin,
+      jurnalguru: mergedJurnal,
+      teachers: mergedTeachers,
+      kaihlogs: mergedKaih,
+      kaihLogs: mergedKaih,
       accounts: getAccountsList(),
       updated_at: new Date().toISOString()
     };
@@ -5023,7 +5050,18 @@ function render7KaihHistoryTable() {
     logs = logs.filter(l => l.kelas === filterKelas);
   }
   if (filterSiswa) {
-    logs = logs.filter(l => String(l.student_id) === String(filterSiswa));
+    const student = (state.students || []).find(s => String(s.id) === String(filterSiswa));
+    const sNisn = student ? String(student.nisn || '').trim() : '';
+    const sNama = student ? String(student.nama || '').trim().toLowerCase() : '';
+
+    logs = logs.filter(l => {
+      const lId = String(l.student_id || '').trim();
+      const lNisn = String(l.nisn || '').trim();
+      const lNama = String(l.nama || '').trim().toLowerCase();
+      return lId === String(filterSiswa) || 
+             (sNisn && (lId === sNisn || lNisn === sNisn)) ||
+             (sNama && lNama === sNama);
+    });
   }
 
   if (logs.length === 0) {

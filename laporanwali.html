@@ -1100,9 +1100,10 @@
         .filter(k => {
           if (!k) return false;
           const kStudId = String(k.student_id || '').trim();
+          const kNisn = String(k.nisn || '').trim();
           const kNama = String(k.nama || '').trim().toLowerCase();
           return (stdIdStr && kStudId === stdIdStr) || 
-                 (nisnStr && kStudId === nisnStr) || 
+                 (nisnStr && (kStudId === nisnStr || kNisn === nisnStr)) || 
                  (studentNamaLower && kNama === studentNamaLower);
         })
         .sort((a, b) => b.tanggal.localeCompare(a.tanggal));

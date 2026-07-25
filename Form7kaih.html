@@ -631,25 +631,47 @@
       saveLocalDatabase();
 
       if (supabaseClient) {
+        // 1. Try per-table kaih_logs upsert in isolated try-catch block
         try {
           if (singleEntry) {
             await supabaseClient.from('kaih_logs').upsert(singleEntry, { onConflict: 'id' });
           } else if (appDb.kaihLogs && appDb.kaihLogs.length > 0) {
             await supabaseClient.from('kaih_logs').upsert(appDb.kaihLogs, { onConflict: 'id' });
           }
-
-          let existingDb = {};
-          const localDb = localStorage.getItem('schoolDb');
-          if (localDb) {
-            try { existingDb = JSON.parse(localDb); } catch(e) {}
-          }
-          existingDb.id = 1;
-          existingDb.kaihLogs = appDb.kaihLogs;
-          existingDb.kaihlogs = appDb.kaihLogs;
-          existingDb.updated_at = new Date().toISOString();
-          await supabaseClient.from('school_data').upsert(existingDb, { onConflict: 'id' });
         } catch (e) {
-          console.error('Supabase save error', e);
+          console.warn('kaih_logs per-table save notice:', e);
+        }
+
+        // 2. Always update single-row school_data JSON table
+        try {
+          let cloudDb = {};
+          const { data } = await supabaseClient.from('school_data').select('*').eq('id', 1).maybeSingle();
+          if (data) cloudDb = data;
+
+          let localDb = {};
+          const localDbStr = localStorage.getItem('schoolDb');
+          if (localDbStr) {
+            try { localDb = JSON.parse(localDbStr); } catch(e) {}
+          }
+
+          const existingKaih = cloudDb.kaihLogs || cloudDb.kaihlogs || [];
+          const mergedKaih = mergeDbArrays(appDb.kaihLogs, existingKaih);
+
+          appDb.kaihLogs = mergedKaih;
+          saveLocalDatabase();
+
+          const payload = {
+            ...cloudDb,
+            ...localDb,
+            id: 1,
+            kaihLogs: mergedKaih,
+            kaihlogs: mergedKaih,
+            updated_at: new Date().toISOString()
+          };
+
+          await supabaseClient.from('school_data').upsert(payload, { onConflict: 'id' });
+        } catch (e) {
+          console.error('school_data save error in Form7kaih:', e);
         }
       }
     }
@@ -730,6 +752,7 @@
       const logData = {
         id: 'kaih-' + Date.now(),
         student_id: String(currentStudent.id),
+        nisn: currentStudent.nisn || '',
         nama: currentStudent.nama,
         kelas: currentStudent.kelas,
         tanggal: tanggal,
