@@ -626,7 +626,6 @@ async function syncPushToSupabase(silent = true) {
     saveLocalState();
 
     const payload = {
-      ...cloudData,
       id: 1,
       students: mergedStudents,
       attendance: mergedAttendance,
@@ -636,7 +635,6 @@ async function syncPushToSupabase(silent = true) {
       jurnalguru: mergedJurnal,
       teachers: mergedTeachers,
       kaihlogs: mergedKaih,
-      kaihLogs: mergedKaih,
       accounts: getAccountsList(),
       updated_at: new Date().toISOString()
     };

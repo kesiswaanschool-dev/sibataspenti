@@ -717,12 +717,16 @@
           saveLocalDatabase();
 
           const payload = {
-            ...cloudDb,
-            ...localDb,
             id: 1,
             students: mergedStudents,
-            kaihLogs: mergedKaih,
+            attendance: cloudDb.attendance || [],
+            latelogs: cloudDb.latelogs || [],
+            violations: cloudDb.violations || [],
+            izinpulang: cloudDb.izinpulang || [],
+            jurnalguru: cloudDb.jurnalguru || [],
+            teachers: cloudDb.teachers || [],
             kaihlogs: mergedKaih,
+            accounts: cloudDb.accounts || [],
             updated_at: new Date().toISOString()
           };
 
