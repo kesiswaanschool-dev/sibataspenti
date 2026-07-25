@@ -2,7 +2,7 @@
 // Masukkan URL dan ANON KEY Supabase Anda di sini untuk menghubungkan database Supabase secara otomatis
 const SUPABASE_CONFIG = {
   url: 'https://wedwjlkvnzbgrrybamqm.supabase.co',
-  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndlZHdqbGt2bnpiZ3JyeWJhbXFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ4NzA0MjIsImV4cCI6MjEwMDQ0NjQyMn0.MYUa4uqQEX35ecSyQxm-iPFkPNLmLHugCXo4uOyji0Y'
+  anonKey: 'sb_publishable_h4RSXPFlcFVIpArkD9PfhA_8M-R5fh0'
 };
 
 let supabaseClient = null;
