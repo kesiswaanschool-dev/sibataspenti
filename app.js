@@ -465,7 +465,12 @@ async function syncPullFromSupabase(silent = true) {
         supabaseClient.from('accounts').select('*')
       ]);
 
-      if (!resStudents.error && !resTeachers.error && !resAttendance.error) {
+      const hasPerTableData = (resStudents.data && resStudents.data.length > 0) ||
+                              (resTeachers.data && resTeachers.data.length > 0) ||
+                              (resJurnal.data && resJurnal.data.length > 0) ||
+                              (resAttendance.data && resAttendance.data.length > 0);
+
+      if (!resStudents.error && !resTeachers.error && !resAttendance.error && hasPerTableData) {
         state.students = mergeListById(state.students, resStudents.data || []);
         state.teachers = mergeListById(state.teachers, resTeachers.data || []);
         state.attendance = mergeListById(state.attendance, resAttendance.data || []);
@@ -475,7 +480,7 @@ async function syncPullFromSupabase(silent = true) {
         state.jurnalGuru = mergeListById(state.jurnalGuru, resJurnal.data || []);
         state.kaihLogs = mergeListById(state.kaihLogs, resKaih.data || []);
         if (resAccounts.data && resAccounts.data.length > 0) {
-          state.accounts = mergeListById(state.accounts, resAccounts.data);
+          state.accounts = mergeListById(state.accounts, resAccounts.data, 'username');
         }
         pulledFromTables = true;
       }
@@ -517,7 +522,7 @@ async function syncPullFromSupabase(silent = true) {
         state.kaihLogs = mergeListById(state.kaihLogs, data.kaihLogs);
       }
       if (Array.isArray(data.accounts) && data.accounts.length > 0) {
-        state.accounts = mergeListById(state.accounts, data.accounts);
+        state.accounts = mergeListById(state.accounts, data.accounts, 'username');
       }
     }
 
