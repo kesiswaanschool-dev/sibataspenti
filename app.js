@@ -974,23 +974,37 @@ function handleExcelUpload(event) {
       const mappedStudents = [];
       const firstRow = json[0];
       
-      const keyNama = Object.keys(firstRow).find(k => k.toLowerCase().trim() === 'nama');
-      const keyNisn = Object.keys(firstRow).find(k => k.toLowerCase().trim() === 'nisn');
-      const keyKelas = Object.keys(firstRow).find(k => k.toLowerCase().trim() === 'kelas');
+      const keyNama = Object.keys(firstRow).find(k => {
+        const l = k.toLowerCase().trim();
+        return l === 'nama' || l.includes('nama') || l.includes('siswa') || l.includes('name');
+      });
+      const keyNisn = Object.keys(firstRow).find(k => {
+        const l = k.toLowerCase().trim();
+        return l === 'nisn' || l.includes('nisn') || l.includes('nis') || l.includes('nomor') || l.includes('id');
+      });
+      const keyKelas = Object.keys(firstRow).find(k => {
+        const l = k.toLowerCase().trim();
+        return l === 'kelas' || l.includes('kelas') || l.includes('class') || l.includes('rombel');
+      });
 
-      if (!keyNama || !keyNisn || !keyKelas) {
-        showToast('Kolom "Nama", "NISN", dan "Kelas" wajib ada di berkas Excel!', 'error');
+      if (!keyNama || !keyKelas) {
+        showToast('Kolom "Nama" dan "Kelas" wajib ada di berkas Excel!', 'error');
         toggleLoader(false);
         return;
       }
 
-      json.forEach(row => {
-        if (row[keyNama] && row[keyNisn] && row[keyKelas]) {
+      json.forEach((row, idx) => {
+        const namaVal = row[keyNama] ? String(row[keyNama]).trim() : '';
+        const nisnVal = keyNisn && row[keyNisn] ? String(row[keyNisn]).trim() : '';
+        const kelasVal = row[keyKelas] ? String(row[keyKelas]).trim() : '';
+
+        if (namaVal && kelasVal) {
+          const finalNisn = nisnVal || `nisn_${Date.now()}_${idx}`;
           mappedStudents.push({
-            id: String(row[keyNisn]).trim(), // Using NISN as unique student ID
-            nama: String(row[keyNama]).trim(),
-            nisn: String(row[keyNisn]).trim(),
-            kelas: String(row[keyKelas]).trim()
+            id: finalNisn,
+            nama: namaVal,
+            nisn: finalNisn,
+            kelas: kelasVal
           });
         }
       });
@@ -1045,22 +1059,36 @@ async function saveImportedStudents() {
 
   toggleLoader(true, 'Menyimpan data siswa...');
   try {
+    let savedOnServer = false;
     if (state.storageMode === 'server') {
-      const payload = tempImportedStudents.map(s => ({ nama: s.nama, nisn: s.nisn, kelas: s.kelas }));
-      const res = await fetch('/api/siswa/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      }).then(r => r.json());
-      
-      if (res.error) throw new Error(res.error);
-    } else {
-      // Merge or overwrite strategy: Let's upsert by NISN
+      try {
+        const payload = tempImportedStudents.map(s => ({ nama: s.nama, nisn: s.nisn, kelas: s.kelas }));
+        const res = await fetch('/api/siswa/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        }).then(r => r.json());
+        
+        if (!res.error) {
+          savedOnServer = true;
+          await loadData();
+        }
+      } catch (e) {
+        console.warn('Gagal simpan ke server, fallback ke local/Supabase:', e);
+      }
+    }
+
+    if (!savedOnServer) {
       const studentMap = new Map();
-      // Load existing
-      state.students.forEach(s => studentMap.set(s.nisn, s));
-      // Add/Update new
-      tempImportedStudents.forEach(s => studentMap.set(s.nisn, s));
+      (state.students || []).forEach(s => {
+        const key = String(s.nisn || s.id).trim();
+        studentMap.set(key, s);
+      });
+
+      tempImportedStudents.forEach(s => {
+        const key = String(s.nisn || s.id).trim();
+        studentMap.set(key, s);
+      });
 
       state.students = Array.from(studentMap.values());
       await persistData();
@@ -1069,14 +1097,14 @@ async function saveImportedStudents() {
     // Clear and hide preview
     tempImportedStudents = [];
     document.getElementById('import-preview-section').style.display = 'none';
-    document.getElementById('excel-file-input').value = '';
-    document.getElementById('uploaded-file-name').textContent = 'Belum ada file terpilih.';
-
-    if (state.storageMode === 'server') {
-      await loadData();
-    }
+    const inputEl = document.getElementById('excel-file-input');
+    if (inputEl) inputEl.value = '';
+    const labelEl = document.getElementById('uploaded-file-name');
+    if (labelEl) labelEl.textContent = 'Belum ada file terpilih.';
 
     populateClassSelect('filter-siswa-kelas');
+    populateClassSelect('absensi-kelas');
+    populateClassSelect('rekap-kelas');
     renderStudentListTable();
     showToast('Data siswa berhasil diimpor & disimpan!', 'success');
   } catch (error) {
@@ -1407,18 +1435,28 @@ async function saveImportedTeachers() {
 
   toggleLoader(true, 'Menyimpan data guru...');
   try {
+    let savedOnServer = false;
     if (state.storageMode === 'server') {
-      const payload = tempImportedTeachers.map(t => ({ nip: t.nip || '', nama: t.nama, mapel: t.mapel }));
-      const res = await fetch('/api/guru/import', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      }).then(r => r.json());
-      
-      if (res.error) throw new Error(res.error);
-    } else {
+      try {
+        const payload = tempImportedTeachers.map(t => ({ nip: t.nip || '', nama: t.nama, mapel: t.mapel }));
+        const res = await fetch('/api/guru/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        }).then(r => r.json());
+        
+        if (!res.error) {
+          savedOnServer = true;
+          await loadData();
+        }
+      } catch (e) {
+        console.warn('Gagal simpan guru ke server, fallback ke local/Supabase:', e);
+      }
+    }
+
+    if (!savedOnServer) {
       const teacherMap = new Map();
-      state.teachers.forEach(t => teacherMap.set(t.nama.toLowerCase(), t));
+      (state.teachers || []).forEach(t => teacherMap.set(t.nama.toLowerCase(), t));
       tempImportedTeachers.forEach(t => {
         const key = t.nama.toLowerCase();
         if (teacherMap.has(key)) {
@@ -1436,12 +1474,10 @@ async function saveImportedTeachers() {
 
     tempImportedTeachers = [];
     document.getElementById('import-preview-section-guru').style.display = 'none';
-    document.getElementById('excel-file-input-guru').value = '';
-    document.getElementById('uploaded-file-name-guru').textContent = 'Belum ada file terpilih.';
-
-    if (state.storageMode === 'server') {
-      await loadData();
-    }
+    const inputEl = document.getElementById('excel-file-input-guru');
+    if (inputEl) inputEl.value = '';
+    const labelEl = document.getElementById('uploaded-file-name-guru');
+    if (labelEl) labelEl.textContent = 'Belum ada file terpilih.';
 
     populateMapelSelect('filter-guru-mapel');
     renderTeacherListTable();
