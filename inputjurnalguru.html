@@ -773,7 +773,7 @@
 
       classStudents.forEach(std => {
         const rec = dayAttendance.find(a => String(a.student_id) === String(std.id));
-        const status = rec ? rec.status : 'hadir';
+        const status = rec ? rec.status : null;
 
         if (status === 'hadir') countHadir++;
         else if (status === 'sakit') { countSakit++; listSakit.push(std.nama); }

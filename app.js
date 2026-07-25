@@ -1985,7 +1985,7 @@ function loadAttendanceGrid() {
     .forEach(a => existingRecordsMap.set(a.student_id, a));
 
   classStudents.forEach((std, idx) => {
-    const record = existingRecordsMap.get(std.id) || { status: 'hadir', keterangan: '' };
+    const record = existingRecordsMap.get(std.id) || null;
     
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -1994,21 +1994,21 @@ function loadAttendanceGrid() {
       <td>${std.nisn}</td>
       <td>
         <div class="attendance-options">
-          <input type="radio" name="att-${std.id}" id="hadir-${std.id}" value="hadir" class="attendance-radio-input input-hadir" ${record.status === 'hadir' ? 'checked' : ''}>
+          <input type="radio" name="att-${std.id}" id="hadir-${std.id}" value="hadir" class="attendance-radio-input input-hadir" ${record && record.status === 'hadir' ? 'checked' : ''}>
           <label for="hadir-${std.id}" class="attendance-radio-label">HADIR</label>
 
-          <input type="radio" name="att-${std.id}" id="sakit-${std.id}" value="sakit" class="attendance-radio-input input-sakit" ${record.status === 'sakit' ? 'checked' : ''}>
+          <input type="radio" name="att-${std.id}" id="sakit-${std.id}" value="sakit" class="attendance-radio-input input-sakit" ${record && record.status === 'sakit' ? 'checked' : ''}>
           <label for="sakit-${std.id}" class="attendance-radio-label">SAKIT</label>
 
-          <input type="radio" name="att-${std.id}" id="izin-${std.id}" value="izin" class="attendance-radio-input input-izin" ${record.status === 'izin' ? 'checked' : ''}>
+          <input type="radio" name="att-${std.id}" id="izin-${std.id}" value="izin" class="attendance-radio-input input-izin" ${record && record.status === 'izin' ? 'checked' : ''}>
           <label for="izin-${std.id}" class="attendance-radio-label">IZIN</label>
 
-          <input type="radio" name="att-${std.id}" id="alpha-${std.id}" value="alpha" class="attendance-radio-input input-alpha" ${record.status === 'alpha' ? 'checked' : ''}>
+          <input type="radio" name="att-${std.id}" id="alpha-${std.id}" value="alpha" class="attendance-radio-input input-alpha" ${record && record.status === 'alpha' ? 'checked' : ''}>
           <label for="alpha-${std.id}" class="attendance-radio-label">ALPHA</label>
         </div>
       </td>
       <td>
-        <input type="text" id="ket-${std.id}" class="form-input form-input-sm" value="${record.keterangan || ''}" placeholder="Keterangan (opsional)">
+        <input type="text" id="ket-${std.id}" class="form-input form-input-sm" value="${record ? (record.keterangan || '') : ''}" placeholder="Keterangan (opsional)">
       </td>
     `;
     body.appendChild(tr);
@@ -2038,10 +2038,10 @@ async function saveAttendance() {
   
   try {
     if (state.storageMode === 'server') {
-      const payload = classStudents.map(std => {
+      const payload = classStudents.filter(std => document.querySelector(`input[name="att-${std.id}"]:checked`)).map(std => {
         const selectedRadio = document.querySelector(`input[name="att-${std.id}"]:checked`);
-        const status = selectedRadio ? selectedRadio.value : 'hadir';
-        const keterangan = document.getElementById(`ket-${std.id}`).value.trim();
+        const status = selectedRadio.value;
+        const keterangan = (document.getElementById(`ket-${std.id}`)?.value || '').trim();
         return {
           siswa_id: std.id,
           tanggal,
@@ -2067,8 +2067,9 @@ async function saveAttendance() {
       // Read new records from UI
       classStudents.forEach(std => {
         const selectedRadio = document.querySelector(`input[name="att-${std.id}"]:checked`);
-        const status = selectedRadio ? selectedRadio.value : 'hadir';
-        const keterangan = document.getElementById(`ket-${std.id}`).value.trim();
+        if (!selectedRadio) return;
+        const status = selectedRadio.value;
+        const keterangan = (document.getElementById(`ket-${std.id}`)?.value || '').trim();
         
         state.attendance.push({
           id: `${tanggal}_${std.id}`,
@@ -4575,8 +4576,8 @@ function updateJurnalAttendanceStats() {
   const listAlpha = [];
 
   classStudents.forEach(std => {
-    const rec = dayAttendance.find(a => a.student_id === std.id);
-    const status = rec ? rec.status : 'hadir';
+    const rec = dayAttendance.find(a => String(a.student_id) === String(std.id));
+    const status = rec ? rec.status : null;
 
     if (status === 'hadir') countHadir++;
     else if (status === 'sakit') { countSakit++; listSakit.push(std.nama); }
