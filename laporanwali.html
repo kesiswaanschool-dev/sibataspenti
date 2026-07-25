@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIBATA - Portal Laporan Wali Siswa</title>
+  <!-- Google Fonts: Outfit & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Lucide Icons (CDN) -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Supabase JS Client (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      background-color: var(--bg-app, #070b13);
+      color: var(--text-main, #f1f5f9);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px;
+    }
+
+    .wali-container {
+      width: 100%;
+      max-width: 1000px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .wali-header {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .logo-img {
+      width: 64px;
+      height: 64px;
+      object-fit: contain;
+      border-radius: 50%;
+      box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3);
+    }
+
+    .search-card {
+      background: var(--bg-card, rgba(21, 32, 54, 0.65));
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    }
+
+    .search-box-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .search-input-group {
+      flex: 1;
+      min-width: 260px;
+      position: relative;
+    }
+
+    .profile-card {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(168, 85, 247, 0.1) 100%);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      border-radius: 20px;
+      padding: 20px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .student-avatar {
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      background: var(--color-primary, #6366f1);
+      color: white;
+      font-size: 24px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+    }
+
+    .nav-tabs-container {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted, #94a3b8);
+      padding: 10px 16px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .tab-btn.active {
+      background: var(--color-primary, #6366f1);
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+
+    .filter-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      background: rgba(15, 23, 42, 0.4);
+      padding: 12px 16px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    @media print {
+      body { background: #fff !important; color: #000 !important; }
+      .no-print { display: none !important; }
+      .search-card, .profile-card, .table-container { box-shadow: none !important; border: 1px solid #ccc !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="wali-container">
+    <!-- Header -->
+    <header class="wali-header">
+      <img src="logo.png" alt="Logo Sekolah" class="logo-img" onerror="this.src='https://ui-avatars.com/api/?name=SMPN+3+Batam&background=6366f1&color=fff'">
+      <div>
+        <h1 style="font-size: 24px; font-weight: 800; margin: 0; background: linear-gradient(135deg, #fff 0%, #a5b4fc 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">SMP NEGERI 3 BATAM</h1>
+        <p style="margin: 4px 0 0; color: var(--color-primary-light, #c7d2fe); font-weight: 600; font-size: 14px;">PORTAL LAPORAN WALI SISWA (SIBATA)</p>
+      </div>
+    </header>
+
+    <!-- Search Section -->
+    <div class="search-card no-print">
+      <label style="font-size: 13px; font-weight: 600; color: #a5b4fc; margin-bottom: 8px; display: block;">
+        <i data-lucide="search" style="width: 14px; height: 14px; vertical-align: middle;"></i> Cari Siswa (Masukkan NISN atau Nama):
+      </label>
+      <div class="search-box-row">
+        <div class="search-input-group">
+          <input type="text" id="input-search-student" class="form-control" list="student-datalist" placeholder="Ketik NISN atau Nama Siswa..." autocomplete="off" onkeypress="handleSearchKeyPress(event)">
+          <datalist id="student-datalist"></datalist>
+        </div>
+        <button class="btn btn-primary" onclick="searchStudentReport()">
+          <i data-lucide="search"></i> Cari Laporan
+        </button>
+        <button class="btn btn-secondary" onclick="resetStudentSearch()" title="Bersihkan pencarian">
+          <i data-lucide="refresh-cw"></i> Reset
+        </button>
+      </div>
+    </div>
+
+    <!-- Empty State Prompt -->
+    <div id="section-empty-prompt" class="card text-center py-5" style="border-radius: 20px;">
+      <div style="width: 64px; height: 64px; border-radius: 50%; background: rgba(99, 102, 241, 0.1); color: var(--color-primary); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px;">
+        <i data-lucide="user-check" style="width: 32px; height: 32px;"></i>
+      </div>
+      <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 6px;">Silakan Cari Data Siswa</h3>
+      <p style="color: #94a3b8; font-size: 13px; max-width: 480px; margin: 0 auto;">
+        Ketikkan <strong>NISN</strong> atau <strong>Nama Siswa</strong> pada kolom pencarian di atas untuk melihat laporan lengkap Absensi, Keterlambatan, Pelanggaran, Izin Pulang, dan 7 KAIH.
+      </p>
+    </div>
+
+    <!-- Active Student Report View -->
+    <div id="section-student-report" style="display: none; flex-direction: column; gap: 20px;">
+      
+      <!-- Profile Card -->
+      <div class="profile-card">
+        <div style="display: flex; align-items: center; gap: 16px;">
+          <div class="student-avatar" id="prof-avatar">A</div>
+          <div>
+            <h2 id="prof-nama" style="font-size: 20px; font-weight: 700; margin: 0; color: #fff;">-</h2>
+            <div style="display: flex; gap: 8px; align-items: center; margin-top: 4px; font-size: 13px;">
+              <span class="badge badge-info" id="prof-kelas">-</span>
+              <span style="color: #94a3b8;">NISN: <code id="prof-nisn" style="color: #c7d2fe; font-weight: 600;">-</code></span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;" class="no-print">
+          <button class="btn btn-secondary btn-sm" onclick="window.print()">
+            <i data-lucide="printer"></i> Cetak Laporan
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Summary Cards -->
+      <div class="grid grid-cols-4 gap-3">
+        <div class="card p-3 text-center" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2);">
+          <div style="font-size: 11px; color: #6ee7b7; font-weight: 600;">TOTAL HADIR</div>
+          <div id="stat-hadir" style="font-size: 22px; font-weight: 800; color: #10b981;">0</div>
+        </div>
+        <div class="card p-3 text-center" style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2);">
+          <div style="font-size: 11px; color: #fcd34d; font-weight: 600;">SAKIT / IZIN / ALPHA</div>
+          <div id="stat-non-hadir" style="font-size: 22px; font-weight: 800; color: #f59e0b;">0</div>
+        </div>
+        <div class="card p-3 text-center" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2);">
+          <div style="font-size: 11px; color: #fca5a5; font-weight: 600;">KETERLAMBATAN</div>
+          <div id="stat-terlambat" style="font-size: 22px; font-weight: 800; color: #ef4444;">0</div>
+        </div>
+        <div class="card p-3 text-center" style="background: rgba(168, 85, 247, 0.1); border: 1px solid rgba(168, 85, 247, 0.2);">
+          <div style="font-size: 11px; color: #d8b4fe; font-weight: 600;">PELANGGARAN</div>
+          <div id="stat-pelanggaran" style="font-size: 22px; font-weight: 800; color: #a855f7;">0</div>
+        </div>
+      </div>
+
+      <!-- Report Tabs Navigation -->
+      <div class="nav-tabs-container no-print">
+        <button class="tab-btn active" onclick="switchWaliTab('absensi')">
+          <i data-lucide="calendar"></i> Absensi Siswa
+        </button>
+        <button class="tab-btn" onclick="switchWaliTab('terlambat')">
+          <i data-lucide="clock"></i> Keterlambatan
+        </button>
+        <button class="tab-btn" onclick="switchWaliTab('pelanggaran')">
+          <i data-lucide="alert-triangle"></i> Pelanggaran
+        </button>
+        <button class="tab-btn" onclick="switchWaliTab('izin-pulang')">
+          <i data-lucide="log-out"></i> Izin Pulang
+        </button>
+        <button class="tab-btn" onclick="switchWaliTab('kaih')">
+          <i data-lucide="star"></i> Laporan 7 KAIH
+        </button>
+      </div>
+
+      <!-- TAB 1: ABSENSI SISWA -->
+      <div id="tab-content-absensi" class="tab-pane">
+        <div class="card p-4" style="display: flex; flex-direction: column; gap: 16px;">
+          <!-- Filter Bar -->
+          <div class="filter-bar no-print">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <i data-lucide="filter" style="width: 16px; height: 16px; color: #a5b4fc;"></i>
+              <span style="font-size: 13px; font-weight: 600; color: #c7d2fe;">Filter Bulan Absensi:</span>
+              <select id="filter-absensi-bulan" class="form-control" style="width: auto; padding: 6px 12px; font-size: 13px;" onchange="renderStudentAttendanceTable()">
+                <option value="">Semua Bulan</option>
+                <option value="01">Januari</option>
+                <option value="02">Februari</option>
+                <option value="03">Maret</option>
+                <option value="04">April</option>
+                <option value="05">Mei</option>
+                <option value="06">Juni</option>
+                <option value="07">Juli</option>
+                <option value="08">Agustus</option>
+                <option value="09">September</option>
+                <option value="10">Oktober</option>
+                <option value="11">November</option>
+                <option value="12">Desember</option>
+              </select>
+            </div>
+            <div id="count-absensi-filtered" style="font-size: 12px; color: #94a3b8; font-weight: 500;">
+              Menampilkan data absensi
+            </div>
+          </div>
+
+          <!-- Attendance Table -->
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th width="60" class="text-center">No</th>
+                  <th>Tanggal</th>
+                  <th width="140" class="text-center">Status Presensi</th>
+                  <th>Keterangan / Alasan</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-absensi">
+                <tr><td colspan="4" class="text-center text-muted py-4">Memuat data absensi...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: KETERLAMBATAN -->
+      <div id="tab-content-terlambat" class="tab-pane" style="display: none;">
+        <div class="card p-4">
+          <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 12px; color: #fca5a5;">
+            <i data-lucide="clock" style="width: 16px; height: 16px; vertical-align: middle;"></i> Riwayat Keterlambatan Siswa
+          </h3>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th width="60" class="text-center">No</th>
+                  <th width="140">Tanggal</th>
+                  <th width="100" class="text-center">Jam</th>
+                  <th>Keterangan / Alasan Terlambat</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-terlambat">
+                <tr><td colspan="4" class="text-center text-muted py-4">Belum ada riwayat keterlambatan.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 3: PELANGGARAN -->
+      <div id="tab-content-pelanggaran" class="tab-pane" style="display: none;">
+        <div class="card p-4">
+          <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 12px; color: #d8b4fe;">
+            <i data-lucide="alert-triangle" style="width: 16px; height: 16px; vertical-align: middle;"></i> Catatan Pelanggaran Siswa
+          </h3>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th width="60" class="text-center">No</th>
+                  <th width="140">Tanggal</th>
+                  <th width="100" class="text-center">Jam</th>
+                  <th>Deskripsi Catatan Pelanggaran</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-pelanggaran">
+                <tr><td colspan="4" class="text-center text-muted py-4">Tidak ada catatan pelanggaran.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 4: IZIN PULANG -->
+      <div id="tab-content-izin-pulang" class="tab-pane" style="display: none;">
+        <div class="card p-4">
+          <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 12px; color: #6ee7b7;">
+            <i data-lucide="log-out" style="width: 16px; height: 16px; vertical-align: middle;"></i> Riwayat Izin Pulang Sebelum Waktu
+          </h3>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th width="60" class="text-center">No</th>
+                  <th width="140">Tanggal</th>
+                  <th width="100" class="text-center">Jam</th>
+                  <th>Alasan Izin Pulang</th>
+                  <th width="160">Guru Piket</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-izin-pulang">
+                <tr><td colspan="5" class="text-center text-muted py-4">Tidak ada riwayat izin pulang.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 5: LAPORAN 7 KAIH -->
+      <div id="tab-content-kaih" class="tab-pane" style="display: none;">
+        <div class="card p-4">
+          <h3 style="font-size: 15px; font-weight: 700; margin-bottom: 12px; color: #fcd34d;">
+            <i data-lucide="star" style="width: 16px; height: 16px; vertical-align: middle;"></i> Laporan 7 Karakter Anak Indonesia Hebat (7 KAIH)
+          </h3>
+          <p style="font-size: 12px; color: #94a3b8; margin-bottom: 12px;">
+            Poin 1: Bangun Pagi | P2: Ibadah | P3: Olahraga | P4: Makan Sehat | P5: Belajar | P6: Bermasyarakat | P7: Tidur Cepat
+          </p>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th width="50" class="text-center">No</th>
+                  <th width="120">Tanggal</th>
+                  <th width="40" class="text-center">P1</th>
+                  <th width="40" class="text-center">P2</th>
+                  <th width="40" class="text-center">P3</th>
+                  <th width="40" class="text-center">P4</th>
+                  <th width="40" class="text-center">P5</th>
+                  <th width="40" class="text-center">P6</th>
+                  <th width="40" class="text-center">P7</th>
+                  <th>Catatan / Keterangan</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-kaih">
+                <tr><td colspan="10" class="text-center text-muted py-4">Belum ada pengisian laporan 7 KAIH.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast-notif" class="toast">
+    <i data-lucide="info" style="width: 18px; height: 18px;"></i>
+    <span id="toast-text">Pemberitahuan</span>
+  </div>
+
+  <script>
+    // --- Supabase Config ---
+    const SUPABASE_CONFIG = {
+      url: 'https://wedwjlkvnzbgrrybamqm.supabase.co',
+      anonKey: 'sb_publishable_h4RSXPFlcFVIpArkD9PfhA_8M-R5fh0'
+    };
+
+    let supabaseClient = null;
+    let appDb = {
+      students: [],
+      attendance: [],
+      lateLogs: [],
+      violations: [],
+      izinPulang: [],
+      kaihLogs: []
+    };
+
+    let currentStudent = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initSupabase();
+      loadDatabase();
+      lucide.createIcons();
+    });
+
+    function initSupabase() {
+      if (typeof supabase !== 'undefined' && SUPABASE_CONFIG.url && SUPABASE_CONFIG.anonKey) {
+        try {
+          supabaseClient = supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+        } catch (e) {
+          console.warn('Supabase init error:', e);
+        }
+      }
+    }
+
+    async function loadDatabase() {
+      // 1. LocalStorage Baseline
+      const localDb = localStorage.getItem('schoolDb');
+      if (localDb) {
+        try {
+          const parsed = JSON.parse(localDb);
+          if (Array.isArray(parsed.students)) appDb.students = parsed.students;
+          if (Array.isArray(parsed.attendance)) appDb.attendance = parsed.attendance;
+          if (Array.isArray(parsed.lateLogs)) appDb.lateLogs = parsed.lateLogs;
+          if (Array.isArray(parsed.violations)) appDb.violations = parsed.violations;
+          if (Array.isArray(parsed.izinPulang)) appDb.izinPulang = parsed.izinPulang;
+          if (Array.isArray(parsed.kaihLogs)) appDb.kaihLogs = parsed.kaihLogs;
+        } catch (e) {}
+      }
+
+      // 2. Cloud Pull
+      if (supabaseClient) {
+        try {
+          let pulled = false;
+          try {
+            const [resS, resA, resL, resV, resI, resK] = await Promise.all([
+              supabaseClient.from('students').select('*'),
+              supabaseClient.from('attendance').select('*'),
+              supabaseClient.from('late_logs').select('*'),
+              supabaseClient.from('violations').select('*'),
+              supabaseClient.from('izin_pulang').select('*'),
+              supabaseClient.from('kaih_logs').select('*')
+            ]);
+
+            if (!resS.error && resS.data) {
+              appDb.students = mergeById(appDb.students, resS.data);
+              appDb.attendance = mergeById(appDb.attendance, resA.data || []);
+              appDb.lateLogs = mergeById(appDb.lateLogs, resL.data || []);
+              appDb.violations = mergeById(appDb.violations, resV.data || []);
+              appDb.izinPulang = mergeById(appDb.izinPulang, resI.data || []);
+              appDb.kaihLogs = mergeById(appDb.kaihLogs, resK.data || []);
+              pulled = true;
+            }
+          } catch (e) {}
+
+          if (!pulled) {
+            const { data } = await supabaseClient.from('school_data').select('*').eq('id', 1).maybeSingle();
+            if (data) {
+              if (data.students) appDb.students = mergeById(appDb.students, data.students);
+              if (data.attendance) appDb.attendance = mergeById(appDb.attendance, data.attendance);
+              const lateList = data.latelogs || data.lateLogs || [];
+              if (lateList) appDb.lateLogs = mergeById(appDb.lateLogs, lateList);
+              if (data.violations) appDb.violations = mergeById(appDb.violations, data.violations);
+              const izinList = data.izinpulang || data.izinPulang || [];
+              if (izinList) appDb.izinPulang = mergeById(appDb.izinPulang, izinList);
+              const kaihList = data.kaihlogs || data.kaihLogs || [];
+              if (kaihList) appDb.kaihLogs = mergeById(appDb.kaihLogs, kaihList);
+            }
+          }
+        } catch (e) {}
+      }
+
+      populateDatalist();
+      checkUrlParams();
+    }
+
+    function mergeById(localArr = [], cloudArr = []) {
+      if (!cloudArr || cloudArr.length === 0) return localArr || [];
+      if (!localArr || localArr.length === 0) return cloudArr;
+      const map = new Map();
+      localArr.forEach(i => { if (i) map.set(String(i.id || i.nisn).trim(), i); });
+      cloudArr.forEach(i => { if (i) map.set(String(i.id || i.nisn).trim(), i); });
+      return Array.from(map.values());
+    }
+
+    function populateDatalist() {
+      const datalist = document.getElementById('student-datalist');
+      if (!datalist || !appDb.students) return;
+
+      datalist.innerHTML = appDb.students.map(s => 
+        `<option value="${s.nisn}">${s.nama} - Kelas ${s.kelas}</option>`
+      ).join('');
+    }
+
+    function checkUrlParams() {
+      const params = new URLSearchParams(window.location.search);
+      const nisnParam = params.get('nisn') || params.get('nis') || params.get('search');
+      if (nisnParam) {
+        document.getElementById('input-search-student').value = nisnParam;
+        searchStudentReport();
+      }
+    }
+
+    function handleSearchKeyPress(e) {
+      if (e.key === 'Enter') searchStudentReport();
+    }
+
+    function searchStudentReport() {
+      const query = document.getElementById('input-search-student').value.trim().toLowerCase();
+      if (!query) {
+        showToast('Harap masukkan NISN atau Nama siswa!', 'warning');
+        return;
+      }
+
+      const students = appDb.students || [];
+      const found = students.find(s => 
+        String(s.nisn).toLowerCase() === query || 
+        String(s.id).toLowerCase() === query ||
+        s.nama.toLowerCase().includes(query)
+      );
+
+      if (!found) {
+        showToast('Siswa dengan NISN atau Nama tersebut tidak ditemukan.', 'error');
+        document.getElementById('section-student-report').style.display = 'none';
+        document.getElementById('section-empty-prompt').style.display = 'block';
+        return;
+      }
+
+      currentStudent = found;
+      showStudentReport(found);
+    }
+
+    function showStudentReport(student) {
+      document.getElementById('section-empty-prompt').style.display = 'none';
+      const reportSec = document.getElementById('section-student-report');
+      reportSec.style.display = 'flex';
+
+      // Profile info
+      document.getElementById('prof-avatar').textContent = (student.nama || 'A').charAt(0).toUpperCase();
+      document.getElementById('prof-nama').textContent = student.nama;
+      document.getElementById('prof-nisn').textContent = student.nisn || student.id || '-';
+      document.getElementById('prof-kelas').textContent = `Kelas ${student.kelas}`;
+
+      // Calculate Stats
+      const stdIdStr = String(student.id);
+      const nisnStr = String(student.nisn);
+
+      const attendance = (appDb.attendance || []).filter(a => String(a.student_id) === stdIdStr || String(a.student_id) === nisnStr);
+      const hadirCount = attendance.filter(a => a.status === 'hadir').length;
+      const nonHadirCount = attendance.filter(a => a.status !== 'hadir').length;
+
+      const lateLogs = (appDb.lateLogs || []).filter(l => String(l.student_id) === stdIdStr || String(l.student_id) === nisnStr);
+      const violations = (appDb.violations || []).filter(v => String(v.student_id) === stdIdStr || String(v.student_id) === nisnStr);
+
+      document.getElementById('stat-hadir').textContent = hadirCount;
+      document.getElementById('stat-non-hadir').textContent = nonHadirCount;
+      document.getElementById('stat-terlambat').textContent = lateLogs.length;
+      document.getElementById('stat-pelanggaran').textContent = violations.length;
+
+      // Render Tables
+      renderStudentAttendanceTable();
+      renderStudentLateTable();
+      renderStudentViolationTable();
+      renderStudentIzinPulangTable();
+      renderStudentKaihTable();
+
+      lucide.createIcons();
+    }
+
+    function resetStudentSearch() {
+      document.getElementById('input-search-student').value = '';
+      currentStudent = null;
+      document.getElementById('section-student-report').style.display = 'none';
+      document.getElementById('section-empty-prompt').style.display = 'block';
+      showToast('Pencarian dibersihkan', 'info');
+    }
+
+    function switchWaliTab(tabName) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(pane => pane.style.display = 'none');
+
+      const targetBtn = document.querySelector(`.tab-btn[onclick*="${tabName}"]`);
+      if (targetBtn) targetBtn.classList.add('active');
+
+      const targetPane = document.getElementById(`tab-content-${tabName}`);
+      if (targetPane) targetPane.style.display = 'block';
+    }
+
+    // --- TAB 1: RENDER ABSENSI ---
+    function renderStudentAttendanceTable() {
+      if (!currentStudent) return;
+      const tbody = document.getElementById('tbody-absensi');
+      const monthFilter = document.getElementById('filter-absensi-bulan').value;
+      const stdIdStr = String(currentStudent.id);
+      const nisnStr = String(currentStudent.nisn);
+
+      let list = (appDb.attendance || [])
+        .filter(a => String(a.student_id) === stdIdStr || String(a.student_id) === nisnStr)
+        .sort((a, b) => b.tanggal.localeCompare(a.tanggal));
+
+      if (monthFilter) {
+        list = list.filter(a => {
+          if (!a.tanggal) return false;
+          const parts = a.tanggal.split('-'); // YYYY-MM-DD
+          return parts.length >= 2 && parts[1] === monthFilter;
+        });
+      }
+
+      document.getElementById('count-absensi-filtered').textContent = `Menampilkan ${list.length} catatan absensi`;
+
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-4">Tidak ada data absensi ${monthFilter ? 'pada bulan ini' : ''}.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = list.map((a, idx) => {
+        let badgeClass = 'badge-success';
+        if (a.status === 'sakit') badgeClass = 'badge-warning';
+        if (a.status === 'izin') badgeClass = 'badge-info';
+        if (a.status === 'alpha') badgeClass = 'badge-danger';
+
+        return `
+          <tr>
+            <td class="text-center">${idx + 1}</td>
+            <td><strong>${a.tanggal}</strong></td>
+            <td class="text-center"><span class="badge ${badgeClass}">${(a.status || 'hadir').toUpperCase()}</span></td>
+            <td>${a.keterangan || '-'}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // --- TAB 2: RENDER TERLAMBAT ---
+    function renderStudentLateTable() {
+      if (!currentStudent) return;
+      const tbody = document.getElementById('tbody-terlambat');
+      const stdIdStr = String(currentStudent.id);
+      const nisnStr = String(currentStudent.nisn);
+
+      const list = (appDb.lateLogs || [])
+        .filter(l => String(l.student_id) === stdIdStr || String(l.student_id) === nisnStr)
+        .sort((a, b) => b.tanggal.localeCompare(a.tanggal));
+
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-4">Siswa tidak memiliki riwayat keterlambatan.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = list.map((l, idx) => `
+        <tr>
+          <td class="text-center">${idx + 1}</td>
+          <td><strong>${l.tanggal}</strong></td>
+          <td class="text-center"><span class="badge badge-warning">${l.jam || '-'}</span></td>
+          <td>${l.keterangan || '-'}</td>
+        </tr>
+      `).join('');
+    }
+
+    // --- TAB 3: RENDER PELANGGARAN ---
+    function renderStudentViolationTable() {
+      if (!currentStudent) return;
+      const tbody = document.getElementById('tbody-pelanggaran');
+      const stdIdStr = String(currentStudent.id);
+      const nisnStr = String(currentStudent.nisn);
+
+      const list = (appDb.violations || [])
+        .filter(v => String(v.student_id) === stdIdStr || String(v.student_id) === nisnStr)
+        .sort((a, b) => b.tanggal.localeCompare(a.tanggal));
+
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-4">Siswa tidak memiliki catatan pelanggaran.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = list.map((v, idx) => `
+        <tr>
+          <td class="text-center">${idx + 1}</td>
+          <td><strong>${v.tanggal}</strong></td>
+          <td class="text-center"><span class="badge badge-danger">${v.jam || '-'}</span></td>
+          <td>${v.keterangan || '-'}</td>
+        </tr>
+      `).join('');
+    }
+
+    // --- TAB 4: RENDER IZIN PULANG ---
+    function renderStudentIzinPulangTable() {
+      if (!currentStudent) return;
+      const tbody = document.getElementById('tbody-izin-pulang');
+      const stdIdStr = String(currentStudent.id);
+      const nisnStr = String(currentStudent.nisn);
+
+      const list = (appDb.izinPulang || [])
+        .filter(i => String(i.student_id) === stdIdStr || String(i.student_id) === nisnStr)
+        .sort((a, b) => b.tanggal.localeCompare(a.tanggal));
+
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">Siswa tidak memiliki riwayat izin pulang.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = list.map((i, idx) => `
+        <tr>
+          <td class="text-center">${idx + 1}</td>
+          <td><strong>${i.tanggal}</strong></td>
+          <td class="text-center"><span class="badge badge-info">${i.jam || '-'}</span></td>
+          <td>${i.keterangan || '-'}</td>
+          <td>${i.guru_piket || '-'}</td>
+        </tr>
+      `).join('');
+    }
+
+    // --- TAB 5: RENDER 7 KAIH ---
+    function renderStudentKaihTable() {
+      if (!currentStudent) return;
+      const tbody = document.getElementById('tbody-kaih');
+      const stdIdStr = String(currentStudent.id);
+      const nisnStr = String(currentStudent.nisn);
+
+      const list = (appDb.kaihLogs || [])
+        .filter(k => String(k.student_id) === stdIdStr || String(k.student_id) === nisnStr)
+        .sort((a, b) => b.tanggal.localeCompare(a.tanggal));
+
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-4">Belum ada pengisian laporan 7 KAIH untuk siswa ini.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = list.map((k, idx) => `
+        <tr>
+          <td class="text-center">${idx + 1}</td>
+          <td><strong>${k.tanggal}</strong></td>
+          <td class="text-center">${k.point1 ? '✅' : '❌'}</td>
+          <td class="text-center">${k.point2 ? '✅' : '❌'}</td>
+          <td class="text-center">${k.point3 ? '✅' : '❌'}</td>
+          <td class="text-center">${k.point4 ? '✅' : '❌'}</td>
+          <td class="text-center">${k.point5 ? '✅' : '❌'}</td>
+          <td class="text-center">${k.point6 ? '✅' : '❌'}</td>
+          <td class="text-center">${k.point7 ? '✅' : '❌'}</td>
+          <td>${k.keterangan || '-'}</td>
+        </tr>
+      `).join('');
+    }
+
+    function showToast(message, type = 'info') {
+      const toast = document.getElementById('toast-notif');
+      const text = document.getElementById('toast-text');
+      if (!toast || !text) return;
+
+      toast.className = 'toast show';
+      if (type === 'success') toast.style.borderLeft = '4px solid #10b981';
+      if (type === 'error') toast.style.borderLeft = '4px solid #ef4444';
+      if (type === 'warning') toast.style.borderLeft = '4px solid #f59e0b';
+      if (type === 'info') toast.style.borderLeft = '4px solid #6366f1';
+
+      text.textContent = message;
+      setTimeout(() => { toast.className = 'toast'; }, 3000);
+    }
+  </script>
+</body>
+</html>
