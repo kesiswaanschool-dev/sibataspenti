@@ -444,15 +444,17 @@
       const map = new Map();
       localArr.forEach(item => {
         if (!item) return;
-        const k = String(item[key] || item.id || item.nisn || item.nip).trim();
+        const k = String(item[key] || item.id || item.nip || item.nisn || '').trim();
         if (k) map.set(k, item);
       });
       cloudArr.forEach(item => {
         if (!item) return;
-        const k = String(item[key] || item.id || item.nisn || item.nip).trim();
+        const k = String(item[key] || item.id || item.nip || item.nisn || '').trim();
         if (k) {
           const existing = map.get(k);
           map.set(k, existing ? { ...existing, ...item } : item);
+        } else {
+          map.set('gen-' + Math.random(), item);
         }
       });
       return Array.from(map.values());
@@ -468,43 +470,73 @@
           if (Array.isArray(parsed.students)) appDb.students = parsed.students;
           if (Array.isArray(parsed.attendance)) appDb.attendance = parsed.attendance;
           if (Array.isArray(parsed.jurnalGuru)) appDb.jurnalGuru = parsed.jurnalGuru;
+          if (Array.isArray(parsed.accounts)) appDb.accounts = parsed.accounts;
         } catch (e) {}
       }
 
-      // 2. Fetch and merge cloud data
+      // 2. Fetch and merge cloud data from Supabase
       if (supabaseClient) {
         try {
-          const [resJurnal, resTeachers, resStudents, resAttendance] = await Promise.all([
+          const [resJurnal, resTeachers, resStudents, resAttendance, resAccounts] = await Promise.all([
             supabaseClient.from('jurnal_guru').select('*'),
             supabaseClient.from('teachers').select('*'),
             supabaseClient.from('students').select('*'),
-            supabaseClient.from('attendance').select('*')
+            supabaseClient.from('attendance').select('*'),
+            supabaseClient.from('accounts').select('*')
           ]);
 
-          if (!resJurnal.error && !resTeachers.error) {
-            appDb.jurnalGuru = mergeDbArrays(appDb.jurnalGuru, resJurnal.data || []);
-            appDb.teachers = mergeDbArrays(appDb.teachers, resTeachers.data || []);
-            appDb.students = mergeDbArrays(appDb.students, resStudents.data || []);
-            appDb.attendance = mergeDbArrays(appDb.attendance, resAttendance.data || []);
-            saveLocalDatabase();
-            setupInputRealtime();
-            return;
-          }
+          if (!resJurnal.error && resJurnal.data) appDb.jurnalGuru = mergeDbArrays(appDb.jurnalGuru, resJurnal.data);
+          if (!resTeachers.error && resTeachers.data) appDb.teachers = mergeDbArrays(appDb.teachers, resTeachers.data);
+          if (!resStudents.error && resStudents.data) appDb.students = mergeDbArrays(appDb.students, resStudents.data);
+          if (!resAttendance.error && resAttendance.data) appDb.attendance = mergeDbArrays(appDb.attendance, resAttendance.data);
+          if (!resAccounts.error && resAccounts.data) appDb.accounts = mergeDbArrays(appDb.accounts || [], resAccounts.data, 'username');
         } catch (e) {
-          console.warn('Per-table fetch fallback in inputjurnalguru:', e);
+          console.warn('Per-table fetch notice:', e);
         }
 
+        // Always fallback / merge with school_data (single-row JSON table) to ensure no teacher data is missed across devices
         try {
           const { data, error } = await supabaseClient.from('school_data').select('*').eq('id', 1).maybeSingle();
           if (!error && data) {
             if (Array.isArray(data.teachers) && data.teachers.length > 0) appDb.teachers = mergeDbArrays(appDb.teachers, data.teachers);
             if (Array.isArray(data.students) && data.students.length > 0) appDb.students = mergeDbArrays(appDb.students, data.students);
             if (Array.isArray(data.attendance) && data.attendance.length > 0) appDb.attendance = mergeDbArrays(appDb.attendance, data.attendance);
-            if (Array.isArray(data.jurnalGuru) && data.jurnalGuru.length > 0) appDb.jurnalGuru = mergeDbArrays(appDb.jurnalGuru, data.jurnalGuru);
-            saveLocalDatabase();
-            return;
+            const cloudJurnal = data.jurnalGuru || data.jurnalguru || [];
+            if (Array.isArray(cloudJurnal) && cloudJurnal.length > 0) appDb.jurnalGuru = mergeDbArrays(appDb.jurnalGuru, cloudJurnal);
+            if (Array.isArray(data.accounts) && data.accounts.length > 0) appDb.accounts = mergeDbArrays(appDb.accounts || [], data.accounts, 'username');
           }
-        } catch (e) {}
+        } catch (e) {
+          console.warn('school_data fetch notice:', e);
+        }
+
+        // Auto-extract teacher entries from accounts table if teacher/guru accounts exist
+        if (Array.isArray(appDb.accounts)) {
+          appDb.accounts.forEach(acc => {
+            if (acc && (acc.role === 'guru' || acc.role === 'teacher')) {
+              const accNip = String(acc.username || acc.nip || '').trim();
+              const accNama = String(acc.nama || acc.name || '').trim();
+              const cleanAccNip = accNip.replace(/\s+/g, '').toLowerCase();
+
+              const exists = appDb.teachers.some(t => {
+                const tNip = String(t.nip || t.id || '').replace(/\s+/g, '').toLowerCase();
+                const tNama = String(t.nama || '').trim().toLowerCase();
+                return (cleanAccNip && tNip === cleanAccNip) || (accNama && tNama === accNama.toLowerCase());
+              });
+
+              if (!exists && (accNip || accNama)) {
+                appDb.teachers.push({
+                  id: acc.id || ('teacher-' + Date.now()),
+                  nip: accNip,
+                  nama: accNama || 'Guru',
+                  mapel: acc.mapel || 'Guru Mata Pelajaran'
+                });
+              }
+            }
+          });
+        }
+
+        saveLocalDatabase();
+        setupInputRealtime();
       }
     }
 
@@ -517,6 +549,7 @@
       existingDb.teachers = appDb.teachers;
       existingDb.students = appDb.students;
       existingDb.jurnalGuru = appDb.jurnalGuru;
+      existingDb.accounts = appDb.accounts;
       localStorage.setItem('schoolDb', JSON.stringify(existingDb));
     }
 
@@ -622,13 +655,25 @@
     }
 
     function loginTeacher() {
-      const nipInput = document.getElementById('input-nip').value.trim();
-      if (!nipInput) {
+      const rawInput = document.getElementById('input-nip').value.trim();
+      if (!rawInput) {
         showToast('Silakan masukkan NIP Anda!', 'warning');
         return;
       }
 
-      const teacher = appDb.teachers.find(t => (t.nip && t.nip.trim() === nipInput) || String(t.id) === nipInput || t.nama.toLowerCase().includes(nipInput.toLowerCase()));
+      const cleanInput = rawInput.replace(/\s+/g, '').toLowerCase();
+
+      const teacher = (appDb.teachers || []).find(t => {
+        if (!t) return false;
+        const tNip = String(t.nip || '').replace(/\s+/g, '').toLowerCase();
+        const tId = String(t.id || '').replace(/\s+/g, '').toLowerCase();
+        const tNama = String(t.nama || '').replace(/\s+/g, '').toLowerCase();
+
+        return (tNip && tNip === cleanInput) ||
+               (tId && tId === cleanInput) ||
+               (tNama && tNama.includes(cleanInput));
+      });
+
       if (!teacher) {
         showToast('NIP Guru tidak terdaftar dalam sistem sekolah.', 'error');
         return;

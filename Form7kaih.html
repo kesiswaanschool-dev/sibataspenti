@@ -375,27 +375,66 @@
       }
     });
 
-    async function loadDatabase() {
-      if (supabaseClient) {
-        try {
-          const { data, error } = await supabaseClient.from('school_data').select('*').eq('id', 1).maybeSingle();
-          if (!error && data) {
-            if (data.students) appDb.students = data.students;
-            if (data.kaihLogs) appDb.kaihLogs = data.kaihLogs;
-            saveLocalDatabase();
-            return;
-          }
-        } catch (e) {}
-      }
+    function mergeDbArrays(localArr = [], cloudArr = [], key = 'id') {
+      if (!cloudArr || cloudArr.length === 0) return localArr || [];
+      if (!localArr || localArr.length === 0) return cloudArr;
+      const map = new Map();
+      localArr.forEach(i => {
+        if (!i) return;
+        const k = String(i[key] || i.id || i.nisn || '').trim();
+        if (k) map.set(k, i);
+      });
+      cloudArr.forEach(i => {
+        if (!i) return;
+        const k = String(i[key] || i.id || i.nisn || '').trim();
+        if (k) {
+          const existing = map.get(k);
+          map.set(k, existing ? { ...existing, ...i } : i);
+        } else {
+          map.set('gen-' + Math.random(), i);
+        }
+      });
+      return Array.from(map.values());
+    }
 
-      // Fallback LocalStorage
+    async function loadDatabase() {
+      // 1. Read LocalStorage baseline first
       const localDb = localStorage.getItem('schoolDb');
       if (localDb) {
         try {
           const parsed = JSON.parse(localDb);
-          appDb.students = parsed.students || [];
-          appDb.kaihLogs = parsed.kaihLogs || [];
+          if (Array.isArray(parsed.students)) appDb.students = parsed.students;
+          if (Array.isArray(parsed.kaihLogs)) appDb.kaihLogs = parsed.kaihLogs;
         } catch (e) {}
+      }
+
+      // 2. Fetch and merge cloud data from Supabase
+      if (supabaseClient) {
+        try {
+          const [resStudents, resKaih] = await Promise.all([
+            supabaseClient.from('students').select('*'),
+            supabaseClient.from('kaih_logs').select('*')
+          ]);
+
+          if (!resStudents.error && resStudents.data) appDb.students = mergeDbArrays(appDb.students, resStudents.data);
+          if (!resKaih.error && resKaih.data) appDb.kaihLogs = mergeDbArrays(appDb.kaihLogs, resKaih.data);
+        } catch (e) {
+          console.warn('Per-table fetch notice in Form7kaih:', e);
+        }
+
+        // Always fallback / merge with school_data (single-row JSON table)
+        try {
+          const { data, error } = await supabaseClient.from('school_data').select('*').eq('id', 1).maybeSingle();
+          if (!error && data) {
+            if (Array.isArray(data.students) && data.students.length > 0) appDb.students = mergeDbArrays(data.students, appDb.students);
+            const cloudKaih = data.kaihLogs || data.kaihlogs || [];
+            if (Array.isArray(cloudKaih) && cloudKaih.length > 0) appDb.kaihLogs = mergeDbArrays(appDb.kaihLogs, cloudKaih);
+          }
+        } catch (e) {
+          console.warn('school_data fetch notice in Form7kaih:', e);
+        }
+
+        saveLocalDatabase();
       }
     }
 
@@ -434,13 +473,19 @@
     }
 
     function loginStudent() {
-      const nisnInput = document.getElementById('input-nisn').value.trim();
-      if (!nisnInput) {
+      const rawInput = document.getElementById('input-nisn').value.trim();
+      if (!rawInput) {
         showToast('Silakan masukkan NISN Anda!', 'warning');
         return;
       }
+      const cleanInput = rawInput.replace(/\s+/g, '').toLowerCase();
 
-      const student = appDb.students.find(s => s.nisn === nisnInput || String(s.id) === nisnInput);
+      const student = (appDb.students || []).find(s => {
+        if (!s) return false;
+        const sNisn = String(s.nisn || '').replace(/\s+/g, '').toLowerCase();
+        const sId = String(s.id || '').replace(/\s+/g, '').toLowerCase();
+        return (sNisn && sNisn === cleanInput) || (sId && sId === cleanInput);
+      });
       if (!student) {
         showToast('NISN tidak terdaftar dalam sistem sekolah.', 'error');
         return;
