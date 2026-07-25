@@ -282,6 +282,25 @@ function mergeListById(localList = [], cloudList = [], idKey = 'id') {
   return Array.from(map.values());
 }
 
+function getDeletedStudentIds() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem('deletedStudentIds') || '[]'));
+  } catch (e) {
+    return new Set();
+  }
+}
+
+function addDeletedStudentId(id) {
+  if (!id) return;
+  const set = getDeletedStudentIds();
+  set.add(String(id).trim());
+  localStorage.setItem('deletedStudentIds', JSON.stringify(Array.from(set)));
+}
+
+function clearDeletedStudentIds() {
+  localStorage.removeItem('deletedStudentIds');
+}
+
 async function loadData() {
   initSupabase();
 
@@ -506,8 +525,15 @@ async function syncPullFromSupabase(silent = true) {
         const cloudKaih = data.kaihlogs || data.kaihLogs || [];
         const cloudAccounts = data.accounts || [];
 
+        const deletedIds = getDeletedStudentIds();
         if (Array.isArray(cloudStudents) && cloudStudents.length > 0) {
-          state.students = mergeListById(state.students, cloudStudents);
+          const validCloudStudents = deletedIds.size > 0 
+            ? cloudStudents.filter(s => s && !deletedIds.has(String(s.id).trim()) && !deletedIds.has(String(s.nisn || '').trim()))
+            : cloudStudents;
+          state.students = mergeListById(state.students, validCloudStudents);
+        }
+        if (deletedIds.size > 0) {
+          state.students = state.students.filter(s => s && !deletedIds.has(String(s.id).trim()) && !deletedIds.has(String(s.nisn || '').trim()));
         }
         if (Array.isArray(cloudAttendance) && cloudAttendance.length > 0) {
           state.attendance = mergeListById(state.attendance, cloudAttendance, 'id');
@@ -1142,6 +1168,7 @@ async function saveImportedStudents() {
     }
 
     if (!savedOnServer) {
+      clearDeletedStudentIds();
       const studentMap = new Map();
       (state.students || []).forEach(s => {
         const key = String(s.nisn || s.id).trim();
@@ -1344,6 +1371,9 @@ async function deleteStudent(id) {
       const stdId = std ? String(std.id).trim() : targetId;
       const stdNisn = std ? String(std.nisn).trim() : targetId;
 
+      addDeletedStudentId(stdId);
+      if (stdNisn) addDeletedStudentId(stdNisn);
+
       // 1. Delete student
       state.students = state.students.filter(s => String(s.id).trim() !== stdId && String(s.nisn).trim() !== stdNisn);
       // 2. Cascade delete all associated logs for this student
@@ -1379,6 +1409,11 @@ async function deleteAllStudents() {
 
   toggleLoader(true, 'Menghapus seluruh data siswa dan riwayat log...');
   try {
+    (state.students || []).forEach(s => {
+      if (s.id) addDeletedStudentId(s.id);
+      if (s.nisn) addDeletedStudentId(s.nisn);
+    });
+
     state.students = [];
     state.attendance = [];
     state.lateLogs = [];
