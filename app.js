@@ -345,22 +345,49 @@ function clearDeletedStudentIds() {
 async function loadData() {
   initSupabase();
 
-  // 1. Read LocalStorage baseline first so local data is never lost
-  const localDb = localStorage.getItem('schoolDb');
-  if (localDb) {
+  // 0. Cek reset flag dari Supabase SEBELUM baca localStorage
+  let resetDetected = false;
+  if (supabaseClient) {
     try {
-      const parsed = JSON.parse(localDb);
-      if (Array.isArray(parsed.students)) state.students = parsed.students;
-      if (Array.isArray(parsed.attendance)) state.attendance = parsed.attendance;
-      if (Array.isArray(parsed.lateLogs)) state.lateLogs = parsed.lateLogs;
-      if (Array.isArray(parsed.violations)) state.violations = parsed.violations;
-      if (Array.isArray(parsed.izinPulang)) state.izinPulang = parsed.izinPulang;
-      if (Array.isArray(parsed.jurnalGuru)) state.jurnalGuru = parsed.jurnalGuru;
-      if (Array.isArray(parsed.teachers)) state.teachers = parsed.teachers;
-      if (Array.isArray(parsed.kaihLogs)) state.kaihLogs = parsed.kaihLogs;
-      if (Array.isArray(parsed.accounts) && parsed.accounts.length > 0) state.accounts = parsed.accounts;
+      const { data } = await supabaseClient
+        .from('school_data')
+        .select('isReset, resetAt')
+        .eq('id', 1)
+        .maybeSingle();
+      const lastLocalReset = localStorage.getItem('lastResetAt') || '';
+      if (data && (data.isReset || (data.resetAt && data.resetAt !== lastLocalReset))) {
+        resetDetected = true;
+        if (data.resetAt) localStorage.setItem('lastResetAt', data.resetAt);
+        // Hapus semua data lokal karena sudah di-reset
+        const keepKeys = ['theme', 'storageMode', 'githubSettings', 'lastResetAt'];
+        Object.keys(localStorage).forEach(key => {
+          if (!keepKeys.includes(key)) localStorage.removeItem(key);
+        });
+        console.log('Reset terdeteksi dari cloud, data lokal dibersihkan');
+      }
     } catch (e) {
-      console.error('Error parsing local DB', e);
+      console.warn('Gagal cek reset flag dari Supabase:', e);
+    }
+  }
+
+  // 1. Read LocalStorage baseline (skip jika reset terdeteksi)
+  if (!resetDetected) {
+    const localDb = localStorage.getItem('schoolDb');
+    if (localDb) {
+      try {
+        const parsed = JSON.parse(localDb);
+        if (Array.isArray(parsed.students)) state.students = parsed.students;
+        if (Array.isArray(parsed.attendance)) state.attendance = parsed.attendance;
+        if (Array.isArray(parsed.lateLogs)) state.lateLogs = parsed.lateLogs;
+        if (Array.isArray(parsed.violations)) state.violations = parsed.violations;
+        if (Array.isArray(parsed.izinPulang)) state.izinPulang = parsed.izinPulang;
+        if (Array.isArray(parsed.jurnalGuru)) state.jurnalGuru = parsed.jurnalGuru;
+        if (Array.isArray(parsed.teachers)) state.teachers = parsed.teachers;
+        if (Array.isArray(parsed.kaihLogs)) state.kaihLogs = parsed.kaihLogs;
+        if (Array.isArray(parsed.accounts) && parsed.accounts.length > 0) state.accounts = parsed.accounts;
+      } catch (e) {
+        console.error('Error parsing local DB', e);
+      }
     }
   }
 
@@ -378,6 +405,18 @@ async function loadData() {
   // 2. Pull and merge cloud data
   if (supabaseClient) {
     await syncPullFromSupabase(true);
+    
+    // Pastikan akun default selalu ada dengan password yang benar
+    const defaults = getDefaultAccounts();
+    for (const d of defaults) {
+      const existing = state.accounts.find(a => a.username === d.username);
+      if (existing) {
+        existing.password = d.password;
+        existing.role = d.role;
+      } else {
+        state.accounts.push({ ...d });
+      }
+    }
     
     // FIX DATA GURU: Jangan push ulang data ke cloud jika baru saja dilakukan reset
     // Reset menyimpan timestamp di lastResetAt; jika < 10 detik lalu, skip push
@@ -770,6 +809,12 @@ async function syncPushToSupabase(silent = true) {
       accounts: getAccountsList(),
       updated_at: new Date().toISOString()
     };
+    // Pertahankan flag reset agar tidak hilang saat push data normal
+    const resetFlagAt = localStorage.getItem('lastResetAt');
+    if (resetFlagAt) {
+      payload.isReset = true;
+      payload.resetAt = resetFlagAt;
+    }
 
     const { error } = await supabaseClient
       .from('school_data')
