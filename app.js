@@ -603,7 +603,66 @@ function handleRealtimePayload(payload) {
 async function syncPullFromSupabase(silent = true) {
   if (!supabaseClient) return false;
   try {
-    let pulledFromTables = false;
+    // =========================================================
+    // CHECK RESET DARI SCHOOL_DATA TERLEBIH DAHULU
+    // =========================================================
+    let isReset = false;
+    try {
+      const { data, error } = await supabaseClient
+        .from('school_data')
+        .select('isReset, resetAt')
+        .eq('id', 1)
+        .maybeSingle();
+
+      if (!error && data) {
+        const lastLocalReset = localStorage.getItem('lastResetAt') || '';
+        if (data.isReset || (data.resetAt && data.resetAt !== lastLocalReset)) {
+          isReset = true;
+          if (data.resetAt) localStorage.setItem('lastResetAt', data.resetAt);
+          console.log('Detected cloud reset event at', data.resetAt);
+        }
+      }
+    } catch (e) {
+      console.warn('Gagal cek flag reset:', e);
+    }
+
+    if (isReset) {
+      state.students = [];
+      state.teachers = [];
+      state.attendance = [];
+      state.lateLogs = [];
+      state.violations = [];
+      state.izinPulang = [];
+      state.jurnalGuru = [];
+      state.kaihLogs = [];
+      clearDeletedStudentIds();
+      // Kosongkan school_data + matikan isReset
+      try {
+        await supabaseClient.from('school_data').upsert({
+          id: 1, isReset: false,
+          students: [], attendance: [], latelogs: [], violations: [],
+          izinpulang: [], jurnalguru: [], teachers: [], kaihlogs: [],
+          accounts: getAccountsList(), updated_at: new Date().toISOString()
+        }, { onConflict: 'id' });
+      } catch (_) {}
+      // Hapus data per-table di Supabase (fallback jika delete gagal di reset)
+      const tablesToClear = [
+        'students', 'teachers', 'attendance',
+        'late_logs', 'violations', 'izin_pulang',
+        'jurnal_guru', 'kaih_logs'
+      ];
+      for (const tbl of tablesToClear) {
+        try { await supabaseClient.from(tbl).delete().not('id', 'is', null); } catch (_) {}
+      }
+      try { await supabaseClient.from('accounts').delete().not('id', 'is', null); } catch (_) {}
+      saveLocalState();
+      refreshAllUI();
+      return true;
+    }
+
+    // =========================================================
+    // PULL PER-TABLE DATA
+    // =========================================================
     try {
       const [
         resStudents,
@@ -632,7 +691,6 @@ async function syncPullFromSupabase(silent = true) {
                               (resJurnal.data && resJurnal.data.length > 0) ||
                               (resAttendance.data && resAttendance.data.length > 0);
 
-      // FIX DATA GURU: Jangan merge data cloud jika baru saja reset (< 10 detik)
       const lastResetAt = localStorage.getItem('lastResetAt');
       const justReset = lastResetAt && (Date.now() - new Date(lastResetAt).getTime()) < 10000;
 
@@ -653,7 +711,9 @@ async function syncPullFromSupabase(silent = true) {
       console.warn('Pull per-tabel notice in app.js:', e);
     }
 
-    // Always merge with school_data (single-row JSON table) to guarantee data from external forms is never missed
+    // =========================================================
+    // MERGE DARI SCHOOL_DATA (full data)
+    // =========================================================
     try {
       const { data, error } = await supabaseClient
         .from('school_data')
@@ -662,24 +722,6 @@ async function syncPullFromSupabase(silent = true) {
         .maybeSingle();
 
       if (!error && data) {
-        const lastLocalReset = localStorage.getItem('lastResetAt') || '';
-        if (data.isReset || (data.resetAt && data.resetAt !== lastLocalReset)) {
-          console.log('Detected cloud reset event at', data.resetAt);
-          if (data.resetAt) localStorage.setItem('lastResetAt', data.resetAt);
-          state.students = [];
-          state.teachers = [];
-          state.attendance = [];
-          state.lateLogs = [];
-          state.violations = [];
-          state.izinPulang = [];
-          state.jurnalGuru = [];
-          state.kaihLogs = [];
-          clearDeletedStudentIds();
-          saveLocalState();
-          refreshAllUI();
-          return true;
-        }
-
         const lastResetAt = localStorage.getItem('lastResetAt');
         const justReset = lastResetAt && (Date.now() - new Date(lastResetAt).getTime()) < 60000;
 
@@ -809,12 +851,6 @@ async function syncPushToSupabase(silent = true) {
       accounts: getAccountsList(),
       updated_at: new Date().toISOString()
     };
-    // Pertahankan flag reset agar tidak hilang saat push data normal
-    const resetFlagAt = localStorage.getItem('lastResetAt');
-    if (resetFlagAt) {
-      payload.isReset = true;
-      payload.resetAt = resetFlagAt;
-    }
 
     const { error } = await supabaseClient
       .from('school_data')
