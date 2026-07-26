@@ -661,8 +661,8 @@ async function syncPullFromSupabase(silent = true) {
         try { await supabaseClient.from(tbl).delete().not('id', 'is', null); } catch (_) {}
       }
       try { await supabaseClient.from('accounts').delete().not('id', 'is', null); } catch (_) {}
-      // Cooldown: cegah merge per-table sampai user push data baru
-      localStorage.setItem('_resetCooldown', '1');
+      // PERMA-reset: cegah merge per-table di SEMUA load berikutnya
+      localStorage.setItem('_permaReset', resetTs);
       localStorage.removeItem('_resetSeen');
       saveLocalState();
       refreshAllUI();
@@ -672,7 +672,7 @@ async function syncPullFromSupabase(silent = true) {
     // =========================================================
     // PULL PER-TABLE DATA
     // =========================================================
-    const resetCooldown = localStorage.getItem('_resetCooldown');
+    const permaReset = localStorage.getItem('_permaReset');
     try {
       const [
         resStudents,
@@ -704,7 +704,7 @@ async function syncPullFromSupabase(silent = true) {
       const lastResetAt = localStorage.getItem('lastResetAt');
       const justReset = lastResetAt && (Date.now() - new Date(lastResetAt).getTime()) < 10000;
 
-      if (!justReset && !resetCooldown && !resStudents.error && !resTeachers.error && !resAttendance.error && hasPerTableData) {
+      if (!justReset && !permaReset && !resStudents.error && !resTeachers.error && !resAttendance.error && hasPerTableData) {
         state.students = mergeListById(state.students, resStudents.data || []);
         state.teachers = mergeListById(state.teachers, resTeachers.data || []);
         state.attendance = mergeListById(state.attendance, resAttendance.data || [], 'id');
@@ -875,6 +875,7 @@ async function syncPushToSupabase(silent = true) {
     if (!silent) showToast(`Gagal menyinkron ke Supabase: ${error.message}`, 'error');
   } finally {
     localStorage.removeItem('_resetCooldown');
+    localStorage.removeItem('_permaReset');
     updateSyncBadge();
   }
 }
