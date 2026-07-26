@@ -1,3 +1,5 @@
+const APP_VERSION = 'v2.3.0_final';
+
 // --- Supabase Cloud Configuration ---
 // Guard: hanya deklarasi jika belum ada, mencegah SyntaxError jika script dimuat ganda
 if (typeof window.SUPABASE_CONFIG === 'undefined') {
@@ -344,6 +346,17 @@ function clearDeletedStudentIds() {
 
 async function loadData() {
   initSupabase();
+
+  // -1. Cek versi kode: jika berubah, hapus semua data lokal (cache buster)
+  const storedVer = localStorage.getItem('_appVersion');
+  if (storedVer !== APP_VERSION) {
+    const keepKeys = ['theme', 'storageMode', 'githubSettings'];
+    Object.keys(localStorage).forEach(key => {
+      if (!keepKeys.includes(key)) localStorage.removeItem(key);
+    });
+    localStorage.setItem('_appVersion', APP_VERSION);
+    console.log('App version changed, localStorage cleared');
+  }
 
   // 0. Cek reset flag dari Supabase SEBELUM baca localStorage
   let resetDetected = false;
