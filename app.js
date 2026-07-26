@@ -745,54 +745,50 @@ async function syncPullFromSupabase(silent = true) {
         .maybeSingle();
 
       if (!error && data) {
-        const lastResetAt = localStorage.getItem('lastResetAt');
-        const justReset = lastResetAt && (Date.now() - new Date(lastResetAt).getTime()) < 60000;
+        // Guard 60s dihapus — school_data (yang sudah dikosongkan oleh isReset handler) selalu dimerge
+        const cloudStudents = data.students || [];
+        const cloudAttendance = data.attendance || [];
+        const cloudLate = data.latelogs || data.lateLogs || [];
+        const cloudViolations = data.violations || [];
+        const cloudIzin = data.izinpulang || data.izinPulang || [];
+        const cloudJurnal = data.jurnalguru || data.jurnalGuru || [];
+        const cloudTeachers = data.teachers || [];
+        const cloudKaih = data.kaihlogs || data.kaihLogs || [];
+        const cloudAccounts = data.accounts || [];
 
-        if (!justReset) {
-          const cloudStudents = data.students || [];
-          const cloudAttendance = data.attendance || [];
-          const cloudLate = data.latelogs || data.lateLogs || [];
-          const cloudViolations = data.violations || [];
-          const cloudIzin = data.izinpulang || data.izinPulang || [];
-          const cloudJurnal = data.jurnalguru || data.jurnalGuru || [];
-          const cloudTeachers = data.teachers || [];
-          const cloudKaih = data.kaihlogs || data.kaihLogs || [];
-          const cloudAccounts = data.accounts || [];
-
-          const deletedIds = getDeletedStudentIds();
-          if (Array.isArray(cloudStudents) && cloudStudents.length > 0) {
-            const validCloudStudents = deletedIds.size > 0 
-              ? cloudStudents.filter(s => s && !deletedIds.has(String(s.id).trim()) && !deletedIds.has(String(s.nisn || '').trim()))
-              : cloudStudents;
-            state.students = mergeListById(state.students, validCloudStudents);
-          }
-          if (deletedIds.size > 0) {
-            state.students = state.students.filter(s => s && !deletedIds.has(String(s.id).trim()) && !deletedIds.has(String(s.nisn || '').trim()));
-          }
-          if (Array.isArray(cloudAttendance) && cloudAttendance.length > 0) {
-            state.attendance = mergeListById(state.attendance, cloudAttendance, 'id');
-          }
-          if (Array.isArray(cloudLate) && cloudLate.length > 0) {
-            state.lateLogs = mergeListById(state.lateLogs, cloudLate, 'id');
-          }
-          if (Array.isArray(cloudViolations) && cloudViolations.length > 0) {
-            state.violations = mergeListById(state.violations, cloudViolations, 'id');
-          }
-          if (Array.isArray(cloudIzin) && cloudIzin.length > 0) {
-            state.izinPulang = mergeListById(state.izinPulang, cloudIzin, 'id');
-          }
-          if (Array.isArray(cloudJurnal) && cloudJurnal.length > 0) {
-            state.jurnalGuru = mergeListById(state.jurnalGuru, cloudJurnal, 'id');
-          }
-          if (Array.isArray(cloudTeachers) && cloudTeachers.length > 0) {
-            state.teachers = mergeListById(state.teachers, cloudTeachers);
-          }
-          if (Array.isArray(cloudKaih) && cloudKaih.length > 0) {
-            state.kaihLogs = mergeListById(state.kaihLogs, cloudKaih, 'id');
-          }
-          if (Array.isArray(cloudAccounts) && cloudAccounts.length > 0) {
-            state.accounts = mergeListById(state.accounts, cloudAccounts, 'username');
-          }
+        const deletedIds = getDeletedStudentIds();
+        if (Array.isArray(cloudStudents) && cloudStudents.length > 0) {
+          const validCloudStudents = deletedIds.size > 0 
+            ? cloudStudents.filter(s => s && !deletedIds.has(String(s.id).trim()) && !deletedIds.has(String(s.nisn || '').trim()))
+            : cloudStudents;
+          state.students = mergeListById(state.students, validCloudStudents);
+        }
+        if (deletedIds.size > 0) {
+          state.students = state.students.filter(s => s && !deletedIds.has(String(s.id).trim()) && !deletedIds.has(String(s.nisn || '').trim()));
+        }
+        if (Array.isArray(cloudAttendance) && cloudAttendance.length > 0) {
+          state.attendance = mergeListById(state.attendance, cloudAttendance, 'id');
+        }
+        if (Array.isArray(cloudLate) && cloudLate.length > 0) {
+          state.lateLogs = mergeListById(state.lateLogs, cloudLate, 'id');
+        }
+        if (Array.isArray(cloudViolations) && cloudViolations.length > 0) {
+          state.violations = mergeListById(state.violations, cloudViolations, 'id');
+        }
+        if (Array.isArray(cloudIzin) && cloudIzin.length > 0) {
+          state.izinPulang = mergeListById(state.izinPulang, cloudIzin, 'id');
+        }
+        if (Array.isArray(cloudJurnal) && cloudJurnal.length > 0) {
+          state.jurnalGuru = mergeListById(state.jurnalGuru, cloudJurnal, 'id');
+        }
+        if (Array.isArray(cloudTeachers) && cloudTeachers.length > 0) {
+          state.teachers = mergeListById(state.teachers, cloudTeachers);
+        }
+        if (Array.isArray(cloudKaih) && cloudKaih.length > 0) {
+          state.kaihLogs = mergeListById(state.kaihLogs, cloudKaih, 'id');
+        }
+        if (Array.isArray(cloudAccounts) && cloudAccounts.length > 0) {
+          state.accounts = mergeListById(state.accounts, cloudAccounts, 'username');
         }
       }
     } catch (e) {
