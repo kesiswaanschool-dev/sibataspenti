@@ -1,9 +1,12 @@
 // --- Supabase Cloud Configuration ---
-// Masukkan URL dan ANON KEY Supabase Anda di sini untuk menghubungkan database Supabase secara otomatis
-const SUPABASE_CONFIG = {
-  url: 'https://wedwjlkvnzbgrrybamqm.supabase.co',
-  anonKey: 'sb_publishable_h4RSXPFlcFVIpArkD9PfhA_8M-R5fh0'
-};
+// Guard: hanya deklarasi jika belum ada, mencegah SyntaxError jika script dimuat ganda
+if (typeof window.SUPABASE_CONFIG === 'undefined') {
+  window.SUPABASE_CONFIG = {
+    url: 'https://wedwjlkvnzbgrrybamqm.supabase.co',
+    anonKey: 'sb_publishable_h4RSXPFlcFVIpArkD9PfhA_8M-R5fh0'
+  };
+}
+const SUPABASE_CONFIG = window.SUPABASE_CONFIG;
 
 let supabaseClient = null;
 
@@ -78,9 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
       izinPulangDropdown.style.display = 'none';
     }
   });
-
-  // Setup Drag & Drop for Excel Upload
-  setupDragAndDrop();
+  // BUGFIX #5: Dihapus pemanggilan setupDragAndDrop() duplikat (sudah dipanggil baris 55)
 });
 
 function escapeHtml(str) {
@@ -269,6 +270,8 @@ function loadSettings() {
   updateSyncBadge();
 }
 
+// BUGFIX #4: Merge dengan resolusi konflik berbasis timestamp
+// Cloud menang hanya jika updated_at-nya lebih baru dari data lokal
 function mergeListById(localList = [], cloudList = [], idKey = 'id') {
   if (!cloudList || cloudList.length === 0) return localList || [];
   if (!localList || localList.length === 0) return cloudList || [];
@@ -285,12 +288,27 @@ function mergeListById(localList = [], cloudList = [], idKey = 'id') {
     const key = String(item[idKey] !== undefined ? item[idKey] : (item.id || item.nisn || item.username)).trim();
     if (key) {
       const existing = map.get(key);
-      map.set(key, existing ? { ...existing, ...item } : item);
+      if (!existing) {
+        // Item baru dari cloud, langsung tambah
+        map.set(key, item);
+      } else {
+        // BUGFIX #4: Resolusi konflik berbasis timestamp
+        const localTime = existing.updated_at ? new Date(existing.updated_at).getTime() : 0;
+        const cloudTime = item.updated_at ? new Date(item.updated_at).getTime() : 0;
+        if (cloudTime >= localTime) {
+          // Cloud lebih baru atau sama → cloud menang (dengan tetap pertahankan field lokal yang tidak ada di cloud)
+          map.set(key, { ...existing, ...item });
+        } else {
+          // Lokal lebih baru → lokal menang (hanya tambah field cloud yang tidak ada di lokal)
+          map.set(key, { ...item, ...existing });
+        }
+      }
     }
   });
 
   return Array.from(map.values());
 }
+
 
 function getDeletedStudentIds() {
   try {
@@ -414,6 +432,10 @@ function setupSupabaseRealtime() {
       .on('postgres_changes', { event: '*', schema: 'public' }, (payload) => {
         handleRealtimePayload(payload);
       })
+      // BUGFIX #3: Dengarkan broadcast event 'reset' dari admin
+      .on('broadcast', { event: 'reset' }, (payload) => {
+        handleResetBroadcast(payload);
+      })
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
           console.log('Realtime Supabase Active');
@@ -422,6 +444,51 @@ function setupSupabaseRealtime() {
   } catch (e) {
     console.warn('Gagal mengaktifkan Realtime Supabase:', e);
   }
+}
+
+// BUGFIX #3: Handler untuk event reset dari user lain
+function handleResetBroadcast(payload) {
+  // Tampilkan notifikasi banner yang tidak bisa diabaikan
+  showResetAlert(payload.payload && payload.payload.resetBy ? payload.payload.resetBy : 'Admin');
+  // Tunggu 3 detik agar user bisa membaca, lalu reload
+  setTimeout(() => {
+    state.students = [];
+    state.teachers = [];
+    state.attendance = [];
+    state.lateLogs = [];
+    state.violations = [];
+    state.izinPulang = [];
+    state.jurnalGuru = [];
+    state.kaihLogs = [];
+    clearDeletedStudentIds();
+    localStorage.removeItem('schoolDb');
+    saveLocalState();
+    refreshAllUI();
+    window.location.reload();
+  }, 4000);
+}
+
+// BUGFIX #3: Tampilkan banner alert reset yang mencolok
+function showResetAlert(resetBy) {
+  // Hapus banner lama jika ada
+  const oldBanner = document.getElementById('reset-alert-banner');
+  if (oldBanner) oldBanner.remove();
+
+  const banner = document.createElement('div');
+  banner.id = 'reset-alert-banner';
+  banner.style.cssText = [
+    'position:fixed', 'top:0', 'left:0', 'width:100%', 'z-index:99999',
+    'background:linear-gradient(90deg,#c0392b,#e74c3c)',
+    'color:#fff', 'text-align:center', 'padding:18px 24px',
+    'font-size:16px', 'font-weight:600', 'font-family:Outfit,sans-serif',
+    'box-shadow:0 4px 24px rgba(0,0,0,0.5)', 'animation:pulse 1s infinite alternate'
+  ].join(';');
+  banner.innerHTML = `
+    ⚠️ <strong>ADMIN (${resetBy}) MERESET SEMUA DATA!</strong>
+    — Halaman akan dimuat ulang dalam 4 detik...
+    <style>@keyframes pulse{from{opacity:1}to{opacity:0.7}}</style>
+  `;
+  document.body.prepend(banner);
 }
 
 function handleRealtimePayload(payload) {
@@ -1399,27 +1466,49 @@ async function deleteStudent(id) {
       const stdId = std ? String(std.id).trim() : targetId;
       const stdNisn = std ? String(std.nisn).trim() : targetId;
 
-      addDeletedStudentId(stdId);
-      if (stdNisn) addDeletedStudentId(stdNisn);
-
-      // 1. Delete student
+      // 1. Hapus dari state lokal
       state.students = state.students.filter(s => String(s.id).trim() !== stdId && String(s.nisn).trim() !== stdNisn);
-      // 2. Cascade delete all associated logs for this student
+      // 2. Cascade delete semua log terkait dari state lokal
       state.attendance = state.attendance.filter(a => String(a.student_id).trim() !== stdId && String(a.student_id).trim() !== stdNisn);
       state.lateLogs = state.lateLogs.filter(l => String(l.student_id).trim() !== stdId && String(l.student_id).trim() !== stdNisn);
       state.violations = state.violations.filter(v => String(v.student_id).trim() !== stdId && String(v.student_id).trim() !== stdNisn);
       state.izinPulang = state.izinPulang.filter(i => String(i.student_id).trim() !== stdId && String(i.student_id).trim() !== stdNisn);
       state.kaihLogs = state.kaihLogs.filter(k => String(k.student_id).trim() !== stdId && String(k.student_id).trim() !== stdNisn);
 
+      // BUGFIX #2: Hapus LANGSUNG dari Supabase per-tabel (cascade delete di cloud)
       if (supabaseClient) {
         try {
-          await supabaseClient.from('students').delete().or(`id.eq.${stdId},nisn.eq.${stdNisn}`);
+          await Promise.allSettled([
+            supabaseClient.from('students').delete().or(`id.eq.${stdId},nisn.eq.${stdNisn}`),
+            supabaseClient.from('attendance').delete().or(`student_id.eq.${stdId},student_id.eq.${stdNisn}`),
+            supabaseClient.from('late_logs').delete().or(`student_id.eq.${stdId},student_id.eq.${stdNisn}`),
+            supabaseClient.from('violations').delete().or(`student_id.eq.${stdId},student_id.eq.${stdNisn}`),
+            supabaseClient.from('izin_pulang').delete().or(`student_id.eq.${stdId},student_id.eq.${stdNisn}`),
+            supabaseClient.from('kaih_logs').delete().or(`student_id.eq.${stdId},student_id.eq.${stdNisn}`)
+          ]);
+          // BUGFIX #2: Tidak lagi pakai localStorage deletedStudentIds — Supabase adalah sumber kebenaran
+          // Hapus dari school_data (single-row JSON) juga
+          const updatedPayload = {
+            id: 1,
+            students: state.students,
+            attendance: state.attendance,
+            latelogs: state.lateLogs,
+            violations: state.violations,
+            izinpulang: state.izinPulang,
+            jurnalguru: state.jurnalGuru,
+            teachers: state.teachers,
+            kaihlogs: state.kaihLogs,
+            accounts: getAccountsList(),
+            updated_at: new Date().toISOString()
+          };
+          await supabaseClient.from('school_data').upsert(updatedPayload, { onConflict: 'id' });
         } catch (e) {
           console.warn('Per-table student delete notice:', e);
         }
       }
 
-      await persistData();
+      // Simpan ke localStorage (tidak perlu track deletedStudentIds lagi)
+      saveLocalState();
       renderStudentListTable();
       showToast('Data siswa beserta riwayatnya berhasil dihapus!', 'success');
     }
@@ -6049,6 +6138,7 @@ async function confirmResetAllData() {
     clearDeletedStudentIds();
 
     const resetTime = new Date().toISOString();
+    const currentUser = state.currentUser ? (state.currentUser.nama || state.currentUser.username || 'Admin') : 'Admin';
 
     // 2. Clear local storage
     localStorage.removeItem('schoolDb');
@@ -6085,6 +6175,19 @@ async function confirmResetAllData() {
           supabaseClient.from('jurnal_guru').delete().neq('id', '___none___'),
           supabaseClient.from('kaih_logs').delete().neq('id', '___none___')
         ]);
+
+        // BUGFIX #3: Kirim broadcast ke semua user yang sedang aktif
+        try {
+          if (realtimeChannel) {
+            await realtimeChannel.send({
+              type: 'broadcast',
+              event: 'reset',
+              payload: { resetBy: currentUser, resetAt: resetTime }
+            });
+          }
+        } catch (broadcastErr) {
+          console.warn('Broadcast reset notice:', broadcastErr);
+        }
       } catch (e) {
         console.warn('Cloud reset notice:', e);
       }
@@ -6093,7 +6196,7 @@ async function confirmResetAllData() {
     saveLocalState();
     refreshAllUI();
 
-    showToast('Seluruh data aplikasi & cloud berhasil di-reset bersih!', 'success');
+    showToast('Seluruh data aplikasi & cloud berhasil di-reset bersih! Notifikasi dikirim ke semua user.', 'success');
 
     setTimeout(() => {
       window.location.reload();
