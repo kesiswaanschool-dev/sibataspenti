@@ -359,12 +359,19 @@ async function loadData() {
   if (supabaseClient) {
     await syncPullFromSupabase(true);
     
-    // Ensure local data is also synced up to cloud if cloud is missing entries
-    const hasData = (state.students && state.students.length > 0) ||
-                    (state.teachers && state.teachers.length > 0) ||
-                    (state.jurnalGuru && state.jurnalGuru.length > 0);
-    if (hasData) {
-      syncPushToSupabase(true);
+    // FIX DATA GURU: Jangan push ulang data ke cloud jika baru saja dilakukan reset
+    // Reset menyimpan timestamp di lastResetAt; jika < 10 detik lalu, skip push
+    const lastResetAt = localStorage.getItem('lastResetAt');
+    const justReset = lastResetAt && (Date.now() - new Date(lastResetAt).getTime()) < 10000;
+
+    if (!justReset) {
+      // Ensure local data is also synced up to cloud if cloud is missing entries
+      const hasData = (state.students && state.students.length > 0) ||
+                      (state.teachers && state.teachers.length > 0) ||
+                      (state.jurnalGuru && state.jurnalGuru.length > 0);
+      if (hasData) {
+        syncPushToSupabase(true);
+      }
     }
   }
 
@@ -566,7 +573,11 @@ async function syncPullFromSupabase(silent = true) {
                               (resJurnal.data && resJurnal.data.length > 0) ||
                               (resAttendance.data && resAttendance.data.length > 0);
 
-      if (!resStudents.error && !resTeachers.error && !resAttendance.error && hasPerTableData) {
+      // FIX DATA GURU: Jangan merge data cloud jika baru saja reset (< 10 detik)
+      const lastResetAt = localStorage.getItem('lastResetAt');
+      const justReset = lastResetAt && (Date.now() - new Date(lastResetAt).getTime()) < 10000;
+
+      if (!justReset && !resStudents.error && !resTeachers.error && !resAttendance.error && hasPerTableData) {
         state.students = mergeListById(state.students, resStudents.data || []);
         state.teachers = mergeListById(state.teachers, resTeachers.data || []);
         state.attendance = mergeListById(state.attendance, resAttendance.data || [], 'id');
@@ -6177,15 +6188,27 @@ async function confirmResetAllData() {
         await supabaseClient.from('school_data').upsert(emptyPayload, { onConflict: 'id' });
 
         await Promise.allSettled([
-          supabaseClient.from('students').delete().neq('id', '___none___'),
-          supabaseClient.from('teachers').delete().neq('id', '___none___'),
-          supabaseClient.from('attendance').delete().neq('id', '___none___'),
-          supabaseClient.from('late_logs').delete().neq('id', '___none___'),
-          supabaseClient.from('violations').delete().neq('id', '___none___'),
-          supabaseClient.from('izin_pulang').delete().neq('id', '___none___'),
-          supabaseClient.from('jurnal_guru').delete().neq('id', '___none___'),
-          supabaseClient.from('kaih_logs').delete().neq('id', '___none___')
+          supabaseClient.from('students').delete().not('id', 'is', null),
+          supabaseClient.from('teachers').delete().not('id', 'is', null),
+          supabaseClient.from('attendance').delete().not('id', 'is', null),
+          supabaseClient.from('late_logs').delete().not('id', 'is', null),
+          supabaseClient.from('violations').delete().not('id', 'is', null),
+          supabaseClient.from('izin_pulang').delete().not('id', 'is', null),
+          supabaseClient.from('jurnal_guru').delete().not('id', 'is', null),
+          supabaseClient.from('kaih_logs').delete().not('id', 'is', null)
         ]);
+
+        // Verifikasi: pastikan teachers benar-benar kosong di cloud
+        const verifyTeachers = await supabaseClient.from('teachers').select('id').limit(1);
+        if (verifyTeachers.data && verifyTeachers.data.length > 0) {
+          // Jika masih ada, hapus satu per satu
+          const allTeachers = await supabaseClient.from('teachers').select('id');
+          if (allTeachers.data) {
+            for (const t of allTeachers.data) {
+              await supabaseClient.from('teachers').delete().eq('id', t.id);
+            }
+          }
+        }
 
         // BUGFIX #3: Kirim broadcast ke semua user yang sedang aktif
         try {
