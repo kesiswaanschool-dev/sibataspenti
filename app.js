@@ -357,12 +357,14 @@ async function loadData() {
       const lastLocalReset = localStorage.getItem('lastResetAt') || '';
       if (data && (data.isReset || (data.resetAt && data.resetAt !== lastLocalReset))) {
         resetDetected = true;
-        if (data.resetAt) localStorage.setItem('lastResetAt', data.resetAt);
-        // Hapus semua data lokal karena sudah di-reset
-        const keepKeys = ['theme', 'storageMode', 'githubSettings', 'lastResetAt'];
-        Object.keys(localStorage).forEach(key => {
-          if (!keepKeys.includes(key)) localStorage.removeItem(key);
-        });
+        // Catat resetAt yang terdeteksi, biarkan syncPullFromSupabase yang set lastResetAt
+        if (data.resetAt) {
+          localStorage.setItem('_resetSeen', data.resetAt);
+        }
+        // Hapus data lokal, jangan hapus _resetSeen atau _resetCooldown
+        localStorage.removeItem('schoolDb');
+        localStorage.removeItem('deletedStudentIds');
+        localStorage.removeItem('_resetCooldown');
         console.log('Reset terdeteksi dari cloud, data lokal dibersihkan');
       }
     } catch (e) {
@@ -618,7 +620,8 @@ async function syncPullFromSupabase(silent = true) {
       if (!error && data) {
         resetAtValue = data.resetAt;
         const lastLocalReset = localStorage.getItem('lastResetAt') || '';
-        if (data.isReset || (data.resetAt && data.resetAt !== lastLocalReset)) {
+        const resetSeen = localStorage.getItem('_resetSeen');
+        if (data.isReset || (data.resetAt && data.resetAt !== lastLocalReset) || (data.resetAt && resetSeen === data.resetAt)) {
           isReset = true;
           if (data.resetAt) localStorage.setItem('lastResetAt', data.resetAt);
           console.log('Detected cloud reset event at', data.resetAt);
@@ -660,6 +663,7 @@ async function syncPullFromSupabase(silent = true) {
       try { await supabaseClient.from('accounts').delete().not('id', 'is', null); } catch (_) {}
       // Cooldown: cegah merge per-table sampai user push data baru
       localStorage.setItem('_resetCooldown', '1');
+      localStorage.removeItem('_resetSeen');
       saveLocalState();
       refreshAllUI();
       return true;
