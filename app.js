@@ -3887,68 +3887,79 @@ function renderDashboardCharts(hadir = 0, sakit = 0, izin = 0, alpha = 0) {
 
   // Populate data counts
   monthsData.forEach(m => {
-    m.count = state.lateLogs.filter(l => l.tanggal.startsWith(m.yMonth)).length;
+    m.count = state.lateLogs.filter(l => l.tanggal && l.tanggal.startsWith(m.yMonth)).length;
   });
 
-  const maxCount = Math.max(...monthsData.map(m => m.count), 5); // default min height scale of 5
-  
-  // Create beautiful SVG Bar Chart
-  const svgWidth = 350;
-  const svgHeight = 180;
-  const padding = 30;
-  const graphWidth = svgWidth - padding * 2;
-  const graphHeight = svgHeight - padding * 2;
-  const barWidth = 24;
-  const colSpacing = graphWidth / monthsData.length;
+  const allZero = monthsData.every(m => m.count === 0);
 
-  let barElements = '';
-  let gridLines = '';
-  let labels = '';
+  // FIX: Jika semua 0, tampilkan pesan kosong bukan grafik dengan nilai minimum 5
+  if (allZero) {
+    trendContainer.innerHTML = `
+      <svg width="100%" height="180" viewBox="0 0 350 180" style="overflow:visible;">
+        <text x="175" y="85" text-anchor="middle" fill="var(--text-muted)" font-size="13" font-weight="500">Belum ada data keterlambatan</text>
+        <text x="175" y="105" text-anchor="middle" fill="var(--text-muted)" font-size="11">Data grafik akan muncul setelah ada pencatatan</text>
+      </svg>
+    `;
+  } else {
+    // FIX: Gunakan nilai max real tanpa minimum dummy 5
+    const maxCount = Math.max(...monthsData.map(m => m.count), 1);
+    
+    // Create beautiful SVG Bar Chart
+    const svgWidth = 350;
+    const svgHeight = 180;
+    const padding = 30;
+    const graphWidth = svgWidth - padding * 2;
+    const graphHeight = svgHeight - padding * 2;
+    const barWidth = 24;
+    const colSpacing = graphWidth / monthsData.length;
 
-  // Horizontal Gridlines (3 lines)
-  for (let idx = 0; idx <= 3; idx++) {
-    const yVal = padding + (graphHeight / 3) * idx;
-    const gridLabel = Math.round(maxCount - (maxCount / 3) * idx);
-    gridLines += `
-      <line x1="${padding}" y1="${yVal}" x2="${svgWidth - padding}" y2="${yVal}" stroke="var(--border-color)" stroke-width="1" stroke-dasharray="3,3" />
-      <text x="${padding - 8}" y="${yVal + 4}" fill="var(--text-muted)" font-size="9" text-anchor="end">${gridLabel}</text>
+    let barElements = '';
+    let gridLines = '';
+    let labels = '';
+
+    // Horizontal Gridlines (3 lines)
+    for (let idx = 0; idx <= 3; idx++) {
+      const yVal = padding + (graphHeight / 3) * idx;
+      const gridLabel = Math.round(maxCount - (maxCount / 3) * idx);
+      gridLines += `
+        <line x1="${padding}" y1="${yVal}" x2="${svgWidth - padding}" y2="${yVal}" stroke="var(--border-color)" stroke-width="1" stroke-dasharray="3,3" />
+        <text x="${padding - 8}" y="${yVal + 4}" fill="var(--text-muted)" font-size="9" text-anchor="end">${gridLabel}</text>
+      `;
+    }
+
+    // Draw Bars
+    monthsData.forEach((m, idx) => {
+      // FIX: Jika count 0, tampilkan batang sangat kecil (2px) hanya sebagai indikator
+      const barHeight = m.count > 0 ? (m.count / maxCount) * graphHeight : 2;
+      const xPos = padding + colSpacing * idx + (colSpacing - barWidth) / 2;
+      const yPos = padding + graphHeight - barHeight;
+
+      barElements += `
+        <rect x="${xPos}" y="${yPos}" width="${barWidth}" height="${barHeight}" 
+          fill="${m.count > 0 ? 'url(#lateGrad)' : 'rgba(255,255,255,0.06)'}" rx="4"
+          style="transition: all 0.5s ease" />
+        <text x="${xPos + barWidth/2}" y="${yPos - 6}" text-anchor="middle" fill="${m.count > 0 ? 'var(--color-warning)' : 'var(--text-muted)'}" font-size="9" font-weight="700">${m.count}</text>
+      `;
+
+      labels += `
+        <text x="${xPos + barWidth/2}" y="${padding + graphHeight + 16}" text-anchor="middle" fill="var(--text-muted)" font-size="11" font-weight="500">${m.label}</text>
+      `;
+    });
+
+    trendContainer.innerHTML = `
+      <svg width="100%" height="180" viewBox="0 0 ${svgWidth} ${svgHeight}" style="overflow:visible;">
+        <defs>
+          <linearGradient id="lateGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#fbbf24" />
+            <stop offset="100%" stop-color="#f59e0b" />
+          </linearGradient>
+        </defs>
+        ${gridLines}
+        ${barElements}
+        ${labels}
+      </svg>
     `;
   }
-
-  // Draw Bars
-  monthsData.forEach((m, idx) => {
-    const barHeight = m.count > 0 ? (m.count / maxCount) * graphHeight : 2; // tiny indicator if 0
-    const xPos = padding + colSpacing * idx + (colSpacing - barWidth) / 2;
-    const yPos = padding + graphHeight - barHeight;
-
-    // Glowing gradients or colors
-    barElements += `
-      <rect x="${xPos}" y="${yPos}" width="${barWidth}" height="${barHeight}" 
-        fill="url(#lateGrad)" rx="4"
-        style="transition: all 0.5s ease" />
-      <!-- Value Hover indicator -->
-      <text x="${xPos + barWidth/2}" y="${yPos - 6}" text-anchor="middle" fill="var(--color-warning)" font-size="9" font-weight="700">${m.count}</text>
-    `;
-
-    // Labels
-    labels += `
-      <text x="${xPos + barWidth/2}" y="${padding + graphHeight + 16}" text-anchor="middle" fill="var(--text-muted)" font-size="11" font-weight="500">${m.label}</text>
-    `;
-  });
-
-  trendContainer.innerHTML = `
-    <svg width="100%" height="180" viewBox="0 0 ${svgWidth} ${svgHeight}" style="overflow:visible;">
-      <defs>
-        <linearGradient id="lateGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#fbbf24" />
-          <stop offset="100%" stop-color="#f59e0b" />
-        </linearGradient>
-      </defs>
-      ${gridLines}
-      ${barElements}
-      ${labels}
-    </svg>
-  `;
 }
 
 function renderTopLateStudentsThisMonth() {
@@ -6194,13 +6205,17 @@ async function confirmResetAllData() {
     }
 
     saveLocalState();
+
+    // FIX GRAFIK: Paksa render dashboard dengan state kosong sebelum reload
+    state.currentView = 'dashboard';
+    renderDashboard();
     refreshAllUI();
 
     showToast('Seluruh data aplikasi & cloud berhasil di-reset bersih! Notifikasi dikirim ke semua user.', 'success');
 
     setTimeout(() => {
       window.location.reload();
-    }, 1500);
+    }, 2000);
 
   } catch (error) {
     showToast(`Gagal mereset data: ${error.message}`, 'error');
