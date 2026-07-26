@@ -6134,117 +6134,112 @@ async function confirmResetAllData() {
     "4. Seluruh Data di Local Storage & Server Cloud Supabase\n\n" +
     "Klik OK jika Anda benar-benar yakin."
   );
-
   if (!confirmed1) return;
 
-  const confirmText = prompt("Ketik kata 'RESET' (dengan huruf besar) untuk mengonfirmasi penghapusan seluruh data aplikasi:");
+  const confirmText = prompt("Ketik kata 'RESET' (huruf besar) untuk konfirmasi:");
   if (confirmText !== 'RESET') {
     showToast('Reset dibatalkan. Kata konfirmasi tidak sesuai.', 'info');
     return;
   }
-
-  toggleLoader(true, 'Mereset seluruh data aplikasi & server cloud...');
+  
+  toggleLoader(true, 'Hard Reset berjalan... jangan tutup halaman ini.');
 
   try {
-    // 1. Clear state
-    state.students = [];
-    state.teachers = [];
+    const resetTime = new Date().toISOString();
+    const currentUser = state.currentUser
+      ? (state.currentUser.nama || state.currentUser.username || 'Admin')
+      : 'Admin';
+
+    // ===========================================================
+    // LANGKAH 1: KOSONGKAN STATE & RENDER UI KE 0 SEKETIKA
+    // ===========================================================
+    state.students   = [];
+    state.teachers   = [];
     state.attendance = [];
-    state.lateLogs = [];
+    state.lateLogs   = [];
     state.violations = [];
     state.izinPulang = [];
     state.jurnalGuru = [];
-    state.kaihLogs = [];
+    state.kaihLogs   = [];
 
-    // Clear deleted blacklist
-    clearDeletedStudentIds();
+    state.currentView = 'dashboard';
+    renderDashboard(); // tampilkan 0 langsung
 
-    const resetTime = new Date().toISOString();
-    const currentUser = state.currentUser ? (state.currentUser.nama || state.currentUser.username || 'Admin') : 'Admin';
+    // ===========================================================
+    // LANGKAH 2: BERSIHKAN SEMUA LOCALSTORAGE
+    // ===========================================================
+    const keysToKeep = ['theme', 'storageMode', 'githubSettings'];
+    Object.keys(localStorage).forEach(key => {
+      if (!keysToKeep.includes(key)) localStorage.removeItem(key);
+    });
+    localStorage.setItem('lastResetAt', resetTime); // guard 60 detik
+    saveLocalState(); // simpan state kosong
 
-    // 2. Clear local storage
-    localStorage.removeItem('schoolDb');
-    localStorage.removeItem('deletedStudentIds');
-    localStorage.setItem('lastResetAt', resetTime);
-
-    // 3. Clear cloud database (Supabase school_data & per-tables)
+    // ===========================================================
+    // LANGKAH 3: HAPUS SUPABASE BERURUTAN + VERIFIKASI PER-BARIS
+    // ===========================================================
     if (supabaseClient) {
-      try {
-        const emptyPayload = {
-          id: 1,
-          resetAt: resetTime,
-          isReset: true,
-          students: [],
-          attendance: [],
-          latelogs: [],
-          violations: [],
-          izinpulang: [],
-          jurnalguru: [],
-          teachers: [],
-          kaihlogs: [],
-          accounts: getAccountsList(),
-          updated_at: resetTime
-        };
-        await supabaseClient.from('school_data').upsert(emptyPayload, { onConflict: 'id' });
+      const emptyPayload = {
+        id: 1, resetAt: resetTime, isReset: true,
+        students: [], attendance: [], latelogs: [], violations: [],
+        izinpulang: [], jurnalguru: [], teachers: [], kaihlogs: [],
+        accounts: getAccountsList(), updated_at: resetTime
+      };
 
-        await Promise.allSettled([
-          supabaseClient.from('students').delete().not('id', 'is', null),
-          supabaseClient.from('teachers').delete().not('id', 'is', null),
-          supabaseClient.from('attendance').delete().not('id', 'is', null),
-          supabaseClient.from('late_logs').delete().not('id', 'is', null),
-          supabaseClient.from('violations').delete().not('id', 'is', null),
-          supabaseClient.from('izin_pulang').delete().not('id', 'is', null),
-          supabaseClient.from('jurnal_guru').delete().not('id', 'is', null),
-          supabaseClient.from('kaih_logs').delete().not('id', 'is', null)
-        ]);
+      // 3a. Update school_data ke kosong (sinyal reset)
+      try { await supabaseClient.from('school_data').upsert(emptyPayload, { onConflict: 'id' }); }
+      catch (e) { console.warn('school_data clear:', e); }
 
-        // Verifikasi: pastikan teachers benar-benar kosong di cloud
-        const verifyTeachers = await supabaseClient.from('teachers').select('id').limit(1);
-        if (verifyTeachers.data && verifyTeachers.data.length > 0) {
-          // Jika masih ada, hapus satu per satu
-          const allTeachers = await supabaseClient.from('teachers').select('id');
-          if (allTeachers.data) {
-            for (const t of allTeachers.data) {
-              await supabaseClient.from('teachers').delete().eq('id', t.id);
+      // 3b. Hapus tabel satu per satu BERURUTAN dengan verifikasi
+      const tablesToClear = [
+        'students', 'teachers', 'attendance',
+        'late_logs', 'violations', 'izin_pulang',
+        'jurnal_guru', 'kaih_logs'
+      ];
+
+      for (const tbl of tablesToClear) {
+        toggleLoader(true, `Menghapus ${tbl}...`);
+        try {
+          await supabaseClient.from(tbl).delete().not('id', 'is', null);
+          // Verifikasi — jika masih ada, hapus per baris
+          const check = await supabaseClient.from(tbl).select('id').limit(1);
+          if (check.data && check.data.length > 0) {
+            const allRows = await supabaseClient.from(tbl).select('id');
+            if (allRows.data) {
+              for (const row of allRows.data) {
+                try { await supabaseClient.from(tbl).delete().eq('id', row.id); }
+                catch (_) {}
+              }
             }
           }
-        }
-
-        // BUGFIX #3: Kirim broadcast ke semua user yang sedang aktif
-        try {
-          if (realtimeChannel) {
-            await realtimeChannel.send({
-              type: 'broadcast',
-              event: 'reset',
-              payload: { resetBy: currentUser, resetAt: resetTime }
-            });
-          }
-        } catch (broadcastErr) {
-          console.warn('Broadcast reset notice:', broadcastErr);
-        }
-      } catch (e) {
-        console.warn('Cloud reset notice:', e);
+        } catch (e) { console.warn(`Hapus ${tbl}:`, e); }
       }
+
+      // 3c. Update school_data kosong sekali lagi (konfirmasi akhir)
+      try { await supabaseClient.from('school_data').upsert(emptyPayload, { onConflict: 'id' }); }
+      catch (e) {}
+
+      // 3d. Broadcast reset ke semua user aktif
+      try {
+        if (realtimeChannel) {
+          await realtimeChannel.send({
+            type: 'broadcast', event: 'reset',
+            payload: { resetBy: currentUser, resetAt: resetTime }
+          });
+        }
+      } catch (e) {}
     }
 
-    saveLocalState();
-
-    // FIX GRAFIK: Paksa render dashboard dengan state kosong sebelum reload
-    state.currentView = 'dashboard';
-    renderDashboard();
+    // ===========================================================
+    // LANGKAH 4: RENDER ULANG & RELOAD
+    // ===========================================================
     refreshAllUI();
-
-    showToast('Seluruh data aplikasi & cloud berhasil di-reset bersih! Notifikasi dikirim ke semua user.', 'success');
-
-    setTimeout(() => {
-      window.location.reload();
-    }, 2000);
+    toggleLoader(false);
+    showToast('\u2705 Hard Reset selesai! Semua data berhasil dihapus.', 'success');
+    setTimeout(() => window.location.reload(), 2000);
 
   } catch (error) {
-    showToast(`Gagal mereset data: ${error.message}`, 'error');
-  } finally {
     toggleLoader(false);
+    showToast(`Gagal Hard Reset: ${error.message}`, 'error');
   }
 }
-
-
