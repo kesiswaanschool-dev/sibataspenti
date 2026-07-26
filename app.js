@@ -5770,9 +5770,10 @@ document.addEventListener('click', function(e) {
 
 function getDefaultAccounts() {
   return [
-    { id: '1', username: 'admin', password: '123', nama: 'Administrator', role: 'admin' },
-    { id: '2', username: 'piket', password: '123', nama: 'Guru Piket', role: 'guru-piket' },
-    { id: '3', username: 'osis', password: '123', nama: 'Pengurus OSIS', role: 'osis' }
+    { id: '1', username: 'superadmin', password: '123', nama: 'Super Administrator', role: 'super-admin' },
+    { id: '2', username: 'admin', password: '123', nama: 'Administrator Sekolah', role: 'admin' },
+    { id: '3', username: 'piket', password: '123', nama: 'Guru Piket', role: 'guru-piket' },
+    { id: '4', username: 'osis', password: '123', nama: 'Pengurus OSIS', role: 'osis' }
   ];
 }
 
@@ -5889,7 +5890,10 @@ function updateSidebarUser(user) {
   if (roleEl) {
     let roleText = 'Admin';
     let roleClass = 'role-badge-admin';
-    if (user.role === 'guru-piket') {
+    if (user.role === 'super-admin') {
+      roleText = 'Super Admin';
+      roleClass = 'role-badge-super-admin';
+    } else if (user.role === 'guru-piket') {
       roleText = 'Guru Piket';
       roleClass = 'role-badge-guru-piket';
     } else if (user.role === 'osis') {
@@ -5909,14 +5913,14 @@ function applyRolePermissions(user) {
     const rolesStr = el.getAttribute('data-roles') || '';
     const roles = rolesStr.split(',').map(r => r.trim());
 
-    if (userRole === 'admin' || roles.includes(userRole)) {
+    if (userRole === 'super-admin' || (userRole === 'admin' && !roles.includes('super-admin')) || roles.includes(userRole)) {
       el.style.display = '';
     } else {
       el.style.display = 'none';
     }
   });
 
-  if (userRole && userRole !== 'admin') {
+  if (userRole && userRole !== 'admin' && userRole !== 'super-admin') {
     const activeBtn = document.querySelector(`.menu-item[onclick*="${state.currentView}"]`);
     if (activeBtn) {
       const btnRoles = (activeBtn.getAttribute('data-roles') || '').split(',').map(r => r.trim());
@@ -5943,7 +5947,9 @@ function renderAkunTable() {
 
   tbody.innerHTML = accounts.map((acc, index) => {
     let roleBadge = '';
-    if (acc.role === 'admin') {
+    if (acc.role === 'super-admin') {
+      roleBadge = '<span class="role-pill role-pill-super-admin" style="background:rgba(239,68,68,0.2);color:#ef4444;border:1px solid rgba(239,68,68,0.4);">Super Admin</span>';
+    } else if (acc.role === 'admin') {
       roleBadge = '<span class="role-pill role-pill-admin">Admin</span>';
     } else if (acc.role === 'guru-piket') {
       roleBadge = '<span class="role-pill role-pill-guru-piket">Guru Piket</span>';
@@ -5953,7 +5959,7 @@ function renderAkunTable() {
       roleBadge = `<span class="role-pill">${acc.role}</span>`;
     }
 
-    const isDefaultAdmin = acc.username === 'admin';
+    const isProtectedAcc = acc.username === 'admin' || acc.username === 'superadmin';
 
     return `
       <tr>
@@ -5965,7 +5971,7 @@ function renderAkunTable() {
           <button class="btn-action edit" onclick="openAkunModal('${acc.id}')" title="Edit Akun">
             <i data-lucide="edit-3" style="width:14px;height:14px;"></i>
           </button>
-          ${isDefaultAdmin ? '' : `
+          ${isProtectedAcc ? '' : `
             <button class="btn-action delete" onclick="deleteAkun('${acc.id}')" title="Hapus Akun">
               <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
             </button>
@@ -6129,6 +6135,16 @@ function togglePasswordVisibility(inputId) {
 }
 
 async function confirmResetAllData() {
+  const sessionData = sessionStorage.getItem('currentUser');
+  let currentUserObj = null;
+  if (sessionData) {
+    try { currentUserObj = JSON.parse(sessionData); } catch (e) {}
+  }
+  
+  if (!currentUserObj || currentUserObj.role !== 'super-admin') {
+    showToast('Hanya akun Super Admin yang memiliki wewenang untuk mereset seluruh data!', 'error');
+    return;
+  }
   const confirmed1 = confirm(
     "⚠️ PERINGATAN KERAS / WARNING ⚠️\n\n" +
     "Apakah Anda YAKIN ingin MERESET SELURUH DATA di dalam aplikasi?\n\n" +

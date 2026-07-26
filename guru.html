@@ -173,7 +173,7 @@
             </button>
           </div>
         </div>
-        <button class="menu-item" id="btn-menu-reset-sidebar" data-roles="admin" onclick="confirmResetAllData()" style="color: #ef4444; border: 1px dashed rgba(239, 68, 68, 0.4); margin-top: 8px;">
+        <button class="menu-item" id="btn-menu-reset-sidebar" data-roles="super-admin" onclick="confirmResetAllData()" style="color: #ef4444; border: 1px dashed rgba(239, 68, 68, 0.4); margin-top: 8px;">
           <i data-lucide="trash-2" style="color: #ef4444;"></i>
           <span>Reset Semua Data</span>
         </button>
@@ -205,7 +205,7 @@
             <i data-lucide="moon" id="theme-icon-dark" style="display: none;"></i>
           </button>
 
-          <button class="btn-reset-app" id="btn-reset-app" data-roles="admin" onclick="confirmResetAllData()" title="Reset Seluruh Data Aplikasi">
+          <button class="btn-reset-app" id="btn-reset-app" data-roles="super-admin" onclick="confirmResetAllData()" title="Reset Seluruh Data Aplikasi">
             <i data-lucide="rotate-ccw" style="width:14px;height:14px;"></i>
             <span>Reset Data</span>
           </button>
@@ -2412,8 +2412,10 @@
                 <div class="form-group mb-4">
                   <label for="inline-akun-role" class="form-label font-semibold" style="display: block; margin-bottom: 6px;">Role / Hak Akses <span class="required" style="color:var(--color-danger)">*</span></label>
                   <select id="inline-akun-role" class="form-select" required style="width: 100%;">
-                    <option value="admin">Admin (Akses Penuh Seluruh Sistem)</option>
-                    <option value="guru-piket" selected>Guru Piket (Absensi, Terlambat, Pelanggaran, Izin Pulang)</option>
+                    <option value="">-- Pilih Role --</option>
+                    <option value="super-admin">Super Admin (Akses Penuh + Reset Data)</option>
+                    <option value="admin">Admin (Akses Operasional)</option>
+                    <option value="guru-piket">Guru Piket (Absensi, Terlambat, Pelanggaran, Izin Pulang)</option>
                     <option value="osis">OSIS (Siswa Terlambat)</option>
                   </select>
                 </div>
@@ -2546,7 +2548,8 @@
           <div class="form-group mb-4">
             <label for="akun-modal-role">Role / Hak Akses <span class="required">*</span></label>
             <select id="akun-modal-role" class="form-input" required>
-              <option value="admin">Admin (Akses Penuh)</option>
+              <option value="super-admin">Super Admin (Akses Penuh + Reset Data)</option>
+              <option value="admin">Admin (Akses Operasional)</option>
               <option value="guru-piket">Guru Piket (Absensi, Terlambat, Pelanggaran, Izin Pulang)</option>
               <option value="osis">OSIS (Siswa Terlambat)</option>
             </select>
