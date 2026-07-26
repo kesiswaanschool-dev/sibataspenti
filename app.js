@@ -20,6 +20,19 @@ function initSupabase() {
   }
 }
 
+function getDefaultAccounts() {
+  return [
+    { id: '1', nama: 'Super Admin', username: 'superadmin', password: 'superadmin', role: 'super-admin' },
+    { id: '2', nama: 'Admin', username: 'admin', password: 'admin', role: 'admin' },
+    { id: '3', nama: 'Guru Piket', username: 'gurupiket', password: 'gurupiket', role: 'guru-piket' },
+    { id: '4', nama: 'OSIS', username: 'osis', password: 'osis', role: 'osis' }
+  ];
+}
+
+function getAccountsList() {
+  return state.accounts || [];
+}
+
 // --- App State ---
 let state = {
   students: [],     // Array of { id, nama, nisn, kelas }
@@ -5745,84 +5758,8 @@ function downloadJurnalGuruQR() {
     link.download = 'QR_Jurnal_Guru.png';
     link.href = tempCanvas.toDataURL('image/png');
     link.click();
-    showToast('QR Code berhasil diunduh!', 'success');
-  };
-  qrImg.onerror = function () {
-    // Fallback: direct img src download
-    const link = document.createElement('a');
-    link.download = 'QR_Jurnal_Guru.png';
-    link.href = img.src;
-    link.click();
-    showToast('QR Code berhasil diunduh!', 'success');
   };
   qrImg.src = img.src;
-}
-
-// Close modal on overlay click
-document.addEventListener('click', function(e) {
-  const modal = document.getElementById('modal-qr-jurnal');
-  if (modal && e.target === modal) closeJurnalGuruQR();
-});
-
-/* ==========================================================================
-   AUTHENTICATION & MANAJEMEN AKUN LOGIC
-   ========================================================================== */
-
-function getDefaultAccounts() {
-  return [
-    { id: '1', username: 'superadmin', password: '123', nama: 'Super Administrator', role: 'super-admin' },
-    { id: '2', username: 'admin', password: '123', nama: 'Administrator Sekolah', role: 'admin' },
-    { id: '3', username: 'piket', password: '123', nama: 'Guru Piket', role: 'guru-piket' },
-    { id: '4', username: 'osis', password: '123', nama: 'Pengurus OSIS', role: 'osis' }
-  ];
-}
-
-function getAccountsList() {
-  if (state.accounts && state.accounts.length > 0) {
-    return state.accounts;
-  }
-  return getDefaultAccounts();
-}
-
-function doLogin(e) {
-  if (e) e.preventDefault();
-  const usernameInput = document.getElementById('login-username');
-  const passwordInput = document.getElementById('login-password');
-  const errorMsg = document.getElementById('login-error-msg');
-  const errorText = document.getElementById('login-error-text');
-
-  if (!usernameInput || !passwordInput) return;
-
-  const username = usernameInput.value.trim();
-  const password = passwordInput.value.trim();
-
-  const accounts = getAccountsList();
-  const foundUser = accounts.find(acc => acc.username.toLowerCase() === username.toLowerCase() && acc.password === password);
-
-  if (foundUser) {
-    if (errorMsg) errorMsg.style.display = 'none';
-
-    const sessionUser = {
-      id: foundUser.id,
-      username: foundUser.username,
-      nama: foundUser.nama,
-      role: foundUser.role
-    };
-    sessionStorage.setItem('currentUser', JSON.stringify(sessionUser));
-
-    const overlay = document.getElementById('login-overlay');
-    if (overlay) overlay.style.display = 'none';
-
-    updateSidebarUser(sessionUser);
-    applyRolePermissions(sessionUser);
-
-    showToast(`Selamat datang, ${sessionUser.nama}!`, 'success');
-  } else {
-    if (errorMsg && errorText) {
-      errorText.textContent = 'Username atau password salah.';
-      errorMsg.style.display = 'flex';
-    }
-  }
 }
 
 function toggleLoginPassword() {
@@ -5840,6 +5777,38 @@ function toggleLoginPassword() {
     if (eyeOpen) eyeOpen.style.display = 'inline-block';
     if (eyeClosed) eyeClosed.style.display = 'none';
   }
+}
+
+function doLogin(event) {
+  event.preventDefault();
+  const username = (document.getElementById('login-username')?.value || '').trim();
+  const password = (document.getElementById('login-password')?.value || '').trim();
+  const errorMsg = document.getElementById('login-error-msg');
+  const errorText = document.getElementById('login-error-text');
+
+  if (!username || !password) {
+    if (errorMsg) { errorMsg.style.display = 'block'; if (errorText) errorText.textContent = 'Isi username dan password!'; }
+    return;
+  }
+
+  const accounts = getAccountsList();
+  const user = accounts.find(a => a.username === username && a.password === password);
+
+  if (!user) {
+    if (errorMsg) { errorMsg.style.display = 'block'; if (errorText) errorText.textContent = 'Username atau password salah.'; }
+    return;
+  }
+
+  if (errorMsg) errorMsg.style.display = 'none';
+  const sessionData = { id: user.id, username: user.username, nama: user.nama, role: user.role };
+  sessionStorage.setItem('currentUser', JSON.stringify(sessionData));
+  state.currentUser = sessionData;
+
+  const overlay = document.getElementById('login-overlay');
+  if (overlay) overlay.style.display = 'none';
+  updateSidebarUser(sessionData);
+  applyRolePermissions(sessionData);
+  showToast(`Selamat datang, ${user.nama}!`, 'success');
 }
 
 function doLogout() {
@@ -5866,6 +5835,7 @@ function checkAuthStatus() {
   if (sessionData) {
     try {
       const user = JSON.parse(sessionData);
+      state.currentUser = user;
       if (overlay) overlay.style.display = 'none';
       updateSidebarUser(user);
       applyRolePermissions(user);
