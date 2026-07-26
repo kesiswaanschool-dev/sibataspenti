@@ -366,6 +366,13 @@ async function loadData() {
 
   if (!state.accounts || state.accounts.length === 0) {
     state.accounts = getDefaultAccounts();
+  } else {
+    const defaults = getDefaultAccounts();
+    for (const d of defaults) {
+      if (!state.accounts.find(a => a.username === d.username)) {
+        state.accounts.push(d);
+      }
+    }
   }
 
   // 2. Pull and merge cloud data
