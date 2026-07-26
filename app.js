@@ -607,6 +607,7 @@ async function syncPullFromSupabase(silent = true) {
     // CHECK RESET DARI SCHOOL_DATA TERLEBIH DAHULU
     // =========================================================
     let isReset = false;
+    let resetAtValue = null;
     try {
       const { data, error } = await supabaseClient
         .from('school_data')
@@ -615,6 +616,7 @@ async function syncPullFromSupabase(silent = true) {
         .maybeSingle();
 
       if (!error && data) {
+        resetAtValue = data.resetAt;
         const lastLocalReset = localStorage.getItem('lastResetAt') || '';
         if (data.isReset || (data.resetAt && data.resetAt !== lastLocalReset)) {
           isReset = true;
@@ -636,10 +638,11 @@ async function syncPullFromSupabase(silent = true) {
       state.jurnalGuru = [];
       state.kaihLogs = [];
       clearDeletedStudentIds();
-      // Kosongkan school_data + matikan isReset
+      // Kosongkan school_data + matikan isReset, TAPI pertahankan resetAt
+      const resetTs = resetAtValue || new Date().toISOString();
       try {
         await supabaseClient.from('school_data').upsert({
-          id: 1, isReset: false,
+          id: 1, isReset: false, resetAt: resetTs,
           students: [], attendance: [], latelogs: [], violations: [],
           izinpulang: [], jurnalguru: [], teachers: [], kaihlogs: [],
           accounts: getAccountsList(), updated_at: new Date().toISOString()
