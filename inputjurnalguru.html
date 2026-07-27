@@ -618,6 +618,11 @@
       existingDb.students = appDb.students;
       existingDb.jurnalGuru = appDb.jurnalGuru;
       existingDb.accounts = appDb.accounts;
+      existingDb.attendance = existingDb.attendance || [];
+      existingDb.kaihLogs = existingDb.kaihLogs || [];
+      existingDb.lateLogs = existingDb.lateLogs || [];
+      existingDb.violations = existingDb.violations || [];
+      existingDb.izinPulang = existingDb.izinPulang || [];
       localStorage.setItem('schoolDb', JSON.stringify(existingDb));
     }
 

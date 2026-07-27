@@ -1,4 +1,4 @@
-const APP_VERSION = 'v2.4.0_final';
+const APP_VERSION = 'v2.4.1_final';
 
 // --- Firebase Cloud Configuration ---
 const firebaseConfig = {
@@ -485,6 +485,8 @@ async function persistData() {
 
 // --- Firebase Cloud Sync Engine ---
 let _pushInProgress = false;
+let _stateSynced = false;
+let _kaihLogsModified = false;
 
 function updateSyncBadge() {
   const indicator = document.getElementById('sync-status-indicator');
@@ -609,6 +611,7 @@ async function syncPullFromFirebase(silent = true, snapshotData = null) {
     refreshAllUI();
     checkAuthStatus();
 
+    _stateSynced = true;
     if (!silent) showToast('Data terbaru berhasil dimuat dari Firebase Cloud!', 'success');
     return true;
   } catch (err) {
@@ -630,24 +633,32 @@ async function syncPushToFirebase(silent = true) {
   }
 
   try {
+    // Fetch existing Firebase doc first to preserve data from other pages
+    let existingData = {};
+    try {
+      const doc = await db.collection('school_data').doc('main').get();
+      if (doc.exists) existingData = doc.data();
+    } catch(e) {}
+
     const deletedStudentIds = (() => {
       try { return JSON.parse(localStorage.getItem('deletedStudentIds') || '[]'); } catch { return []; }
     })();
     const payload = {
-      students: state.students || [],
-      attendance: state.attendance || [],
-      latelogs: state.lateLogs || [],
-      violations: state.violations || [],
-      izinpulang: state.izinPulang || [],
-      jurnalguru: state.jurnalGuru || [],
-      teachers: state.teachers || [],
-      kaihlogs: state.kaihLogs || [],
-      accounts: getAccountsList(),
+      students: state.students || existingData.students || [],
+      attendance: state.attendance || existingData.attendance || [],
+      latelogs: state.lateLogs || existingData.latelogs || [],
+      violations: state.violations || existingData.violations || [],
+      izinpulang: state.izinPulang || existingData.izinpulang || [],
+      jurnalguru: state.jurnalGuru || existingData.jurnalguru || [],
+      teachers: state.teachers || existingData.teachers || [],
+      kaihlogs: _kaihLogsModified ? state.kaihLogs : (existingData.kaihlogs || existingData.kaihLogs || state.kaihLogs || []),
+      accounts: getAccountsList() || existingData.accounts || [],
       deletedStudentIds,
       updated_at: new Date().toISOString()
     };
 
     await db.collection('school_data').doc('main').set(payload);
+    _kaihLogsModified = false;
 
     if (!silent) showToast('Data berhasil disimpan ke Firebase Cloud!', 'success');
   } catch (error) {
@@ -1390,6 +1401,7 @@ async function deleteStudent(id) {
       state.violations = state.violations.filter(v => String(v.student_id).trim() !== stdId && String(v.student_id).trim() !== stdNisn);
       state.izinPulang = state.izinPulang.filter(i => String(i.student_id).trim() !== stdId && String(i.student_id).trim() !== stdNisn);
       state.kaihLogs = state.kaihLogs.filter(k => String(k.student_id).trim() !== stdId && String(k.student_id).trim() !== stdNisn);
+      _kaihLogsModified = true;
 
       // Sync ke Firebase
       if (db) {
@@ -1434,6 +1446,7 @@ async function deleteAllStudents() {
     state.violations = [];
     state.izinPulang = [];
     state.kaihLogs = [];
+    _kaihLogsModified = true;
 
     await persistData();
 
@@ -5049,6 +5062,7 @@ function save7KaihEntry() {
 
   if (!state.kaihLogs) state.kaihLogs = [];
   state.kaihLogs.unshift(logData);
+  _kaihLogsModified = true;
 
   persistData();
   showToast(`Berhasil menyimpan data 7 KAIH untuk ${student.nama}`, 'success');
@@ -5159,6 +5173,7 @@ function render7KaihHistoryTable() {
 function delete7KaihLog(id) {
   if (!confirm('Apakah Anda yakin ingin menghapus catatan 7 KAIH ini?')) return;
   state.kaihLogs = (state.kaihLogs || []).filter(l => l.id !== id);
+  _kaihLogsModified = true;
   persistData();
   showToast('Catatan 7 KAIH berhasil dihapus.', 'info');
   render7KaihHistoryTable();

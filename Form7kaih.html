@@ -669,6 +669,13 @@
       }
       existingDb.students = appDb.students;
       existingDb.kaihLogs = appDb.kaihLogs;
+      existingDb.attendance = existingDb.attendance || [];
+      existingDb.lateLogs = existingDb.lateLogs || [];
+      existingDb.violations = existingDb.violations || [];
+      existingDb.izinPulang = existingDb.izinPulang || [];
+      existingDb.teachers = existingDb.teachers || [];
+      existingDb.accounts = existingDb.accounts || [];
+      existingDb.jurnalGuru = existingDb.jurnalGuru || [];
       localStorage.setItem('schoolDb', JSON.stringify(existingDb));
     }
 
