@@ -1720,9 +1720,9 @@ function renderTeacherListTable() {
         <button class="btn btn-sm btn-icon btn-secondary mr-1" onclick="openTeacherModal('${t.id}')" title="Edit Data Guru">
           <i data-lucide="edit-3" style="width:14px;height:14px;"></i>
         </button>
-        <button class="btn btn-sm btn-icon btn-danger" onclick="deleteTeacher('${t.id}')" title="Hapus Data Guru">
+        ${state.currentUser && state.currentUser.role === 'super-admin' ? `<button class="btn btn-sm btn-icon btn-danger" onclick="deleteTeacher('${t.id}')" title="Hapus Data Guru">
           <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
-        </button>
+        </button>` : ''}
       </td>
     `;
     body.appendChild(tr);
@@ -1826,6 +1826,10 @@ async function handleTeacherFormSubmit(e) {
 }
 
 async function deleteTeacher(id) {
+  if (!state.currentUser || state.currentUser.role !== 'super-admin') {
+    showToast('Hanya Super Admin yang dapat menghapus data guru!', 'error');
+    return;
+  }
   if (!confirm('Apakah Anda yakin ingin menghapus data guru ini?')) return;
 
   toggleLoader(true, 'Menghapus data guru...');
