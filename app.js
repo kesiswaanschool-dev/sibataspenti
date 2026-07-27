@@ -462,6 +462,10 @@ window.addEventListener('focus', () => {
   }
 });
 
+window.addEventListener('beforeunload', () => {
+  if (_syncInterval) { clearInterval(_syncInterval); _syncInterval = null; }
+});
+
 function saveLocalState() {
   const dbData = {
     students: state.students,
@@ -485,7 +489,7 @@ async function persistData() {
 }
 
 // --- Firebase Cloud Sync Engine ---
-let _lastPushTime = 0;
+let _pushInProgress = false;
 
 function updateSyncBadge() {
   const indicator = document.getElementById('sync-status-indicator');
@@ -506,24 +510,32 @@ function updateSyncBadge() {
   }
 }
 
+let _syncInterval = null;
+
 function setupFirebaseRealtime() {
-  if (!db || firebaseUnsubscribe) return;
-  try {
-    firebaseUnsubscribe = db.collection('school_data').doc('main')
-      .onSnapshot((docSnap) => {
-        const data = docSnap.data();
-        if (!data || !data.updated_at) return;
-
-        // Skip snapshot yang dipicu oleh push lokal sendiri
-        const cloudTime = typeof data.updated_at === 'string' ? new Date(data.updated_at).getTime() : 0;
-        if (cloudTime > 0 && cloudTime <= _lastPushTime) return;
-
-        syncPullFromFirebase(true, data);
-      }, (error) => {
-        console.warn('Firebase Realtime error:', error);
-      });
-  } catch (e) {
-    console.warn('Gagal mengaktifkan Realtime Firebase:', e);
+  if (!db) return;
+  if (!firebaseUnsubscribe) {
+    try {
+      firebaseUnsubscribe = db.collection('school_data').doc('main')
+        .onSnapshot((docSnap) => {
+          if (_pushInProgress) return;
+          const data = docSnap.data();
+          if (!data || !data.updated_at) return;
+          syncPullFromFirebase(true, data);
+        }, (error) => {
+          console.warn('Firebase Realtime error:', error);
+        });
+    } catch (e) {
+      console.warn('Gagal mengaktifkan Realtime Firebase:', e);
+    }
+  }
+  if (!_syncInterval) {
+    _syncInterval = setInterval(() => {
+      if (_pushInProgress) return;
+      if (db && !sessionStorage.getItem('_sessionPermaReset')) {
+        syncPullFromFirebase(true);
+      }
+    }, 5000);
   }
 }
 
@@ -619,8 +631,7 @@ async function syncPullFromFirebase(silent = true, snapshotData = null) {
 async function syncPushToFirebase(silent = true) {
   if (!db) return;
 
-  const pushTime = Date.now();
-  _lastPushTime = pushTime;
+  _pushInProgress = true;
 
   const indicator = document.getElementById('sync-status-indicator');
   const text = document.getElementById('sync-status-text');
@@ -653,6 +664,7 @@ async function syncPushToFirebase(silent = true) {
   } catch (error) {
     if (!silent) showToast(`Gagal menyinkron ke Firebase: ${error.message}`, 'error');
   } finally {
+    _pushInProgress = false;
     localStorage.removeItem('_resetCooldown');
     updateSyncBadge();
   }
