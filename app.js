@@ -445,17 +445,8 @@ async function loadData() {
       }
     }
     
-    const lastResetAt = localStorage.getItem('lastResetAt');
-    const justReset = lastResetAt && (Date.now() - new Date(lastResetAt).getTime()) < 10000;
-
-    if (!justReset) {
-      const hasData = (state.students && state.students.length > 0) ||
-                      (state.teachers && state.teachers.length > 0) ||
-                      (state.jurnalGuru && state.jurnalGuru.length > 0);
-      if (hasData) {
-        syncPushToFirebase(true);
-      }
-    }
+    // Tidak push on load — cloud adalah source of truth.
+    // Push hanya terjadi saat user melakukan aksi (tambah/edit/hapus).
   }
 
   setupFirebaseRealtime();
