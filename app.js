@@ -350,7 +350,7 @@ async function loadData() {
   // -1. Cek versi kode: jika berubah, hapus semua data lokal (cache buster)
   const storedVer = localStorage.getItem('_appVersion');
   if (storedVer !== APP_VERSION) {
-    const keepKeys = ['theme', 'storageMode', 'githubSettings'];
+    const keepKeys = ['theme', 'storageMode', 'githubSettings', '_permaReset'];
     Object.keys(localStorage).forEach(key => {
       if (!keepKeys.includes(key)) localStorage.removeItem(key);
     });
@@ -358,9 +358,19 @@ async function loadData() {
     console.log('App version changed, localStorage cleared');
   }
 
-  // 0. Cek reset flag dari Supabase SEBELUM baca localStorage
+  // -0. Jika permaReset aktif, skip semua operasi cloud — data sudah direset
+  const permaReset = localStorage.getItem('_permaReset');
+  if (permaReset) {
+    localStorage.removeItem('_permaReset');
+    localStorage.removeItem('_resetCooldown');
+    // Set session flag agar focus re-sync juga tidak menarik data dari cloud
+    sessionStorage.setItem('_sessionPermaReset', permaReset);
+    console.log('PermaReset terdeteksi, melewati sinkronisasi cloud');
+  }
+
+  // 0. Cek reset flag dari Supabase SEBELUM baca localStorage (skip jika permaReset)
   let resetDetected = false;
-  if (supabaseClient) {
+  if (!permaReset && supabaseClient) {
     try {
       const { data } = await supabaseClient
         .from('school_data')
@@ -370,11 +380,9 @@ async function loadData() {
       const lastLocalReset = localStorage.getItem('lastResetAt') || '';
       if (data && (data.isReset || (data.resetAt && data.resetAt !== lastLocalReset))) {
         resetDetected = true;
-        // Catat resetAt yang terdeteksi, biarkan syncPullFromSupabase yang set lastResetAt
         if (data.resetAt) {
           localStorage.setItem('_resetSeen', data.resetAt);
         }
-        // Hapus data lokal, jangan hapus _resetSeen atau _resetCooldown
         localStorage.removeItem('schoolDb');
         localStorage.removeItem('deletedStudentIds');
         localStorage.removeItem('_resetCooldown');
@@ -417,11 +425,10 @@ async function loadData() {
     }
   }
 
-  // 2. Pull and merge cloud data
-  if (supabaseClient) {
+  // 2. Pull and merge cloud data (skip jika permaReset)
+  if (!permaReset && supabaseClient) {
     await syncPullFromSupabase(true);
     
-    // Pastikan akun default selalu ada dengan password yang benar
     const defaults = getDefaultAccounts();
     for (const d of defaults) {
       const existing = state.accounts.find(a => a.username === d.username);
@@ -433,13 +440,10 @@ async function loadData() {
       }
     }
     
-    // FIX DATA GURU: Jangan push ulang data ke cloud jika baru saja dilakukan reset
-    // Reset menyimpan timestamp di lastResetAt; jika < 10 detik lalu, skip push
     const lastResetAt = localStorage.getItem('lastResetAt');
     const justReset = lastResetAt && (Date.now() - new Date(lastResetAt).getTime()) < 10000;
 
     if (!justReset) {
-      // Ensure local data is also synced up to cloud if cloud is missing entries
       const hasData = (state.students && state.students.length > 0) ||
                       (state.teachers && state.teachers.length > 0) ||
                       (state.jurnalGuru && state.jurnalGuru.length > 0);
@@ -456,7 +460,7 @@ async function loadData() {
 
 // Auto-sync when user returns/focuses tab on any device
 window.addEventListener('focus', () => {
-  if (supabaseClient) {
+  if (supabaseClient && !sessionStorage.getItem('_sessionPermaReset')) {
     syncPullFromSupabase(true);
   }
 });
@@ -620,6 +624,10 @@ function handleRealtimePayload(payload) {
 
 async function syncPullFromSupabase(silent = true) {
   if (!supabaseClient) return false;
+  if (sessionStorage.getItem('_sessionPermaReset')) {
+    if (!silent) showToast('Sinkronisasi cloud dinonaktifkan sementara setelah reset. Muat ulang halaman untuk mengaktifkan kembali.', 'warning');
+    return false;
+  }
   try {
     // =========================================================
     // CHECK RESET DARI SCHOOL_DATA TERLEBIH DAHULU
@@ -748,17 +756,7 @@ async function syncPullFromSupabase(silent = true) {
         .maybeSingle();
 
       if (!error && data) {
-        // Jika permaReset aktif: gunakan school_data sebagai source of truth (replace)
         if (permaReset) {
-          state.students = [];
-          state.teachers = [];
-          state.attendance = [];
-          state.lateLogs = [];
-          state.violations = [];
-          state.izinPulang = [];
-          state.jurnalGuru = [];
-          state.kaihLogs = [];
-          state.accounts = getDefaultAccounts();
           localStorage.removeItem('_permaReset');
         }
 
@@ -772,39 +770,51 @@ async function syncPullFromSupabase(silent = true) {
         const cloudKaih = data.kaihlogs || data.kaihLogs || [];
         const cloudAccounts = data.accounts || [];
 
-        const deletedIds = getDeletedStudentIds();
-        if (Array.isArray(cloudStudents) && cloudStudents.length > 0) {
-          const validCloudStudents = deletedIds.size > 0 
-            ? cloudStudents.filter(s => s && !deletedIds.has(String(s.id).trim()) && !deletedIds.has(String(s.nisn || '').trim()))
-            : cloudStudents;
-          state.students = mergeListById(state.students, validCloudStudents);
-        }
-        if (deletedIds.size > 0) {
-          state.students = state.students.filter(s => s && !deletedIds.has(String(s.id).trim()) && !deletedIds.has(String(s.nisn || '').trim()));
-        }
-        if (Array.isArray(cloudAttendance) && cloudAttendance.length > 0) {
-          state.attendance = mergeListById(state.attendance, cloudAttendance, 'id');
-        }
-        if (Array.isArray(cloudLate) && cloudLate.length > 0) {
-          state.lateLogs = mergeListById(state.lateLogs, cloudLate, 'id');
-        }
-        if (Array.isArray(cloudViolations) && cloudViolations.length > 0) {
-          state.violations = mergeListById(state.violations, cloudViolations, 'id');
-        }
-        if (Array.isArray(cloudIzin) && cloudIzin.length > 0) {
-          state.izinPulang = mergeListById(state.izinPulang, cloudIzin, 'id');
-        }
-        if (Array.isArray(cloudJurnal) && cloudJurnal.length > 0) {
-          state.jurnalGuru = mergeListById(state.jurnalGuru, cloudJurnal, 'id');
-        }
-        if (Array.isArray(cloudTeachers) && cloudTeachers.length > 0) {
-          state.teachers = mergeListById(state.teachers, cloudTeachers);
-        }
-        if (Array.isArray(cloudKaih) && cloudKaih.length > 0) {
-          state.kaihLogs = mergeListById(state.kaihLogs, cloudKaih, 'id');
-        }
-        if (Array.isArray(cloudAccounts) && cloudAccounts.length > 0) {
-          state.accounts = mergeListById(state.accounts, cloudAccounts, 'username');
+        if (permaReset) {
+          state.students = [];
+          state.teachers = [];
+          state.attendance = [];
+          state.lateLogs = [];
+          state.violations = [];
+          state.izinPulang = [];
+          state.jurnalGuru = [];
+          state.kaihLogs = [];
+          state.accounts = getDefaultAccounts();
+        } else {
+          const deletedIds = getDeletedStudentIds();
+          if (Array.isArray(cloudStudents) && cloudStudents.length > 0) {
+            const validCloudStudents = deletedIds.size > 0
+              ? cloudStudents.filter(s => s && !deletedIds.has(String(s.id).trim()) && !deletedIds.has(String(s.nisn || '').trim()))
+              : cloudStudents;
+            state.students = mergeListById(state.students, validCloudStudents);
+          }
+          if (deletedIds.size > 0) {
+            state.students = state.students.filter(s => s && !deletedIds.has(String(s.id).trim()) && !deletedIds.has(String(s.nisn || '').trim()));
+          }
+          if (Array.isArray(cloudAttendance) && cloudAttendance.length > 0) {
+            state.attendance = mergeListById(state.attendance, cloudAttendance, 'id');
+          }
+          if (Array.isArray(cloudLate) && cloudLate.length > 0) {
+            state.lateLogs = mergeListById(state.lateLogs, cloudLate, 'id');
+          }
+          if (Array.isArray(cloudViolations) && cloudViolations.length > 0) {
+            state.violations = mergeListById(state.violations, cloudViolations, 'id');
+          }
+          if (Array.isArray(cloudIzin) && cloudIzin.length > 0) {
+            state.izinPulang = mergeListById(state.izinPulang, cloudIzin, 'id');
+          }
+          if (Array.isArray(cloudJurnal) && cloudJurnal.length > 0) {
+            state.jurnalGuru = mergeListById(state.jurnalGuru, cloudJurnal, 'id');
+          }
+          if (Array.isArray(cloudTeachers) && cloudTeachers.length > 0) {
+            state.teachers = mergeListById(state.teachers, cloudTeachers);
+          }
+          if (Array.isArray(cloudKaih) && cloudKaih.length > 0) {
+            state.kaihLogs = mergeListById(state.kaihLogs, cloudKaih, 'id');
+          }
+          if (Array.isArray(cloudAccounts) && cloudAccounts.length > 0) {
+            state.accounts = mergeListById(state.accounts, cloudAccounts, 'username');
+          }
         }
       }
     } catch (e) {
@@ -6265,6 +6275,9 @@ async function confirmResetAllData() {
       ? (state.currentUser.nama || state.currentUser.username || 'Admin')
       : 'Admin';
 
+    // Set permaReset flag BEFORE clearing anything — prevents cloud re-pull on reload
+    localStorage.setItem('_permaReset', resetTime);
+
     // ===========================================================
     // LANGKAH 1: KOSONGKAN STATE & RENDER UI KE 0 SEKETIKA
     // ===========================================================
@@ -6284,7 +6297,7 @@ async function confirmResetAllData() {
     // ===========================================================
     // LANGKAH 2: BERSIHKAN SEMUA LOCALSTORAGE
     // ===========================================================
-    const keysToKeep = ['theme', 'storageMode', 'githubSettings'];
+    const keysToKeep = ['theme', 'storageMode', 'githubSettings', '_permaReset'];
     Object.keys(localStorage).forEach(key => {
       if (!keysToKeep.includes(key)) localStorage.removeItem(key);
     });
