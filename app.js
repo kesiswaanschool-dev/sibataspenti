@@ -1266,7 +1266,7 @@ function renderStudentListTable() {
       <td><span class="badge badge-success" style="background-color: var(--color-primary-glow); color: var(--color-primary);">${std.kelas}</span></td>
       <td class="text-center">
         <button class="btn btn-secondary btn-sm" onclick="editStudent('${std.id}')" title="Edit Siswa"><i data-lucide="edit-3" style="width:14px;height:14px;"></i></button>
-        <button class="btn btn-danger btn-sm ml-2" onclick="deleteStudent('${std.id}')" title="Hapus Siswa"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button>
+        ${state.currentUser && state.currentUser.role === 'super-admin' ? `<button class="btn btn-danger btn-sm ml-2" onclick="deleteStudent('${std.id}')" title="Hapus Siswa"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></button>` : ''}
       </td>
     `;
     body.appendChild(tr);
@@ -1358,6 +1358,10 @@ async function handleStudentFormSubmit(event) {
 }
 
 async function deleteStudent(id) {
+  if (!state.currentUser || state.currentUser.role !== 'super-admin') {
+    showToast('Hanya Super Admin yang dapat menghapus data siswa!', 'error');
+    return;
+  }
   if (!confirm('Apakah Anda yakin ingin menghapus data siswa ini? Semua catatan absensi & keterlambatannya juga akan hilang.')) {
     return;
   }
@@ -1414,6 +1418,10 @@ async function deleteStudent(id) {
 }
 
 async function deleteAllStudents() {
+  if (!state.currentUser || state.currentUser.role !== 'super-admin') {
+    showToast('Hanya Super Admin yang dapat menghapus data siswa!', 'error');
+    return;
+  }
   if (!confirm('Apakah Anda YAKIN ingin menghapus SELURUH data siswa?\n\nPERINGATAN: Seluruh data absensi, keterlambatan, pelanggaran, izin pulang, dan 7 KAIH juga akan IKUT TERHAPUS BERSIH! Data tidak dapat dikembalikan.')) {
     return;
   }
