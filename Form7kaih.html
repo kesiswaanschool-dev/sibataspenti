@@ -553,19 +553,25 @@
   </div>
 
   <script>
-    const SUPABASE_CONFIG = {
-      url: 'https://wedwjlkvnzbgrrybamqm.supabase.co',
-      anonKey: 'sb_publishable_h4RSXPFlcFVIpArkD9PfhA_8M-R5fh0'
+    const firebaseConfig = {
+      apiKey: "AIzaSyAlxB8WZZfTYJoylYgm-5sxQdjIwK_TGEE",
+      authDomain: "sibata-2ccc3.firebaseapp.com",
+      projectId: "sibata-2ccc3",
+      storageBucket: "sibata-2ccc3.firebasestorage.app",
+      messagingSenderId: "587752450586",
+      appId: "1:587752450586:web:91d1938d5c86c4e8663fa3"
     };
 
-    let supabaseClient = null;
+    let fDb = null;
 
-    function initSupabase() {
-      if (typeof supabase !== 'undefined' && SUPABASE_CONFIG.url && SUPABASE_CONFIG.anonKey) {
+    function initFirebaseForm() {
+      if (typeof firebase !== 'undefined') {
         try {
-          supabaseClient = supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+          if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+          fDb = firebase.firestore();
+          fDb.settings({ merge: true });
         } catch (e) {
-          console.warn('Gagal inisialisasi Supabase:', e);
+          console.warn('Gagal inisialisasi Firebase:', e);
         }
       }
     }
@@ -576,8 +582,10 @@
     };
     let currentStudent = null;
 
+    let _pushInProgressForm = false;
+
     document.addEventListener('DOMContentLoaded', async () => {
-      initSupabase();
+      initFirebaseForm();
       lucide.createIcons();
       await loadDatabase();
 
@@ -636,38 +644,19 @@
         } catch (e) {}
       }
 
-      // 2. Fetch and merge cloud data from Supabase
-      if (supabaseClient) {
+      // 2. Fetch from Firebase
+      if (fDb) {
         try {
-          const [resStudents, resKaih] = await Promise.all([
-            supabaseClient.from('students').select('*'),
-            supabaseClient.from('kaih_logs').select('*')
-          ]);
-
-          if (!resStudents.error && resStudents.data) appDb.students = mergeDbArrays(appDb.students, resStudents.data);
-          if (!resKaih.error && resKaih.data) appDb.kaihLogs = mergeDbArrays(appDb.kaihLogs, resKaih.data);
-        } catch (e) {
-          console.warn('Per-table fetch notice in Form7kaih:', e);
-        }
-
-        // Always fallback / merge with school_data (single-row JSON table)
-        try {
-          const { data, error } = await supabaseClient.from('school_data').select('*').eq('id', 1).maybeSingle();
-          if (!error && data) {
-            const lastLocalReset = localStorage.getItem('lastResetAt') || '';
-            if (data.resetAt && data.resetAt !== lastLocalReset) {
-              localStorage.setItem('lastResetAt', data.resetAt);
-              appDb.students = Array.isArray(data.students) ? data.students : [];
-              appDb.kaihLogs = Array.isArray(data.kaihlogs) ? data.kaihlogs : [];
-              saveLocalDatabase();
-              return;
-            }
-            if (Array.isArray(data.students) && data.students.length > 0) appDb.students = mergeDbArrays(data.students, appDb.students);
-            const cloudKaih = data.kaihlogs || data.kaihLogs || [];
-            if (Array.isArray(cloudKaih) && cloudKaih.length > 0) appDb.kaihLogs = mergeDbArrays(appDb.kaihLogs, cloudKaih);
+          const docSnap = await fDb.collection('school_data').doc('main').get();
+          if (docSnap.exists) {
+            const data = docSnap.data();
+            const cloudStudents = data.students || [];
+            const cloudKaih = data.kaihLogs || data.kaihlogs || [];
+            if (cloudStudents.length > 0) appDb.students = cloudStudents;
+            if (cloudKaih.length > 0) appDb.kaihLogs = cloudKaih;
           }
         } catch (e) {
-          console.warn('school_data fetch notice in Form7kaih:', e);
+          console.warn('Firebase fetch notice in Form7kaih:', e);
         }
 
         saveLocalDatabase();
@@ -686,64 +675,36 @@
     }
 
     async function saveDatabase(singleEntry = null) {
+      _pushInProgressForm = true;
       saveLocalDatabase();
 
-      if (supabaseClient) {
-        // 1. Try per-table kaih_logs & students upsert in isolated try-catch block
+      if (fDb) {
         try {
-          if (singleEntry) {
-            await supabaseClient.from('kaih_logs').upsert(singleEntry, { onConflict: 'id' });
-          } else if (appDb.kaihLogs && appDb.kaihLogs.length > 0) {
-            await supabaseClient.from('kaih_logs').upsert(appDb.kaihLogs, { onConflict: 'id' });
-          }
-          if (appDb.students && appDb.students.length > 0) {
-            await supabaseClient.from('students').upsert(appDb.students, { onConflict: 'id' });
-          }
-        } catch (e) {
-          console.warn('kaih_logs / students per-table save notice:', e);
-        }
-
-        // 2. Always update single-row school_data JSON table
-        try {
-          let cloudDb = {};
-          const { data } = await supabaseClient.from('school_data').select('*').eq('id', 1).maybeSingle();
-          if (data) cloudDb = data;
-
-          let localDb = {};
           const localDbStr = localStorage.getItem('schoolDb');
+          let localDb = {};
           if (localDbStr) {
             try { localDb = JSON.parse(localDbStr); } catch(e) {}
           }
 
-          const existingKaih = cloudDb.kaihLogs || cloudDb.kaihlogs || [];
-          const mergedKaih = mergeDbArrays(appDb.kaihLogs, existingKaih);
-
-          const existingStudents = cloudDb.students || [];
-          const mergedStudents = mergeDbArrays(appDb.students, existingStudents);
-
-          appDb.kaihLogs = mergedKaih;
-          appDb.students = mergedStudents;
-          saveLocalDatabase();
-
           const payload = {
-            id: 1,
-            students: mergedStudents,
-            attendance: cloudDb.attendance || [],
-            latelogs: cloudDb.latelogs || [],
-            violations: cloudDb.violations || [],
-            izinpulang: cloudDb.izinpulang || [],
-            jurnalguru: cloudDb.jurnalguru || [],
-            teachers: cloudDb.teachers || [],
-            kaihlogs: mergedKaih,
-            accounts: cloudDb.accounts || [],
+            students: localDb.students || appDb.students || [],
+            attendance: localDb.attendance || [],
+            latelogs: localDb.latelogs || [],
+            violations: localDb.violations || [],
+            izinpulang: localDb.izinpulang || [],
+            jurnalguru: localDb.jurnalguru || [],
+            teachers: localDb.teachers || [],
+            kaihlogs: localDb.kaihLogs || appDb.kaihLogs || [],
+            accounts: localDb.accounts || [],
             updated_at: new Date().toISOString()
           };
 
-          await supabaseClient.from('school_data').upsert(payload, { onConflict: 'id' });
+          await fDb.collection('school_data').doc('main').set(payload);
         } catch (e) {
-          console.error('school_data save error in Form7kaih:', e);
+          console.error('Firebase save error in Form7kaih:', e);
         }
       }
+      _pushInProgressForm = false;
     }
 
     function handleLoginKeyPress(e) {

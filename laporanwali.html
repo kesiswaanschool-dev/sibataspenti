@@ -736,13 +736,16 @@
   </div>
 
   <script>
-    // --- Supabase Config ---
-    const SUPABASE_CONFIG = {
-      url: 'https://wedwjlkvnzbgrrybamqm.supabase.co',
-      anonKey: 'sb_publishable_h4RSXPFlcFVIpArkD9PfhA_8M-R5fh0'
+    const firebaseConfig = {
+      apiKey: "AIzaSyAlxB8WZZfTYJoylYgm-5sxQdjIwK_TGEE",
+      authDomain: "sibata-2ccc3.firebaseapp.com",
+      projectId: "sibata-2ccc3",
+      storageBucket: "sibata-2ccc3.firebasestorage.app",
+      messagingSenderId: "587752450586",
+      appId: "1:587752450586:web:91d1938d5c86c4e8663fa3"
     };
 
-    let supabaseClient = null;
+    let fDb = null;
     let appDb = {
       students: [],
       attendance: [],
@@ -755,17 +758,19 @@
     let currentStudent = null;
 
     document.addEventListener('DOMContentLoaded', () => {
-      initSupabase();
+      initFirebaseForm();
       loadDatabase();
       lucide.createIcons();
     });
 
-    function initSupabase() {
-      if (typeof supabase !== 'undefined' && SUPABASE_CONFIG.url && SUPABASE_CONFIG.anonKey) {
+    function initFirebaseForm() {
+      if (typeof firebase !== 'undefined') {
         try {
-          supabaseClient = supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+          if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+          fDb = firebase.firestore();
+          fDb.settings({ merge: true });
         } catch (e) {
-          console.warn('Supabase init error:', e);
+          console.warn('Firebase init error:', e);
         }
       }
     }
@@ -785,47 +790,27 @@
         } catch (e) {}
       }
 
-      // 2. Cloud Pull from Supabase
-      if (supabaseClient) {
+      // 2. Cloud Pull from Firebase
+      if (fDb) {
         try {
-          const [resS, resA, resL, resV, resI, resK] = await Promise.all([
-            supabaseClient.from('students').select('*'),
-            supabaseClient.from('attendance').select('*'),
-            supabaseClient.from('late_logs').select('*'),
-            supabaseClient.from('violations').select('*'),
-            supabaseClient.from('izin_pulang').select('*'),
-            supabaseClient.from('kaih_logs').select('*')
-          ]);
-
-          if (!resS.error && resS.data) appDb.students = mergeById(appDb.students, resS.data);
-          if (!resA.error && resA.data) appDb.attendance = mergeById(appDb.attendance, resA.data);
-          if (!resL.error && resL.data) appDb.lateLogs = mergeById(appDb.lateLogs, resL.data);
-          if (!resV.error && resV.data) appDb.violations = mergeById(appDb.violations, resV.data);
-          if (!resI.error && resI.data) appDb.izinPulang = mergeById(appDb.izinPulang, resI.data);
-          if (!resK.error && resK.data) appDb.kaihLogs = mergeById(appDb.kaihLogs, resK.data);
-        } catch (e) {
-          console.warn('Per-table fetch notice in laporanwali:', e);
-        }
-
-        // Always fallback / merge with school_data (single-row JSON table) so no student data is missed across devices
-        try {
-          const { data, error } = await supabaseClient.from('school_data').select('*').eq('id', 1).maybeSingle();
-          if (!error && data) {
-            if (Array.isArray(data.students) && data.students.length > 0) appDb.students = mergeById(appDb.students, data.students);
-            if (Array.isArray(data.attendance) && data.attendance.length > 0) appDb.attendance = mergeById(appDb.attendance, data.attendance);
+          const docSnap = await fDb.collection('school_data').doc('main').get();
+          if (docSnap.exists) {
+            const data = docSnap.data();
+            if (Array.isArray(data.students) && data.students.length > 0) appDb.students = data.students;
+            if (Array.isArray(data.attendance) && data.attendance.length > 0) appDb.attendance = data.attendance;
             const lateList = data.latelogs || data.lateLogs || [];
-            if (Array.isArray(lateList) && lateList.length > 0) appDb.lateLogs = mergeById(appDb.lateLogs, lateList);
-            if (Array.isArray(data.violations) && data.violations.length > 0) appDb.violations = mergeById(appDb.violations, data.violations);
+            if (Array.isArray(lateList) && lateList.length > 0) appDb.lateLogs = lateList;
+            if (Array.isArray(data.violations) && data.violations.length > 0) appDb.violations = data.violations;
             const izinList = data.izinpulang || data.izinPulang || [];
-            if (Array.isArray(izinList) && izinList.length > 0) appDb.izinPulang = mergeById(appDb.izinPulang, izinList);
+            if (Array.isArray(izinList) && izinList.length > 0) appDb.izinPulang = izinList;
             const kaihList = data.kaihlogs || data.kaihLogs || [];
-            if (Array.isArray(kaihList) && kaihList.length > 0) appDb.kaihLogs = mergeById(appDb.kaihLogs, kaihList);
+            if (Array.isArray(kaihList) && kaihList.length > 0) appDb.kaihLogs = kaihList;
           }
         } catch (e) {
-          console.warn('school_data fetch notice in laporanwali:', e);
+          console.warn('Firebase fetch notice in laporanwali:', e);
         }
 
-        // Save updated merged database locally
+        // Save updated database locally
         try {
           const existingDb = JSON.parse(localStorage.getItem('schoolDb') || '{}');
           existingDb.students = appDb.students;
