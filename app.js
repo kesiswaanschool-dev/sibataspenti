@@ -610,6 +610,12 @@ async function syncPullFromFirebase(silent = true, snapshotData = null) {
       const cloudTeachers = data.teachers || [];
       const cloudKaih = data.kaihlogs || data.kaihLogs || [];
       const cloudAccounts = data.accounts || [];
+      const cloudDeletedIds = data.deletedStudentIds || [];
+
+      // Merge deleted student IDs dari cloud ke lokal (sinkronisasi antar perangkat)
+      if (Array.isArray(cloudDeletedIds) && cloudDeletedIds.length > 0) {
+        cloudDeletedIds.forEach(id => addDeletedStudentId(id));
+      }
 
       const deletedIds = getDeletedStudentIds();
       if (Array.isArray(cloudStudents) && cloudStudents.length > 0) {
@@ -672,6 +678,9 @@ async function syncPushToFirebase(silent = true) {
   }
 
   try {
+    const deletedStudentIds = (() => {
+      try { return JSON.parse(localStorage.getItem('deletedStudentIds') || '[]'); } catch { return []; }
+    })();
     const payload = {
       students: state.students || [],
       attendance: state.attendance || [],
@@ -682,6 +691,7 @@ async function syncPushToFirebase(silent = true) {
       teachers: state.teachers || [],
       kaihlogs: state.kaihLogs || [],
       accounts: getAccountsList(),
+      deletedStudentIds,
       updated_at: new Date().toISOString()
     };
 
