@@ -1,4 +1,4 @@
-const APP_VERSION = 'v2.3.0_final';
+const APP_VERSION = 'v2.4.0_final';
 
 // --- Firebase Cloud Configuration ---
 const firebaseConfig = {
