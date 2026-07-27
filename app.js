@@ -485,7 +485,7 @@ async function persistData() {
 }
 
 // --- Firebase Cloud Sync Engine ---
-let _localUpdateInProgress = 0;
+let _lastPushTime = 0;
 
 function updateSyncBadge() {
   const indicator = document.getElementById('sync-status-indicator');
@@ -511,18 +511,12 @@ function setupFirebaseRealtime() {
   try {
     firebaseUnsubscribe = db.collection('school_data').doc('main')
       .onSnapshot((docSnap) => {
-        if (_localUpdateInProgress > 0) return;
-        if (!docSnap.exists) return;
-        if (docSnap.metadata && docSnap.metadata.hasPendingWrites) return;
         const data = docSnap.data();
         if (!data || !data.updated_at) return;
 
-        const lastLocalReset = localStorage.getItem('lastResetAt');
-        if (lastLocalReset && data.updated_at && data.updated_at.toDate) {
-          const cloudTime = data.updated_at.toDate().getTime();
-          const localTime = new Date(lastLocalReset).getTime();
-          if (cloudTime < localTime) return;
-        }
+        // Skip snapshot yang dipicu oleh push lokal sendiri
+        const cloudTime = typeof data.updated_at === 'string' ? new Date(data.updated_at).getTime() : 0;
+        if (cloudTime > 0 && cloudTime <= _lastPushTime) return;
 
         syncPullFromFirebase(true, data);
       }, (error) => {
@@ -617,7 +611,7 @@ async function syncPullFromFirebase(silent = true, snapshotData = null) {
     if (!silent) showToast('Data terbaru berhasil dimuat dari Firebase Cloud!', 'success');
     return true;
   } catch (err) {
-    if (!silent) console.error('Firebase Pull Exception:', err);
+    console.error('Firebase Pull Exception:', err);
     return false;
   }
 }
@@ -625,7 +619,8 @@ async function syncPullFromFirebase(silent = true, snapshotData = null) {
 async function syncPushToFirebase(silent = true) {
   if (!db) return;
 
-  _localUpdateInProgress++;
+  const pushTime = Date.now();
+  _lastPushTime = pushTime;
 
   const indicator = document.getElementById('sync-status-indicator');
   const text = document.getElementById('sync-status-text');
@@ -658,7 +653,6 @@ async function syncPushToFirebase(silent = true) {
   } catch (error) {
     if (!silent) showToast(`Gagal menyinkron ke Firebase: ${error.message}`, 'error');
   } finally {
-    _localUpdateInProgress--;
     localStorage.removeItem('_resetCooldown');
     updateSyncBadge();
   }
