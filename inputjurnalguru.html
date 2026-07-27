@@ -577,38 +577,28 @@
           const docSnap = await fDb.collection('school_data').doc('main').get();
           if (docSnap.exists) {
             const data = docSnap.data();
-            if (Array.isArray(data.students) && data.students.length > 0) appDb.students = mergeDbArrays(appDb.students, data.students);
-            if (Array.isArray(data.teachers) && data.teachers.length > 0) appDb.teachers = mergeDbArrays(appDb.teachers, data.teachers);
-            if (Array.isArray(data.attendance) && data.attendance.length > 0) appDb.attendance = mergeDbArrays(appDb.attendance, data.attendance);
-            const cloudJurnal = data.jurnalGuru || data.jurnalguru || [];
-            if (Array.isArray(cloudJurnal) && cloudJurnal.length > 0) appDb.jurnalGuru = mergeDbArrays(appDb.jurnalGuru, cloudJurnal);
-            if (Array.isArray(data.accounts) && data.accounts.length > 0) appDb.accounts = mergeDbArrays(appDb.accounts || [], data.accounts, 'username');
+            // Cloud adalah source of truth — replace data lokal
+            if (Array.isArray(data.students)) appDb.students = data.students;
+            if (Array.isArray(data.teachers)) appDb.teachers = data.teachers;
+            if (Array.isArray(data.attendance)) appDb.attendance = data.attendance;
+            appDb.jurnalGuru = data.jurnalGuru || data.jurnalguru || [];
+            if (Array.isArray(data.accounts)) appDb.accounts = data.accounts;
           }
         } catch (e) {
           console.warn('Firebase fetch notice in inputjurnalguru:', e);
         }
 
-        // Auto-extract teacher entries from accounts table if teacher/guru accounts exist
+        // Auto-extract teacher entries from accounts
         if (Array.isArray(appDb.accounts)) {
           appDb.accounts.forEach(acc => {
             if (acc && (acc.role === 'guru' || acc.role === 'teacher')) {
               const accNip = String(acc.username || acc.nip || '').trim();
               const accNama = String(acc.nama || acc.name || '').trim();
-              const cleanAccNip = accNip.replace(/\s+/g, '').toLowerCase();
-
-              const exists = appDb.teachers.some(t => {
-                const tNip = String(t.nip || t.id || '').replace(/\s+/g, '').toLowerCase();
-                const tNama = String(t.nama || '').trim().toLowerCase();
-                return (cleanAccNip && tNip === cleanAccNip) || (accNama && tNama === accNama.toLowerCase());
-              });
-
-              if (!exists && (accNip || accNama)) {
-                appDb.teachers.push({
-                  id: acc.id || ('teacher-' + Date.now()),
-                  nip: accNip,
-                  nama: accNama || 'Guru',
-                  mapel: acc.mapel || 'Guru Mata Pelajaran'
-                });
+              if (accNip || accNama) {
+                const exists = appDb.teachers.some(t => String(t.nip || '').toLowerCase() === accNip.toLowerCase() || String(t.nama || '').toLowerCase() === accNama.toLowerCase());
+                if (!exists) {
+                  appDb.teachers.push({ id: acc.id || ('teacher-' + Date.now()), nip: accNip, nama: accNama || 'Guru', mapel: acc.mapel || 'Guru Mata Pelajaran' });
+                }
               }
             }
           });

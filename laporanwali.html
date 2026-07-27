@@ -796,15 +796,13 @@
           const docSnap = await fDb.collection('school_data').doc('main').get();
           if (docSnap.exists) {
             const data = docSnap.data();
-            if (Array.isArray(data.students) && data.students.length > 0) appDb.students = data.students;
-            if (Array.isArray(data.attendance) && data.attendance.length > 0) appDb.attendance = data.attendance;
-            const lateList = data.latelogs || data.lateLogs || [];
-            if (Array.isArray(lateList) && lateList.length > 0) appDb.lateLogs = lateList;
-            if (Array.isArray(data.violations) && data.violations.length > 0) appDb.violations = data.violations;
-            const izinList = data.izinpulang || data.izinPulang || [];
-            if (Array.isArray(izinList) && izinList.length > 0) appDb.izinPulang = izinList;
-            const kaihList = data.kaihlogs || data.kaihLogs || [];
-            if (Array.isArray(kaihList) && kaihList.length > 0) appDb.kaihLogs = kaihList;
+            // Cloud adalah source of truth — replace data lokal
+            if (Array.isArray(data.students)) appDb.students = data.students;
+            if (Array.isArray(data.attendance)) appDb.attendance = data.attendance;
+            appDb.lateLogs = data.latelogs || data.lateLogs || [];
+            if (Array.isArray(data.violations)) appDb.violations = data.violations;
+            appDb.izinPulang = data.izinpulang || data.izinPulang || [];
+            appDb.kaihLogs = data.kaihlogs || data.kaihLogs || [];
           }
         } catch (e) {
           console.warn('Firebase fetch notice in laporanwali:', e);

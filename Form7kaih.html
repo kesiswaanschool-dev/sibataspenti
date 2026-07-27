@@ -650,10 +650,8 @@
           const docSnap = await fDb.collection('school_data').doc('main').get();
           if (docSnap.exists) {
             const data = docSnap.data();
-            const cloudStudents = data.students || [];
-            const cloudKaih = data.kaihLogs || data.kaihlogs || [];
-            if (cloudStudents.length > 0) appDb.students = cloudStudents;
-            if (cloudKaih.length > 0) appDb.kaihLogs = cloudKaih;
+            appDb.students = data.students || [];
+            appDb.kaihLogs = data.kaihLogs || data.kaihlogs || [];
           }
         } catch (e) {
           console.warn('Firebase fetch notice in Form7kaih:', e);
