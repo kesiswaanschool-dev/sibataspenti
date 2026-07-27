@@ -494,6 +494,7 @@ async function persistData() {
 }
 
 // --- Firebase Cloud Sync Engine ---
+let _localUpdateInProgress = 0;
 
 function updateSyncBadge() {
   const indicator = document.getElementById('sync-status-indicator');
@@ -519,6 +520,7 @@ function setupFirebaseRealtime() {
   try {
     firebaseUnsubscribe = db.collection('school_data').doc('main')
       .onSnapshot((docSnap) => {
+        if (_localUpdateInProgress > 0) return;
         if (!docSnap.exists) return;
         const data = docSnap.data();
         if (!data || !data.updated_at) return;
@@ -658,6 +660,8 @@ async function syncPullFromFirebase(silent = true) {
 async function syncPushToFirebase(silent = true) {
   if (!db) return;
 
+  _localUpdateInProgress++;
+
   const indicator = document.getElementById('sync-status-indicator');
   const text = document.getElementById('sync-status-text');
   if (indicator) {
@@ -685,6 +689,7 @@ async function syncPushToFirebase(silent = true) {
   } catch (error) {
     if (!silent) showToast(`Gagal menyinkron ke Firebase: ${error.message}`, 'error');
   } finally {
+    _localUpdateInProgress--;
     localStorage.removeItem('_resetCooldown');
     updateSyncBadge();
   }
