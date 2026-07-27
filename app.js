@@ -533,7 +533,7 @@ function setupFirebaseRealtime() {
           if (cloudTime < localTime) return;
         }
 
-        syncPullFromFirebase(true);
+        syncPullFromFirebase(true, data);
       }, (error) => {
         console.warn('Firebase Realtime error:', error);
       });
@@ -542,21 +542,22 @@ function setupFirebaseRealtime() {
   }
 }
 
-async function syncPullFromFirebase(silent = true) {
+async function syncPullFromFirebase(silent = true, snapshotData = null) {
   if (!db) return false;
   if (sessionStorage.getItem('_sessionPermaReset')) {
     if (!silent) showToast('Sinkronisasi cloud dinonaktifkan sementara setelah reset.', 'warning');
     return false;
   }
   try {
-    const docSnap = await db.collection('school_data').doc('main').get();
-
-    if (!docSnap.exists) {
-      if (!silent) showToast('Belum ada data di Firebase Cloud.', 'info');
-      return false;
+    let data = snapshotData;
+    if (!data) {
+      const docSnap = await db.collection('school_data').doc('main').get();
+      if (!docSnap.exists) {
+        if (!silent) showToast('Belum ada data di Firebase Cloud.', 'info');
+        return false;
+      }
+      data = docSnap.data();
     }
-
-    const data = docSnap.data();
 
     // Check reset flag
     const lastLocalReset = localStorage.getItem('lastResetAt') || '';
@@ -1411,6 +1412,10 @@ async function deleteStudent(id) {
       const stdId = std ? String(std.id).trim() : targetId;
       const stdNisn = std ? String(std.nisn).trim() : targetId;
 
+      // Track deleted IDs untuk mencegah data kembali via sync dari komputer lain
+      if (stdId) addDeletedStudentId(stdId);
+      if (stdNisn && stdNisn !== stdId) addDeletedStudentId(stdNisn);
+
       // 1. Hapus dari state lokal
       state.students = state.students.filter(s => String(s.id).trim() !== stdId && String(s.nisn).trim() !== stdNisn);
       // 2. Cascade delete semua log terkait dari state lokal
@@ -1429,7 +1434,7 @@ async function deleteStudent(id) {
         }
       }
 
-      // Simpan ke localStorage (tidak perlu track deletedStudentIds lagi)
+      // Simpan ke localStorage
       saveLocalState();
       renderStudentListTable();
       showToast('Data siswa beserta riwayatnya berhasil dihapus!', 'success');
