@@ -545,8 +545,8 @@ async function syncPullFromFirebase(silent = true, snapshotData = null) {
   try {
     let data = snapshotData;
     if (!data) {
-      console.log('[SYNC] Pull: fetching via get({source:server})');
-      const docSnap = await db.collection('school_data').doc('main').get({ source: 'server' });
+      console.log('[SYNC] Pull: fetching via get()');
+      const docSnap = await db.collection('school_data').doc('main').get();
       if (!docSnap.exists) {
         console.log('[SYNC] Pull: doc not exists');
         if (!silent) showToast('Belum ada data di Firebase Cloud.', 'info');
