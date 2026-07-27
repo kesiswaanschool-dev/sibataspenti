@@ -353,10 +353,15 @@ function clearDeletedStudentIds() {
 async function loadData() {
   initFirebase();
 
+  // Hapus semua flag permaReset — tidak diperlukan lagi dengan cloud source of truth
+  sessionStorage.removeItem('_sessionPermaReset');
+  localStorage.removeItem('_permaReset');
+  localStorage.removeItem('_resetCooldown');
+
   // -1. Cek versi kode: jika berubah, hapus semua data lokal (cache buster)
   const storedVer = localStorage.getItem('_appVersion');
   if (storedVer !== APP_VERSION) {
-    const keepKeys = ['theme', 'storageMode', 'githubSettings', '_permaReset'];
+    const keepKeys = ['theme', 'storageMode', 'githubSettings'];
     Object.keys(localStorage).forEach(key => {
       if (!keepKeys.includes(key)) localStorage.removeItem(key);
     });
@@ -364,19 +369,9 @@ async function loadData() {
     console.log('App version changed, localStorage cleared');
   }
 
-  // -0. Jika permaReset aktif, skip semua operasi cloud — data sudah direset
-  const permaReset = localStorage.getItem('_permaReset');
-  if (permaReset) {
-    localStorage.removeItem('_permaReset');
-    localStorage.removeItem('_resetCooldown');
-    // Set session flag agar focus re-sync juga tidak menarik data dari cloud
-    sessionStorage.setItem('_sessionPermaReset', permaReset);
-    console.log('PermaReset terdeteksi, melewati sinkronisasi cloud');
-  }
-
-  // 0. Cek reset flag dari Firebase SEBELUM baca localStorage (skip jika permaReset)
+  // 0. Cek reset flag dari Firebase SEBELUM baca localStorage
   let resetDetected = false;
-  if (!permaReset && db) {
+  if (db) {
     try {
       const docSnap = await db.collection('school_data').doc('main').get();
       if (docSnap.exists) {
@@ -457,7 +452,7 @@ async function loadData() {
 
 // Auto-sync when user returns/focuses tab on any device
 window.addEventListener('focus', () => {
-  if (db && !sessionStorage.getItem('_sessionPermaReset')) {
+  if (db) {
     syncPullFromFirebase(true);
   }
 });
@@ -538,7 +533,7 @@ function setupFirebaseRealtime() {
     console.log('[SYNC] Start polling every 5s');
     _syncInterval = setInterval(() => {
       if (_pushInProgress) return;
-      if (db && !sessionStorage.getItem('_sessionPermaReset')) {
+      if (db) {
         syncPullFromFirebase(true);
       }
     }, 5000);
@@ -547,11 +542,6 @@ function setupFirebaseRealtime() {
 
 async function syncPullFromFirebase(silent = true, snapshotData = null) {
   if (!db) { console.warn('[SYNC] Pull: db null'); return false; }
-  if (sessionStorage.getItem('_sessionPermaReset')) {
-    console.log('[SYNC] Pull: permaReset active, skip');
-    if (!silent) showToast('Sinkronisasi cloud dinonaktifkan sementara setelah reset.', 'warning');
-    return false;
-  }
   try {
     let data = snapshotData;
     if (!data) {
@@ -590,44 +580,29 @@ async function syncPullFromFirebase(silent = true, snapshotData = null) {
           accounts: getDefaultAccounts(), updated_at: new Date().toISOString()
         });
       } catch (_) {}
-      localStorage.setItem('_permaReset', resetTs);
       localStorage.removeItem('_resetSeen');
       saveLocalState();
       refreshAllUI();
       return true;
     }
 
-    const permaReset = localStorage.getItem('_permaReset');
-    if (permaReset) {
-      localStorage.removeItem('_permaReset');
-      state.students = [];
-      state.teachers = [];
-      state.attendance = [];
-      state.lateLogs = [];
-      state.violations = [];
-      state.izinPulang = [];
-      state.jurnalGuru = [];
-      state.kaihLogs = [];
-      state.accounts = getDefaultAccounts();
-    } else {
-      // Cloud adalah source of truth — replace state lokal dengan data cloud
-      state.students = data.students || [];
-      state.attendance = data.attendance || [];
-      state.lateLogs = data.latelogs || data.lateLogs || [];
-      state.violations = data.violations || [];
-      state.izinPulang = data.izinpulang || data.izinPulang || [];
-      state.jurnalGuru = data.jurnalguru || data.jurnalGuru || [];
-      state.teachers = data.teachers || [];
-      state.kaihLogs = data.kaihlogs || data.kaihLogs || [];
-      state.accounts = data.accounts || [];
+    // Cloud adalah source of truth — replace state lokal dengan data cloud
+    state.students = data.students || [];
+    state.attendance = data.attendance || [];
+    state.lateLogs = data.latelogs || data.lateLogs || [];
+    state.violations = data.violations || [];
+    state.izinPulang = data.izinpulang || data.izinPulang || [];
+    state.jurnalGuru = data.jurnalguru || data.jurnalGuru || [];
+    state.teachers = data.teachers || [];
+    state.kaihLogs = data.kaihlogs || data.kaihLogs || [];
+    state.accounts = data.accounts || [];
 
-      console.log('[SYNC] Pull: state replaced, students:', state.students.length);
+    console.log('[SYNC] Pull: state replaced, students:', state.students.length);
 
-      // Sync deletedStudentIds dari cloud untuk filter historis
-      const cloudDeletedIds = data.deletedStudentIds || [];
-      if (Array.isArray(cloudDeletedIds) && cloudDeletedIds.length > 0) {
-        cloudDeletedIds.forEach(id => addDeletedStudentId(id));
-      }
+    // Sync deletedStudentIds dari cloud untuk filter historis
+    const cloudDeletedIds = data.deletedStudentIds || [];
+    if (Array.isArray(cloudDeletedIds) && cloudDeletedIds.length > 0) {
+      cloudDeletedIds.forEach(id => addDeletedStudentId(id));
     }
 
     saveLocalState();
@@ -6018,9 +5993,6 @@ async function confirmResetAllData() {
       ? (state.currentUser.nama || state.currentUser.username || 'Admin')
       : 'Admin';
 
-    // Set permaReset flag BEFORE clearing anything — prevents cloud re-pull on reload
-    localStorage.setItem('_permaReset', resetTime);
-
     // ===========================================================
     // LANGKAH 1: KOSONGKAN STATE & RENDER UI KE 0 SEKETIKA
     // ===========================================================
@@ -6040,7 +6012,7 @@ async function confirmResetAllData() {
     // ===========================================================
     // LANGKAH 2: BERSIHKAN SEMUA LOCALSTORAGE
     // ===========================================================
-    const keysToKeep = ['theme', 'storageMode', 'githubSettings', '_permaReset'];
+    const keysToKeep = ['theme', 'storageMode', 'githubSettings'];
     Object.keys(localStorage).forEach(key => {
       if (!keysToKeep.includes(key)) localStorage.removeItem(key);
     });
