@@ -513,23 +513,29 @@ function updateSyncBadge() {
 let _syncInterval = null;
 
 function setupFirebaseRealtime() {
-  if (!db) return;
+  if (!db) { console.warn('[SYNC] db null, skip realtime'); return; }
   if (!firebaseUnsubscribe) {
     try {
+      console.log('[SYNC] Setup onSnapshot');
       firebaseUnsubscribe = db.collection('school_data').doc('main')
         .onSnapshot((docSnap) => {
-          if (_pushInProgress) return;
+          console.log('[SYNC] Snapshot received, exists:', docSnap.exists);
+          if (_pushInProgress) { console.log('[SYNC] Push in progress, skip'); return; }
           const data = docSnap.data();
-          if (!data || !data.updated_at) return;
+          if (!data) { console.log('[SYNC] No data'); return; }
+          if (!data.updated_at) { console.log('[SYNC] No updated_at'); return; }
+          console.log('[SYNC] Snapshot students:', (data.students||[]).length);
           syncPullFromFirebase(true, data);
         }, (error) => {
-          console.warn('Firebase Realtime error:', error);
+          console.warn('[SYNC] Firebase Realtime error:', error);
         });
+      console.log('[SYNC] onSnapshot setup done');
     } catch (e) {
-      console.warn('Gagal mengaktifkan Realtime Firebase:', e);
+      console.warn('[SYNC] Gagal mengaktifkan Realtime Firebase:', e);
     }
   }
   if (!_syncInterval) {
+    console.log('[SYNC] Start polling every 5s');
     _syncInterval = setInterval(() => {
       if (_pushInProgress) return;
       if (db && !sessionStorage.getItem('_sessionPermaReset')) {
@@ -540,20 +546,26 @@ function setupFirebaseRealtime() {
 }
 
 async function syncPullFromFirebase(silent = true, snapshotData = null) {
-  if (!db) return false;
+  if (!db) { console.warn('[SYNC] Pull: db null'); return false; }
   if (sessionStorage.getItem('_sessionPermaReset')) {
+    console.log('[SYNC] Pull: permaReset active, skip');
     if (!silent) showToast('Sinkronisasi cloud dinonaktifkan sementara setelah reset.', 'warning');
     return false;
   }
   try {
     let data = snapshotData;
     if (!data) {
+      console.log('[SYNC] Pull: fetching via get()');
       const docSnap = await db.collection('school_data').doc('main').get();
       if (!docSnap.exists) {
+        console.log('[SYNC] Pull: doc not exists');
         if (!silent) showToast('Belum ada data di Firebase Cloud.', 'info');
         return false;
       }
       data = docSnap.data();
+      console.log('[SYNC] Pull: got data, students:', (data.students||[]).length);
+    } else {
+      console.log('[SYNC] Pull: from snapshot data, students:', (data.students||[]).length);
     }
 
     // Check reset flag
@@ -608,6 +620,8 @@ async function syncPullFromFirebase(silent = true, snapshotData = null) {
       state.teachers = data.teachers || [];
       state.kaihLogs = data.kaihlogs || data.kaihLogs || [];
       state.accounts = data.accounts || [];
+
+      console.log('[SYNC] Pull: state replaced, students:', state.students.length);
 
       // Sync deletedStudentIds dari cloud untuk filter historis
       const cloudDeletedIds = data.deletedStudentIds || [];
