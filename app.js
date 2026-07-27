@@ -541,7 +541,10 @@ function handleResetBroadcast(payload) {
     state.izinPulang = [];
     state.jurnalGuru = [];
     state.kaihLogs = [];
+    state.accounts = [];
     clearDeletedStudentIds();
+    const ts = new Date().toISOString();
+    localStorage.setItem('lastResetAt', ts);
     localStorage.removeItem('schoolDb');
     saveLocalState();
     refreshAllUI();
@@ -661,14 +664,14 @@ async function syncPullFromSupabase(silent = true) {
           id: 1, isReset: false, resetAt: resetTs,
           students: [], attendance: [], latelogs: [], violations: [],
           izinpulang: [], jurnalguru: [], teachers: [], kaihlogs: [],
-          accounts: getAccountsList(), updated_at: new Date().toISOString()
+          accounts: getDefaultAccounts(), updated_at: new Date().toISOString()
         }, { onConflict: 'id' });
       } catch (_) {}
       // Hapus data per-table di Supabase (fallback jika delete gagal di reset)
       const tablesToClear = [
         'students', 'teachers', 'attendance',
         'late_logs', 'violations', 'izin_pulang',
-        'jurnal_guru', 'kaih_logs'
+        'jurnal_guru', 'kaih_logs', 'accounts'
       ];
       for (const tbl of tablesToClear) {
         try { await supabaseClient.from(tbl).delete().not('id', 'is', null); } catch (_) {}
@@ -745,7 +748,20 @@ async function syncPullFromSupabase(silent = true) {
         .maybeSingle();
 
       if (!error && data) {
-        // Guard 60s dihapus — school_data (yang sudah dikosongkan oleh isReset handler) selalu dimerge
+        // Jika permaReset aktif: gunakan school_data sebagai source of truth (replace)
+        if (permaReset) {
+          state.students = [];
+          state.teachers = [];
+          state.attendance = [];
+          state.lateLogs = [];
+          state.violations = [];
+          state.izinPulang = [];
+          state.jurnalGuru = [];
+          state.kaihLogs = [];
+          state.accounts = getDefaultAccounts();
+          localStorage.removeItem('_permaReset');
+        }
+
         const cloudStudents = data.students || [];
         const cloudAttendance = data.attendance || [];
         const cloudLate = data.latelogs || data.lateLogs || [];
@@ -884,7 +900,6 @@ async function syncPushToSupabase(silent = true) {
     if (!silent) showToast(`Gagal menyinkron ke Supabase: ${error.message}`, 'error');
   } finally {
     localStorage.removeItem('_resetCooldown');
-    localStorage.removeItem('_permaReset');
     updateSyncBadge();
   }
 }
@@ -6261,6 +6276,7 @@ async function confirmResetAllData() {
     state.izinPulang = [];
     state.jurnalGuru = [];
     state.kaihLogs   = [];
+    state.accounts   = [];
 
     state.currentView = 'dashboard';
     renderDashboard(); // tampilkan 0 langsung
@@ -6283,7 +6299,7 @@ async function confirmResetAllData() {
         id: 1, resetAt: resetTime, isReset: true,
         students: [], attendance: [], latelogs: [], violations: [],
         izinpulang: [], jurnalguru: [], teachers: [], kaihlogs: [],
-        accounts: getAccountsList(), updated_at: resetTime
+        accounts: getDefaultAccounts(), updated_at: resetTime
       };
 
       // 3a. Update school_data ke kosong (sinyal reset)
@@ -6294,7 +6310,7 @@ async function confirmResetAllData() {
       const tablesToClear = [
         'students', 'teachers', 'attendance',
         'late_logs', 'violations', 'izin_pulang',
-        'jurnal_guru', 'kaih_logs'
+        'jurnal_guru', 'kaih_logs', 'accounts'
       ];
 
       for (const tbl of tablesToClear) {
