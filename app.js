@@ -425,8 +425,8 @@ async function loadData() {
     }
   }
 
-  // 2. Pull and merge cloud data (skip jika permaReset)
-  if (!permaReset && db) {
+  // 2. Pull cloud data
+  if (db) {
     await syncPullFromFirebase(true);
     
     const defaults = getDefaultAccounts();
