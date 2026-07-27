@@ -522,6 +522,7 @@ function setupFirebaseRealtime() {
       .onSnapshot((docSnap) => {
         if (_localUpdateInProgress > 0) return;
         if (!docSnap.exists) return;
+        if (docSnap.metadata && docSnap.metadata.hasPendingWrites) return;
         const data = docSnap.data();
         if (!data || !data.updated_at) return;
 
