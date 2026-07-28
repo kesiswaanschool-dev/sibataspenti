@@ -172,7 +172,7 @@
             </div>
             <div class="custom-table-container">
               <table class="styled-table text-sm">
-                <thead><tr><th>No</th><th>NISN</th><th>Nama Siswa</th><th>Tanggal</th><th>Jenis Pelanggaran</th><th>Poin</th></tr></thead>
+                <thead><tr><th>No</th><th>NISN</th><th>Nama Siswa</th><th class="text-center">Jml</th><th class="text-center">Poin</th><th colspan="2">Rincian</th></tr></thead>
                 <tbody id="pelanggaran-body"><tr><td colspan="6" class="text-center text-muted py-4">Memuat data...</td></tr></tbody>
               </table>
             </div>
@@ -195,7 +195,7 @@
             </div>
             <div class="custom-table-container">
               <table class="styled-table text-sm">
-                <thead><tr><th>No</th><th>NISN</th><th>Nama Siswa</th><th>Tanggal</th><th>Jam Keluar</th><th>Alasan</th><th>Status</th></tr></thead>
+                <thead><tr><th>No</th><th>NISN</th><th>Nama Siswa</th><th class="text-center">Jml</th><th>Rincian</th><th>Catatan</th><th>Status</th></tr></thead>
                 <tbody id="izinpulang-body"><tr><td colspan="7" class="text-center text-muted py-4">Memuat data...</td></tr></tbody>
               </table>
             </div>
@@ -522,23 +522,63 @@
       const tbody = document.getElementById('pelanggaran-body');
       if (!tbody || !currentWali) return;
       const idSet = new Set(getStudentIds());
+      const allStudents = (appDb.students || []).filter(s => idSet.has(String(s.id)));
       let list = (appDb.violations || []).filter(v => idSet.has(String(v.student_id)));
       list = getFilteredByMonthYear(list, 'pelanggaran');
-      if (list.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Tidak ada data pelanggaran.</td></tr>';
+
+      const studentsWithViolations = {};
+      allStudents.forEach(s => { studentsWithViolations[s.id] = []; });
+      list.forEach(v => {
+        if (studentsWithViolations[v.student_id]) {
+          studentsWithViolations[v.student_id].push(v);
+        }
+      });
+
+      const filledStudents = allStudents.filter(s => studentsWithViolations[s.id].length > 0);
+      const emptyStudents = allStudents.filter(s => studentsWithViolations[s.id].length === 0);
+
+      if (allStudents.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Tidak ada siswa di kelas ini.</td></tr>';
         return;
       }
-      tbody.innerHTML = list.map((v, idx) => {
-        const s = (appDb.students || []).find(std => String(std.id) === String(v.student_id));
-        return `<tr>
-          <td>${idx+1}</td>
-          <td>${s ? s.nisn || '-' : '-'}</td>
-          <td>${s ? s.nama : 'Siswa#' + v.student_id}</td>
-          <td>${v.tanggal || '-'}</td>
-          <td>${v.jenis_pelanggaran || v.jenis || '-'}</td>
-          <td class="text-center">${v.poin || '0'}</td>
-        </tr>`;
-      }).join('');
+
+      let html = '';
+
+      if (filledStudents.length > 0) {
+        html += '<tr><td colspan="6" class="text-center font-semibold py-2" style="background:rgba(239,68,68,0.1);color:#ef4444;">Sudah Ada Catatan Pelanggaran</td></tr>';
+        filledStudents.forEach((std, idx) => {
+          const vList = studentsWithViolations[std.id];
+          const totalPoin = vList.reduce((sum, v) => sum + (parseInt(v.poin) || 0), 0);
+          const details = vList.map(v =>
+            '<span class="badge badge-danger" style="margin:2px;" title="' + (v.keterangan || '') + '">' +
+            (v.tanggal || '-') + ' (' + (v.jam || '-') + '): ' + (v.jenis_pelanggaran || v.jenis || '-') + ' [' + (v.poin || '0') + ' pts]</span>'
+          ).join(' ');
+          html += '<tr>';
+          html += '<td>' + (idx + 1) + '</td>';
+          html += '<td>' + (std.nisn || '-') + '</td>';
+          html += '<td class="font-semibold">' + std.nama + '</td>';
+          html += '<td class="text-danger font-semibold text-center">' + vList.length + 'x</td>';
+          html += '<td class="text-center font-semibold">' + totalPoin + '</td>';
+          html += '<td>' + (details || '-') + '</td>';
+          html += '</tr>';
+        });
+      }
+
+      if (emptyStudents.length > 0) {
+        html += '<tr><td colspan="6" class="text-center font-semibold py-2" style="background:rgba(16,185,129,0.1);color:#10b981;">Belum Ada Catatan Pelanggaran</td></tr>';
+        emptyStudents.forEach((std) => {
+          html += '<tr>';
+          html += '<td>' + (filledStudents.length + 1) + '</td>';
+          html += '<td>' + (std.nisn || '-') + '</td>';
+          html += '<td class="font-semibold">' + std.nama + '</td>';
+          html += '<td class="text-success text-center">0</td>';
+          html += '<td class="text-center">0</td>';
+          html += '<td class="text-muted">-</td>';
+          html += '</tr>';
+        });
+      }
+
+      tbody.innerHTML = html;
     }
 
     // === IZIN PULANG ===
@@ -546,24 +586,64 @@
       const tbody = document.getElementById('izinpulang-body');
       if (!tbody || !currentWali) return;
       const idSet = new Set(getStudentIds());
+      const allStudents = (appDb.students || []).filter(s => idSet.has(String(s.id)));
       let list = (appDb.izinpulang || []).filter(iz => idSet.has(String(iz.student_id)));
       list = getFilteredByMonthYear(list, 'izinpulang');
-      if (list.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">Tidak ada data izin pulang.</td></tr>';
+
+      const studentsWithIzin = {};
+      allStudents.forEach(s => { studentsWithIzin[s.id] = []; });
+      list.forEach(iz => {
+        if (studentsWithIzin[iz.student_id]) {
+          studentsWithIzin[iz.student_id].push(iz);
+        }
+      });
+
+      const filledStudents = allStudents.filter(s => studentsWithIzin[s.id].length > 0);
+      const emptyStudents = allStudents.filter(s => studentsWithIzin[s.id].length === 0);
+
+      if (allStudents.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">Tidak ada siswa di kelas ini.</td></tr>';
         return;
       }
-      tbody.innerHTML = list.map((iz, idx) => {
-        const s = (appDb.students || []).find(std => String(std.id) === String(iz.student_id));
-        return `<tr>
-          <td>${idx+1}</td>
-          <td>${s ? s.nisn || '-' : '-'}</td>
-          <td>${s ? s.nama : 'Siswa#' + iz.student_id}</td>
-          <td>${iz.tanggal || '-'}</td>
-          <td>${iz.jam_keluar || iz.jam || '-'}</td>
-          <td>${iz.alasan || '-'}</td>
-          <td>${iz.status || 'disetujui'}</td>
-        </tr>`;
-      }).join('');
+
+      let html = '';
+
+      if (filledStudents.length > 0) {
+        html += '<tr><td colspan="7" class="text-center font-semibold py-2" style="background:rgba(14,165,233,0.1);color:#0ea5e9;">Sudah Izin Pulang</td></tr>';
+        filledStudents.forEach((std, idx) => {
+          const iList = studentsWithIzin[std.id];
+          const details = iList.map(iz =>
+            '<span class="badge badge-info" style="margin:2px;" title="' + (iz.alasan || '') + '">' +
+            (iz.tanggal || '-') + ' ' + (iz.jam_keluar || iz.jam || '-') + ': ' + (iz.alasan || '-') + ' <strong>[' + (iz.status || 'disetujui') + ']</strong></span>'
+          ).join(' ');
+          html += '<tr>';
+          html += '<td>' + (idx + 1) + '</td>';
+          html += '<td>' + (std.nisn || '-') + '</td>';
+          html += '<td class="font-semibold">' + std.nama + '</td>';
+          html += '<td class="text-info font-semibold text-center">' + iList.length + 'x</td>';
+          html += '<td>' + details + '</td>';
+          html += '<td>-</td>';
+          html += '<td>-</td>';
+          html += '</tr>';
+        });
+      }
+
+      if (emptyStudents.length > 0) {
+        html += '<tr><td colspan="7" class="text-center font-semibold py-2" style="background:rgba(16,185,129,0.1);color:#10b981;">Belum Ada Izin Pulang</td></tr>';
+        emptyStudents.forEach((std) => {
+          html += '<tr>';
+          html += '<td>' + (filledStudents.length + 1) + '</td>';
+          html += '<td>' + (std.nisn || '-') + '</td>';
+          html += '<td class="font-semibold">' + std.nama + '</td>';
+          html += '<td class="text-success text-center">0</td>';
+          html += '<td class="text-muted">-</td>';
+          html += '<td>-</td>';
+          html += '<td>-</td>';
+          html += '</tr>';
+        });
+      }
+
+      tbody.innerHTML = html;
     }
 
     // === 7KAIH ===
