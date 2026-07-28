@@ -6614,12 +6614,24 @@ function doLogin(event) {
   const user = accounts.find(a => a.username === username && a.password === password);
 
   if (!user) {
-    if (errorMsg) { errorMsg.style.display = 'block'; if (errorText) errorText.textContent = 'Username atau password salah.'; }
-    return;
+    // Fallback: ensure default accounts exist in state before giving up
+    const defaults = getDefaultAccounts();
+    for (const d of defaults) {
+      if (!state.accounts.find(a => a.username === d.username)) {
+        state.accounts.push({ ...d });
+      }
+    }
+    const retry = state.accounts.find(a => a.username === username && a.password === password);
+    if (retry) {
+      user = retry;
+    } else {
+      if (errorMsg) { errorMsg.style.display = 'block'; if (errorText) errorText.textContent = 'Username atau password salah.'; }
+      return;
+    }
   }
 
   if (errorMsg) errorMsg.style.display = 'none';
-  const sessionData = { id: user.id, username: user.username, nama: user.nama, role: user.role };
+  const sessionData = { id: user.id, username: user.username, nama: user.nama, role: user.role, kelas_wali: user.kelas_wali || '' };
   sessionStorage.setItem('currentUser', JSON.stringify(sessionData));
   state.currentUser = sessionData;
 
