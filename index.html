@@ -91,8 +91,12 @@
           <span>Upload Data Siswa</span>
         </button>
         <button class="menu-item" id="btn-menu-upload-guru" data-roles="admin" onclick="switchMenu('upload-guru')">
-          <i data-lucide="user-check"></i>
+          <i data-lucide="users"></i>
           <span>Upload Data Guru</span>
+        </button>
+        <button class="menu-item" id="btn-menu-upload-wali-kelas" data-roles="admin" onclick="switchMenu('upload-wali-kelas')">
+          <i data-lucide="user-check"></i>
+          <span>Upload Wali Kelas</span>
         </button>
         <button class="menu-item" id="btn-menu-absensi" data-roles="admin,guru-piket" onclick="switchMenu('absensi')">
           <i data-lucide="calendar-check"></i>
@@ -168,6 +172,10 @@
         <a href="laporanwali.html" target="_blank" class="menu-item" style="text-decoration: none; color: var(--text-muted);">
           <i data-lucide="user-check" style="color: var(--color-success)"></i>
           <span>Laporan Wali Siswa</span>
+        </a>
+        <a href="walikelas.html" target="_blank" class="menu-item" style="text-decoration: none; color: var(--text-muted);">
+          <i data-lucide="graduation-cap" style="color: var(--color-warning)"></i>
+          <span>Portal Wali Kelas</span>
         </a>
         <div class="sidebar-submenu-group" id="submenu-akun-group" data-roles="admin">
           <button class="menu-item" id="btn-menu-akun" data-roles="admin" onclick="toggleAkunSubmenu(event)">
@@ -567,6 +575,105 @@
                   <tbody id="teacher-list-body">
                     <tr>
                       <td colspan="5" class="text-center text-muted">Belum ada data guru. Silakan impor dari Excel di
+                        atas atau tambah manual.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= UPLOAD WALI KELAS VIEW ================= -->
+        <section id="view-upload-wali-kelas" class="content-view">
+          <div class="dashboard-card card-full">
+            <div class="card-header border-bottom">
+              <div>
+                <h2>Data Wali Kelas</h2>
+                <p class="subtitle mt-1">Kelola data wali kelas: Nama Guru, Kelas Wali, dan NIP untuk login.</p>
+              </div>
+              <button class="btn btn-secondary btn-icon-text" onclick="downloadExcelTemplateWaliKelas()">
+                <i data-lucide="download"></i>
+                <span>Unduh Template Excel</span>
+              </button>
+            </div>
+
+            <div class="card-body text-center py-5">
+              <div class="upload-dropzone" id="excel-dropzone-wali-kelas">
+                <i data-lucide="file-spreadsheet" class="upload-icon"></i>
+                <h3>Tarik & Lepaskan File Excel di Sini</h3>
+                <p class="text-muted mb-3">atau</p>
+                <label for="excel-file-input-wali-kelas" class="btn btn-primary cursor-pointer">
+                  <i data-lucide="search"></i> Cari File
+                </label>
+                <input type="file" id="excel-file-input-wali-kelas" accept=".xlsx, .xls, .csv" class="hidden-input"
+                  onchange="handleExcelUploadWaliKelas(event)">
+                <p class="file-info text-muted mt-2" id="uploaded-file-name-wali-kelas">Belum ada file terpilih.</p>
+              </div>
+
+              <div class="preview-import-container mt-4" id="import-preview-section-wali-kelas" style="display: none;">
+                <div class="d-flex justify-between align-center mb-3">
+                  <h3 class="text-left"><i data-lucide="eye" class="v-middle mr-1 text-primary"></i> Pratinjau Data Wali Kelas
+                    yang Akan Diimpor (<span id="import-count-wali-kelas">0</span> wali kelas)</h3>
+                  <div class="action-buttons">
+                    <button class="btn btn-danger mr-2" onclick="cancelImportWaliKelas()">Batal</button>
+                    <button class="btn btn-success" id="btn-save-import-wali-kelas" onclick="saveImportedWaliKelas()">
+                      <i data-lucide="save"></i> Simpan ke Database
+                    </button>
+                  </div>
+                </div>
+                <div class="custom-table-container max-h-400">
+                  <table class="styled-table">
+                    <thead>
+                      <tr>
+                        <th>No</th>
+                        <th>NIP</th>
+                        <th>Nama Guru</th>
+                        <th>Kelas Wali</th>
+                      </tr>
+                    </thead>
+                    <tbody id="import-preview-body-wali-kelas">
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Wali Kelas List Management -->
+          <div class="dashboard-card card-full mt-4">
+            <div class="card-header border-bottom d-flex justify-between align-center">
+              <h2>Daftar Wali Kelas</h2>
+              <div class="header-filters d-flex align-center gap-2">
+                <select id="filter-wali-kelas" onchange="renderWaliKelasTable()" class="form-select w-200">
+                  <option value="">Semua Kelas</option>
+                </select>
+                <div class="search-box">
+                  <i data-lucide="search"></i>
+                  <input type="text" id="search-wali-kelas" placeholder="Cari nama guru / NIP..."
+                    onkeyup="renderWaliKelasTable()">
+                </div>
+                <button class="btn btn-primary btn-icon-text" onclick="openWaliKelasModal()">
+                  <i data-lucide="user-plus"></i>
+                  <span>Tambah Wali Kelas</span>
+                </button>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="custom-table-container max-h-500">
+                <table class="styled-table">
+                  <thead>
+                    <tr>
+                      <th width="60">No</th>
+                      <th width="160">NIP</th>
+                      <th>Nama Guru</th>
+                      <th>Kelas Wali</th>
+                      <th width="120" class="text-center">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody id="wali-kelas-list-body">
+                    <tr>
+                      <td colspan="5" class="text-center text-muted">Belum ada data wali kelas. Silakan impor dari Excel di
                         atas atau tambah manual.</td>
                     </tr>
                   </tbody>
@@ -2919,9 +3026,16 @@
               placeholder="Contoh: Drs. H. Ahmad Dahlan">
           </div>
 
-          <div class="form-group mb-4">
+          <div class="form-group mb-4" id="teacher-modal-mapel-container">
             <label for="teacher-modal-mapel">Mata Pelajaran (Mapel) <span class="required">*</span></label>
             <input type="text" id="teacher-modal-mapel" class="form-input" required placeholder="Contoh: Matematika">
+          </div>
+
+          <div class="form-group mb-4" id="teacher-modal-kelas-wali-container" style="display:none;">
+            <label for="teacher-modal-kelas-wali">Kelas Wali <span class="required">*</span></label>
+            <select id="teacher-modal-kelas-wali" class="form-input" style="width:100%;">
+              <option value="">-- Pilih Kelas --</option>
+            </select>
           </div>
 
           <div class="modal-footer text-right">

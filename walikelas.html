@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIBATA - Portal Wali Kelas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { background-color: var(--bg-app, #070b13); color: var(--text-main, #f1f5f9); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 24px 16px; }
+    .wk-container { width: 100%; max-width: 960px; display: flex; flex-direction: column; align-items: center; gap: 20px; }
+    .wk-header { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
+    .login-card { background: var(--bg-card, rgba(21,32,54,0.65)); backdrop-filter: blur(20px); border: 1px solid var(--border-color, rgba(255,255,255,0.12)); border-radius: 20px; padding: 36px 28px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); text-align: center; max-width: 440px; width: 100%; }
+    .wk-tabs { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; margin-top: 8px; }
+    .wk-tab-btn { padding: 10px 18px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: var(--text-muted); cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; }
+    .wk-tab-btn:hover { border-color: #6366f1; color: #e2e8f0; }
+    .wk-tab-btn.active { background: rgba(99,102,241,0.2); border-color: #6366f1; color: #a5b4fc; }
+    .wk-tab-content { display: none; width: 100%; }
+    .wk-tab-content.active { display: block; }
+    .teacher-profile-bar { background: rgba(99,102,241,0.12); border: 1px solid rgba(99,102,241,0.25); border-radius: 14px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; width: 100%; }
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(100px); background: #1e293b; border: 1px solid rgba(255,255,255,0.15); padding: 12px 24px; border-radius: 30px; box-shadow: 0 10px 25px rgba(0,0,0,0.4); display: flex; align-items: center; gap: 10px; font-size: 13.5px; font-weight: 500; z-index: 1000; opacity: 0; transition: all 0.3s ease; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    .logo-img { width: 60px; height: 60px; object-fit: contain; border-radius: 50%; box-shadow: 0 4px 20px rgba(99,102,241,0.3); }
+    .styled-table th, .styled-table td { padding: 8px 12px; }
+    @media (max-width: 640px) {
+      body { padding: 12px 8px; }
+      .wk-container { width: 100% !important; max-width: 100% !important; padding: 0; }
+      .login-card { padding: 20px 14px; border-radius: 16px; width: 100% !important; box-sizing: border-box; }
+      .teacher-profile-bar { flex-direction: column; text-align: center; }
+      .wk-tabs { gap: 4px; }
+      .wk-tab-btn { font-size: 11px; padding: 8px 10px; }
+    }
+  </style>
+</head>
+<body class="dark-theme">
+
+  <div class="wk-container">
+
+    <!-- Header -->
+    <div class="wk-header">
+      <img src="logo.png" alt="Logo SMPN 3 Batam" class="logo-img" onerror="this.src='https://placehold.co/100/10b981/ffffff?text=SMP3'">
+      <div>
+        <h1 style="font-family:'Outfit',sans-serif;font-size:24px;font-weight:700;margin-bottom:4px;">Portal Wali Kelas</h1>
+        <p style="color:var(--text-muted);font-size:14px;">Pantau absensi, pelanggaran, dan izin siswa - SMP Negeri 3 Batam</p>
+      </div>
+    </div>
+
+    <!-- SCREEN 1: LOGIN NIP -->
+    <div id="screen-login" class="login-card">
+      <div style="width:56px;height:56px;background:rgba(245,158,11,0.15);color:#f59e0b;border-radius:16px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;">
+        <i data-lucide="users" style="width:28px;height:28px;"></i>
+      </div>
+      <h2 style="font-size:18px;font-weight:700;margin-bottom:8px;">Login Wali Kelas</h2>
+      <p style="color:var(--text-muted);font-size:13px;margin-bottom:24px;">Masukkan NIP Anda untuk mengakses data kelas.</p>
+      <div style="max-width:360px;margin:0 auto;display:flex;flex-direction:column;gap:14px;">
+        <div style="text-align:left;">
+          <label for="input-nip" style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">NIP / Nama Guru</label>
+          <input type="text" id="input-nip" class="form-input" placeholder="Masukkan NIP atau Nama Guru..." style="width:100%;text-align:center;font-size:16px;" onkeypress="handleLoginKeyPress(event)">
+        </div>
+        <button class="btn btn-primary btn-lg" onclick="loginTeacher()" style="background:#f59e0b;color:#0f172a;width:100%;font-weight:700;">
+          <i data-lucide="log-in" class="mr-1"></i> Masuk Portal Wali Kelas
+        </button>
+      </div>
+    </div>
+
+    <!-- SCREEN 2: DASHBOARD -->
+    <div id="screen-dashboard" style="display:none;flex-direction:column;gap:16px;width:100%;">
+
+      <!-- Profile Bar -->
+      <div class="teacher-profile-bar">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:42px;height:42px;background:#f59e0b;color:#0f172a;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;">
+            <i data-lucide="user" style="width:22px;height:22px;"></i>
+          </div>
+          <div>
+            <div style="font-weight:700;font-size:15px;" id="profile-name">-</div>
+            <div style="font-size:12px;color:var(--text-muted);" id="profile-detail">-</div>
+          </div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="logoutTeacher()" style="border-color:rgba(255,255,255,0.15);">
+          <i data-lucide="log-out" style="width:14px;height:14px;"></i> Keluar
+        </button>
+      </div>
+
+      <!-- Tabs -->
+      <div class="wk-tabs">
+        <button class="wk-tab-btn active" data-tab="absensi" onclick="switchTab('absensi')">
+          <i data-lucide="clipboard-check" style="width:14px;height:14px;"></i> Absensi
+        </button>
+        <button class="wk-tab-btn" data-tab="terlambat" onclick="switchTab('terlambat')">
+          <i data-lucide="clock" style="width:14px;height:14px;"></i> Terlambat
+        </button>
+        <button class="wk-tab-btn" data-tab="pelanggaran" onclick="switchTab('pelanggaran')">
+          <i data-lucide="alert-triangle" style="width:14px;height:14px;"></i> Pelanggaran
+        </button>
+        <button class="wk-tab-btn" data-tab="izinpulang" onclick="switchTab('izinpulang')">
+          <i data-lucide="door-open" style="width:14px;height:14px;"></i> Izin Pulang
+        </button>
+        <button class="wk-tab-btn" data-tab="kaih" onclick="switchTab('kaih')">
+          <i data-lucide="clipboard-list" style="width:14px;height:14px;"></i> 7KAIH
+        </button>
+      </div>
+
+      <!-- Tab Content: Absensi -->
+      <div id="tab-absensi" class="wk-tab-content active">
+        <div class="dashboard-card card-full">
+          <div class="card-header border-bottom">
+            <h2 style="font-size:15px;font-weight:700;">Rekap Absensi - <span id="absensi-kelas-label">-</span></h2>
+          </div>
+          <div class="card-body p-0">
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);">
+              <label style="font-size:12px;font-weight:600;">Bulan:</label>
+              <select id="absensi-bulan" class="form-select" style="width:auto;min-width:140px;" onchange="renderAbsensi()"></select>
+              <label style="font-size:12px;font-weight:600;">Tahun:</label>
+              <select id="absensi-tahun" class="form-select" style="width:auto;min-width:100px;" onchange="renderAbsensi()"></select>
+              <button class="btn btn-sm btn-outline ml-auto" onclick="downloadAbsensi()">
+                <i data-lucide="download" style="width:14px;height:14px;"></i> Download Excel
+              </button>
+            </div>
+            <div class="custom-table-container">
+              <table class="styled-table text-sm">
+                <thead><tr>
+                  <th>No</th><th>NISN</th><th>Nama Siswa</th><th>Total Hadir</th><th>Sakit</th><th>Izin</th><th>Alpha</th><th>Rincian Tanggal</th>
+                </tr></thead>
+                <tbody id="absensi-body"><tr><td colspan="8" class="text-center text-muted py-4">Memuat data...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content: Terlambat -->
+      <div id="tab-terlambat" class="wk-tab-content">
+        <div class="dashboard-card card-full">
+          <div class="card-header border-bottom">
+            <h2 style="font-size:15px;font-weight:700;">Data Terlambat - <span id="terlambat-kelas-label">-</span></h2>
+          </div>
+          <div class="card-body p-0">
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);">
+              <label style="font-size:12px;font-weight:600;">Bulan:</label>
+              <select id="terlambat-bulan" class="form-select" style="width:auto;min-width:140px;" onchange="renderTerlambat()"></select>
+              <label style="font-size:12px;font-weight:600;">Tahun:</label>
+              <select id="terlambat-tahun" class="form-select" style="width:auto;min-width:100px;" onchange="renderTerlambat()"></select>
+            </div>
+            <div class="custom-table-container">
+              <table class="styled-table text-sm">
+                <thead><tr><th>No</th><th>NISN</th><th>Nama Siswa</th><th>Tanggal</th><th>Jam</th><th>Keterangan</th></tr></thead>
+                <tbody id="terlambat-body"><tr><td colspan="6" class="text-center text-muted py-4">Memuat data...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content: Pelanggaran -->
+      <div id="tab-pelanggaran" class="wk-tab-content">
+        <div class="dashboard-card card-full">
+          <div class="card-header border-bottom">
+            <h2 style="font-size:15px;font-weight:700;">Data Pelanggaran - <span id="pelanggaran-kelas-label">-</span></h2>
+          </div>
+          <div class="card-body p-0">
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);">
+              <label style="font-size:12px;font-weight:600;">Bulan:</label>
+              <select id="pelanggaran-bulan" class="form-select" style="width:auto;min-width:140px;" onchange="renderPelanggaran()"></select>
+              <label style="font-size:12px;font-weight:600;">Tahun:</label>
+              <select id="pelanggaran-tahun" class="form-select" style="width:auto;min-width:100px;" onchange="renderPelanggaran()"></select>
+            </div>
+            <div class="custom-table-container">
+              <table class="styled-table text-sm">
+                <thead><tr><th>No</th><th>NISN</th><th>Nama Siswa</th><th>Tanggal</th><th>Jenis Pelanggaran</th><th>Poin</th></tr></thead>
+                <tbody id="pelanggaran-body"><tr><td colspan="6" class="text-center text-muted py-4">Memuat data...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content: Izin Pulang -->
+      <div id="tab-izinpulang" class="wk-tab-content">
+        <div class="dashboard-card card-full">
+          <div class="card-header border-bottom">
+            <h2 style="font-size:15px;font-weight:700;">Izin Pulang - <span id="izinpulang-kelas-label">-</span></h2>
+          </div>
+          <div class="card-body p-0">
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);">
+              <label style="font-size:12px;font-weight:600;">Bulan:</label>
+              <select id="izinpulang-bulan" class="form-select" style="width:auto;min-width:140px;" onchange="renderIzinPulang()"></select>
+              <label style="font-size:12px;font-weight:600;">Tahun:</label>
+              <select id="izinpulang-tahun" class="form-select" style="width:auto;min-width:100px;" onchange="renderIzinPulang()"></select>
+            </div>
+            <div class="custom-table-container">
+              <table class="styled-table text-sm">
+                <thead><tr><th>No</th><th>NISN</th><th>Nama Siswa</th><th>Tanggal</th><th>Jam Keluar</th><th>Alasan</th><th>Status</th></tr></thead>
+                <tbody id="izinpulang-body"><tr><td colspan="7" class="text-center text-muted py-4">Memuat data...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content: 7KAIH -->
+      <div id="tab-kaih" class="wk-tab-content">
+        <div class="dashboard-card card-full">
+          <div class="card-header border-bottom">
+            <h2 style="font-size:15px;font-weight:700;">Catatan 7KAIH - <span id="kaih-kelas-label">-</span></h2>
+          </div>
+          <div class="card-body p-0">
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,0.06);">
+              <label style="font-size:12px;font-weight:600;">Bulan:</label>
+              <select id="kaih-bulan" class="form-select" style="width:auto;min-width:140px;" onchange="renderKaih()"></select>
+              <label style="font-size:12px;font-weight:600;">Tahun:</label>
+              <select id="kaih-tahun" class="form-select" style="width:auto;min-width:100px;" onchange="renderKaih()"></select>
+            </div>
+            <div class="custom-table-container">
+              <table class="styled-table text-sm">
+                <thead><tr><th>No</th><th>NISN</th><th>Nama Siswa</th><th>Tanggal</th><th>Kategori</th><th>Catatan</th></tr></thead>
+                <tbody id="kaih-body"><tr><td colspan="6" class="text-center text-muted py-4">Memuat data...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Toast -->
+  <div id="toast-notif" class="toast">
+    <i id="toast-icon"></i>
+    <span id="toast-text">-</span>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAlxB8WZZfTYJoylYgm-5sxQdjIwK_TGEE",
+      authDomain: "sibata-2ccc3.firebaseapp.com",
+      projectId: "sibata-2ccc3",
+      storageBucket: "sibata-2ccc3.firebasestorage.app",
+      messagingSenderId: "587752450586",
+      appId: "1:587752450586:web:91d1938d5c86c4e8663fa3"
+    };
+
+    let fDb = null;
+    let appDb = { teachers: [], students: [], attendance: [], latelogs: [], violations: [], izinpulang: [], kaihlogs: [], accounts: [] };
+    let currentWali = null;
+
+    const BULAN_NAMA = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+
+    function initFirebase() {
+      if (typeof firebase !== 'undefined') {
+        try {
+          if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+          fDb = firebase.firestore();
+          fDb.settings({ merge: true });
+        } catch (e) { console.warn('Firebase init:', e); }
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      initFirebase();
+      lucide.createIcons();
+      await loadDatabase();
+
+      // Populate month/year selects
+      ['absensi','terlambat','pelanggaran','izinpulang','kaih'].forEach(prefix => {
+        populateMonthYear(prefix);
+      });
+
+      const saved = sessionStorage.getItem('loggedWaliKelas');
+      if (saved) {
+        try {
+          const wali = JSON.parse(saved);
+          const found = (appDb.teachers || []).find(t => (String(t.id) === String(wali.id) || t.nip === wali.nip) && t.kelas_wali);
+          if (found) { showDashboard(found); }
+        } catch (e) {}
+      }
+    });
+
+    function populateMonthYear(prefix) {
+      const bulanEl = document.getElementById(prefix + '-bulan');
+      const tahunEl = document.getElementById(prefix + '-tahun');
+      if (bulanEl) {
+        bulanEl.innerHTML = '<option value="">Semua Bulan</option>' + BULAN_NAMA.map((n, i) => `<option value="${i+1}">${n}</option>`).join('');
+        bulanEl.value = (new Date().getMonth() + 1).toString();
+      }
+      if (tahunEl) {
+        const cy = new Date().getFullYear();
+        tahunEl.innerHTML = '';
+        for (let y = cy - 2; y <= cy + 1; y++) {
+          const opt = document.createElement('option');
+          opt.value = y; opt.textContent = y;
+          if (y === cy) opt.selected = true;
+          tahunEl.appendChild(opt);
+        }
+      }
+    }
+
+    async function loadDatabase() {
+      const localStr = localStorage.getItem('schoolDb');
+      if (localStr) {
+        try {
+          const d = JSON.parse(localStr);
+          Object.keys(appDb).forEach(k => { if (Array.isArray(d[k])) appDb[k] = d[k]; });
+        } catch (e) {}
+      }
+      if (fDb) {
+        try {
+          const snap = await fDb.collection('school_data').doc('main').get();
+          if (snap.exists) {
+            const d = snap.data();
+            if (Array.isArray(d.students)) appDb.students = d.students;
+            if (Array.isArray(d.teachers)) appDb.teachers = d.teachers;
+            if (Array.isArray(d.attendance)) appDb.attendance = d.attendance;
+            if (Array.isArray(d.latelogs)) appDb.latelogs = d.latelogs;
+            if (Array.isArray(d.violations)) appDb.violations = d.violations;
+            if (Array.isArray(d.izinpulang)) appDb.izinpulang = d.izinpulang;
+            if (Array.isArray(d.kaihlogs)) appDb.kaihlogs = d.kaihlogs;
+            if (Array.isArray(d.accounts)) appDb.accounts = d.accounts;
+          }
+        } catch (e) { console.warn('Firebase fetch:', e); }
+      }
+      // Auto-extract wali kelas from accounts
+      if (Array.isArray(appDb.accounts)) {
+        appDb.accounts.forEach(acc => {
+          if (acc && acc.role === 'wali-kelas') {
+            const accNip = String(acc.username || acc.nip || '').trim();
+            const accNama = String(acc.nama || acc.name || '').trim();
+            const accKelas = String(acc.kelas_wali || '').trim();
+            if ((accNip || accNama) && accKelas) {
+              const exists = appDb.teachers.some(t => String(t.nip || '').toLowerCase() === accNip.toLowerCase() || String(t.nama || '').toLowerCase() === accNama.toLowerCase());
+              if (!exists) {
+                appDb.teachers.push({ id: acc.id || ('wali-' + Date.now()), nip: accNip, nama: accNama || 'Guru Wali', mapel: 'Wali Kelas', kelas_wali: accKelas });
+              }
+            }
+          }
+        });
+      }
+    }
+
+    function loginTeacher() {
+      const rawInput = document.getElementById('input-nip').value.trim();
+      if (!rawInput) { showToast('Masukkan NIP atau Nama Guru!', 'warning'); return; }
+      const cleanInput = rawInput.replace(/\s+/g, '').toLowerCase();
+
+      const teacher = (appDb.teachers || []).find(t => {
+        if (!t || !t.kelas_wali) return false;
+        const nip = String(t.nip || '').replace(/\s+/g, '').toLowerCase();
+        const id = String(t.id || '').replace(/\s+/g, '').toLowerCase();
+        const nama = String(t.nama || '').replace(/\s+/g, '').toLowerCase();
+        return nip === cleanInput || id === cleanInput || nama.includes(cleanInput);
+      });
+
+      if (!teacher) {
+        showToast('Guru wali kelas tidak terdaftar dalam sistem.', 'error');
+        return;
+      }
+
+      sessionStorage.setItem('loggedWaliKelas', JSON.stringify(teacher));
+      showDashboard(teacher);
+      showToast('Selamat datang, ' + teacher.nama + '!', 'success');
+    }
+
+    function showDashboard(teacher) {
+      currentWali = teacher;
+      document.getElementById('screen-login').style.display = 'none';
+      document.getElementById('screen-dashboard').style.display = 'flex';
+
+      document.getElementById('profile-name').textContent = teacher.nama;
+      document.getElementById('profile-detail').textContent = 'Wali Kelas ' + teacher.kelas_wali + ' | NIP: ' + (teacher.nip || '-');
+      document.getElementById('absensi-kelas-label').textContent = teacher.kelas_wali;
+      document.getElementById('terlambat-kelas-label').textContent = teacher.kelas_wali;
+      document.getElementById('pelanggaran-kelas-label').textContent = teacher.kelas_wali;
+      document.getElementById('izinpulang-kelas-label').textContent = teacher.kelas_wali;
+      document.getElementById('kaih-kelas-label').textContent = teacher.kelas_wali;
+
+      renderAbsensi();
+      renderTerlambat();
+      renderPelanggaran();
+      renderIzinPulang();
+      renderKaih();
+      lucide.createIcons();
+    }
+
+    function logoutTeacher() {
+      sessionStorage.removeItem('loggedWaliKelas');
+      currentWali = null;
+      document.getElementById('screen-dashboard').style.display = 'none';
+      document.getElementById('screen-login').style.display = 'block';
+      document.getElementById('input-nip').value = '';
+      showToast('Anda telah keluar.', 'info');
+    }
+
+    function handleLoginKeyPress(e) { if (e.key === 'Enter') loginTeacher(); }
+
+    function getStudentIds() {
+      if (!currentWali) return [];
+      return (appDb.students || []).filter(s => s.kelas === currentWali.kelas_wali).map(s => String(s.id));
+    }
+
+    function getFilteredByMonthYear(arr, prefix) {
+      const bulan = document.getElementById(prefix + '-bulan')?.value || '';
+      const tahun = document.getElementById(prefix + '-tahun')?.value || '';
+      let filtered = [...arr];
+      if (bulan) filtered = filtered.filter(item => {
+        const t = item.tanggal || '';
+        const m = parseInt(t.split('-')[1]);
+        return m === parseInt(bulan);
+      });
+      if (tahun) filtered = filtered.filter(item => {
+        const t = item.tanggal || '';
+        const y = parseInt(t.split('-')[0]);
+        return y === parseInt(tahun);
+      });
+      return filtered;
+    }
+
+    // === ABSENSI ===
+    function renderAbsensi() {
+      const tbody = document.getElementById('absensi-body');
+      if (!tbody || !currentWali) return;
+      const studentIds = getStudentIds();
+      const idSet = new Set(studentIds);
+      const kelas = currentWali.kelas_wali;
+
+      let filtered = (appDb.attendance || []).filter(a => idSet.has(String(a.student_id)));
+      filtered = getFilteredByMonthYear(filtered, 'absensi');
+
+      const studentsInClass = (appDb.students || []).filter(s => s.kelas === kelas);
+
+      if (studentsInClass.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">Tidak ada siswa di kelas ini.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = studentsInClass.map((s, idx) => {
+        const records = filtered.filter(a => String(a.student_id) === String(s.id));
+        let hadir = 0, sakit = 0, izin = 0, alpha = 0;
+        records.forEach(r => {
+          if (r.status === 'hadir') hadir++;
+          else if (r.status === 'sakit') sakit++;
+          else if (r.status === 'izin') izin++;
+          else if (r.status === 'alpha' || r.status === 'alpa') alpha++;
+        });
+        const rincian = records.map(r => {
+          const datePart = r.tanggal ? r.tanggal.slice(5) : '??';
+          const st = r.status || '-';
+          return `<span class="badge ${st === 'hadir' ? 'badge-success' : st === 'sakit' ? 'badge-warning' : st === 'izin' ? 'badge-info' : 'badge-danger'}" style="font-size:9px;margin:1px;">${datePart}:${st[0].toUpperCase()}</span>`;
+        }).join('');
+        return `<tr>
+          <td>${idx+1}</td>
+          <td style="font-family:monospace;font-size:12px;">${s.nisn || '-'}</td>
+          <td class="font-semibold">${s.nama}</td>
+          <td class="text-center">${hadir}</td>
+          <td class="text-center">${sakit}</td>
+          <td class="text-center">${izin}</td>
+          <td class="text-center">${alpha}</td>
+          <td style="max-width:200px;white-space:normal;">${rincian || '-'}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    function downloadAbsensi() {
+      if (!currentWali) return;
+      renderAbsensi();
+      const wb = XLSX.utils.book_new();
+      const kelas = currentWali.kelas_wali;
+      const studentsInClass = (appDb.students || []).filter(s => s.kelas === kelas);
+      const idSet = new Set(getStudentIds());
+      let filtered = (appDb.attendance || []).filter(a => idSet.has(String(a.student_id)));
+      filtered = getFilteredByMonthYear(filtered, 'absensi');
+
+      const data = studentsInClass.map(s => {
+        const records = filtered.filter(a => String(a.student_id) === String(s.id));
+        let hadir = 0, sakit = 0, izin = 0, alpha = 0;
+        records.forEach(r => {
+          if (r.status === 'hadir') hadir++;
+          else if (r.status === 'sakit') sakit++;
+          else if (r.status === 'izin') izin++;
+          else if (r.status === 'alpha' || r.status === 'alpa') alpha++;
+        });
+        const rincian = records.map(r => `${r.tanggal ? r.tanggal.slice(5) : '??'}:${r.status || '-'}`).join(', ');
+        return { 'NISN': s.nisn || '-', 'Nama': s.nama, 'Hadir': hadir, 'Sakit': sakit, 'Izin': izin, 'Alpha': alpha, 'Rincian Tanggal (Status)': rincian || '-' };
+      });
+      const ws = XLSX.utils.json_to_sheet(data);
+      XLSX.utils.book_append_sheet(wb, ws, 'Rekap Absensi ' + kelas);
+      XLSX.writeFile(wb, 'Rekap_Absensi_' + kelas.replace(/\//g, '-') + '.xlsx');
+      showToast('Download rekap absensi berhasil.', 'success');
+    }
+
+    // === TERLAMBAT ===
+    function renderTerlambat() {
+      const tbody = document.getElementById('terlambat-body');
+      if (!tbody || !currentWali) return;
+      const idSet = new Set(getStudentIds());
+      let list = (appDb.latelogs || []).filter(l => idSet.has(String(l.student_id)));
+      list = getFilteredByMonthYear(list, 'terlambat');
+      if (list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Tidak ada data terlambat.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = list.map((l, idx) => {
+        const s = (appDb.students || []).find(std => String(std.id) === String(l.student_id));
+        return `<tr>
+          <td>${idx+1}</td>
+          <td>${s ? s.nisn || '-' : '-'}</td>
+          <td>${s ? s.nama : 'Siswa#' + l.student_id}</td>
+          <td>${l.tanggal || '-'}</td>
+          <td>${l.jam || '-'}</td>
+          <td>${l.keterangan || '-'}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    // === PELANGGARAN ===
+    function renderPelanggaran() {
+      const tbody = document.getElementById('pelanggaran-body');
+      if (!tbody || !currentWali) return;
+      const idSet = new Set(getStudentIds());
+      let list = (appDb.violations || []).filter(v => idSet.has(String(v.student_id)));
+      list = getFilteredByMonthYear(list, 'pelanggaran');
+      if (list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Tidak ada data pelanggaran.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = list.map((v, idx) => {
+        const s = (appDb.students || []).find(std => String(std.id) === String(v.student_id));
+        return `<tr>
+          <td>${idx+1}</td>
+          <td>${s ? s.nisn || '-' : '-'}</td>
+          <td>${s ? s.nama : 'Siswa#' + v.student_id}</td>
+          <td>${v.tanggal || '-'}</td>
+          <td>${v.jenis_pelanggaran || v.jenis || '-'}</td>
+          <td class="text-center">${v.poin || '0'}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    // === IZIN PULANG ===
+    function renderIzinPulang() {
+      const tbody = document.getElementById('izinpulang-body');
+      if (!tbody || !currentWali) return;
+      const idSet = new Set(getStudentIds());
+      let list = (appDb.izinpulang || []).filter(iz => idSet.has(String(iz.student_id)));
+      list = getFilteredByMonthYear(list, 'izinpulang');
+      if (list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">Tidak ada data izin pulang.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = list.map((iz, idx) => {
+        const s = (appDb.students || []).find(std => String(std.id) === String(iz.student_id));
+        return `<tr>
+          <td>${idx+1}</td>
+          <td>${s ? s.nisn || '-' : '-'}</td>
+          <td>${s ? s.nama : 'Siswa#' + iz.student_id}</td>
+          <td>${iz.tanggal || '-'}</td>
+          <td>${iz.jam_keluar || iz.jam || '-'}</td>
+          <td>${iz.alasan || '-'}</td>
+          <td>${iz.status || 'disetujui'}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    // === 7KAIH ===
+    function renderKaih() {
+      const tbody = document.getElementById('kaih-body');
+      if (!tbody || !currentWali) return;
+      const idSet = new Set(getStudentIds());
+      let list = (appDb.kaihlogs || []).filter(k => idSet.has(String(k.student_id)));
+      list = getFilteredByMonthYear(list, 'kaih');
+      if (list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Tidak ada catatan 7KAIH.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = list.map((k, idx) => {
+        const s = (appDb.students || []).find(std => String(std.id) === String(k.student_id));
+        return `<tr>
+          <td>${idx+1}</td>
+          <td>${s ? s.nisn || '-' : '-'}</td>
+          <td>${s ? s.nama : 'Siswa#' + k.student_id}</td>
+          <td>${k.tanggal || '-'}</td>
+          <td>${k.kategori || '-'}</td>
+          <td>${k.catatan || '-'}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    // === TAB NAVIGATION ===
+    function switchTab(tab) {
+      document.querySelectorAll('.wk-tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.wk-tab-content').forEach(c => c.classList.remove('active'));
+      document.querySelector('.wk-tab-btn[data-tab="' + tab + '"]').classList.add('active');
+      document.getElementById('tab-' + tab).classList.add('active');
+    }
+
+    // === TOAST ===
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast-notif');
+      const text = document.getElementById('toast-text');
+      toast.className = 'toast show';
+      if (type === 'success') toast.style.borderLeft = '4px solid #10b981';
+      if (type === 'error') toast.style.borderLeft = '4px solid #ef4444';
+      if (type === 'warning') toast.style.borderLeft = '4px solid #f59e0b';
+      text.textContent = message;
+      setTimeout(() => { toast.className = 'toast'; }, 3000);
+    }
+  </script>
+</body>
+</html>

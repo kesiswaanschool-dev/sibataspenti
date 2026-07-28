@@ -911,6 +911,7 @@ function switchMenu(menuName) {
     'dashboard': ['Dashboard Utama', 'Ringkasan data kehadiran dan siswa terlambat'],
     'upload': ['Upload Data Siswa', 'Impor daftar siswa menggunakan template berkas Excel'],
     'upload-guru': ['Upload Data Guru', 'Impor daftar guru dan mata pelajaran menggunakan template berkas Excel'],
+    'upload-wali-kelas': ['Upload Wali Kelas', 'Kelola data wali kelas: nama, NIP, dan kelas wali'],
     'absensi': ['Absensi Harian', 'Pencatatan daftar hadir siswa berdasarkan kelas'],
     'terlambat': ['Siswa Terlambat', 'Input pencatatan jam dan keterangan siswa datang terlambat'],
     'pelanggaran': ['Catatan Pelanggaran Siswa', 'Pencatatan rincian kejadian dan jenis pelanggaran aturan sekolah'],
@@ -937,6 +938,9 @@ function switchMenu(menuName) {
     } else if (menuName === 'upload-guru') {
       populateMapelSelect('filter-guru-mapel');
       renderTeacherListTable();
+    } else if (menuName === 'upload-wali-kelas') {
+      populateClassSelect('filter-wali-kelas');
+      renderWaliKelasTable();
     } else if (menuName === 'absensi') {
       populateClassSelect('absensi-kelas');
       populateClassSelect('absensi-riwayat-kelas');
@@ -1006,6 +1010,7 @@ function refreshAllUI() {
   if (state.currentView === 'rekap') loadRekapData();
   if (state.currentView === '7kaih') init7KaihView();
   if (state.currentView === 'akun') renderAkunTable();
+  if (state.currentView === 'upload-wali-kelas') renderWaliKelasTable();
   if (state.currentView === 'wali-kelas') { populateWaliKelasYearDropdowns(); loadWaliKelasDashboard(); }
 }
 
@@ -1810,6 +1815,37 @@ async function handleTeacherFormSubmit(e) {
   const nip = document.getElementById('teacher-modal-nip')?.value.trim() || '';
   const nama = (document.getElementById('teacher-modal-nama')?.value || '').trim();
   const mapel = (document.getElementById('teacher-modal-mapel')?.value || '').trim();
+  const kelasWali = (document.getElementById('teacher-modal-kelas-wali')?.value || '').trim();
+  const isWaliMode = document.getElementById('teacher-modal-kelas-wali-container')?.style?.display === 'block';
+
+  if (isWaliMode) {
+    if (!nama || !kelasWali) {
+      showToast('Nama Guru dan Kelas Wali wajib diisi!', 'warning');
+      return;
+    }
+    if (id) {
+      const idx = state.teachers.findIndex(t => t.id === String(id));
+      if (idx !== -1) {
+        state.teachers[idx].nip = nip;
+        state.teachers[idx].nama = nama;
+        state.teachers[idx].kelas_wali = kelasWali;
+        state.teachers[idx].mapel = 'Wali Kelas';
+      }
+    } else {
+      state.teachers.push({
+        id: 'wali_' + Date.now(),
+        nip,
+        nama,
+        mapel: 'Wali Kelas',
+        kelas_wali: kelasWali
+      });
+    }
+    await persistData();
+    closeTeacherModal();
+    renderWaliKelasTable();
+    showToast(id ? 'Data wali kelas berhasil diperbarui!' : 'Wali kelas baru berhasil ditambahkan!', 'success');
+    return;
+  }
 
   if (!nama || !mapel) {
     showToast('Nama Guru dan Mapel wajib diisi!', 'warning');
@@ -1893,6 +1929,251 @@ async function deleteTeacher(id) {
 // ==========================================================================
 // MENU 2: ABSENSI SISWA
 // ==========================================================================
+
+// ==========================================================================
+// WALI KELAS UPLOAD & MANAGEMENT
+// ==========================================================================
+
+function getWaliKelasFromTeachers() {
+  if (!state.teachers) state.teachers = [];
+  return state.teachers.filter(t => t.kelas_wali && t.kelas_wali.trim() !== '');
+}
+
+function renderWaliKelasTable() {
+  const body = document.getElementById('wali-kelas-list-body');
+  if (!body) return;
+
+  const filterSelect = document.getElementById('filter-wali-kelas');
+  if (filterSelect && filterSelect.options.length <= 1) {
+    const classes = [...new Set((state.students || []).map(s => s.kelas).filter(Boolean))].sort();
+    filterSelect.innerHTML = '<option value="">Semua Kelas</option>' + classes.map(c => `<option value="${c}">${c}</option>`).join('');
+  }
+
+  const search = (document.getElementById('search-wali-kelas')?.value || '').toLowerCase().trim();
+  const filterKelas = filterSelect ? filterSelect.value : '';
+
+  let list = getWaliKelasFromTeachers();
+  if (filterKelas) list = list.filter(t => t.kelas_wali === filterKelas);
+  if (search) list = list.filter(t => t.nama.toLowerCase().includes(search) || (t.nip && t.nip.toLowerCase().includes(search)));
+
+  if (list.length === 0) {
+    body.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Belum ada data wali kelas.</td></tr>';
+    return;
+  }
+
+  body.innerHTML = list.map((t, idx) => `
+    <tr>
+      <td>${idx + 1}</td>
+      <td style="font-family:monospace;font-size:13px;">${t.nip || '-'}</td>
+      <td class="font-semibold">${t.nama}</td>
+      <td><span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;">${t.kelas_wali}</span></td>
+      <td class="text-center">
+        <button class="btn btn-sm btn-icon btn-secondary mr-1" onclick="openWaliKelasModal('${t.id}')" title="Edit">
+          <i data-lucide="edit-3" style="width:14px;height:14px;"></i>
+        </button>
+        <button class="btn btn-sm btn-icon btn-danger" onclick="deleteWaliKelas('${t.id}')" title="Hapus">
+          <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+        </button>
+      </td>
+    </tr>
+  `).join('');
+  lucide.createIcons();
+}
+
+function openWaliKelasModal(id = null) {
+  const modal = document.getElementById('teacher-modal');
+  const title = document.getElementById('teacher-modal-title');
+  const inputId = document.getElementById('teacher-modal-id');
+  const inputNip = document.getElementById('teacher-modal-nip');
+  const inputNama = document.getElementById('teacher-modal-nama');
+  const mapelContainer = document.getElementById('teacher-modal-mapel-container');
+  const kelasContainer = document.getElementById('teacher-modal-kelas-wali-container');
+
+  if (!modal || !kelasContainer) return;
+
+  // Populate class dropdown
+  const kelasSelect = document.getElementById('teacher-modal-kelas-wali');
+  const classes = [...new Set((state.students || []).map(s => s.kelas).filter(Boolean))].sort();
+  kelasSelect.innerHTML = '<option value="">-- Pilih Kelas --</option>' + classes.map(c => `<option value="${c}">${c}</option>`).join('');
+
+  if (mapelContainer) mapelContainer.style.display = 'none';
+  kelasContainer.style.display = 'block';
+
+  if (id) {
+    const t = state.teachers.find(item => item.id === String(id));
+    if (t) {
+      title.textContent = 'Edit Wali Kelas';
+      inputId.value = t.id;
+      if (inputNip) inputNip.value = t.nip || '';
+      inputNama.value = t.nama;
+      kelasSelect.value = t.kelas_wali || '';
+    }
+  } else {
+    title.textContent = 'Tambah Wali Kelas';
+    inputId.value = '';
+    if (inputNip) inputNip.value = '';
+    inputNama.value = '';
+    kelasSelect.value = '';
+  }
+
+  modal.style.display = 'flex';
+}
+
+async function handleWaliKelasFormSubmit(e) {
+  e.preventDefault();
+  const id = (document.getElementById('teacher-modal-id')?.value || '');
+  const nip = document.getElementById('teacher-modal-nip')?.value.trim() || '';
+  const nama = (document.getElementById('teacher-modal-nama')?.value || '').trim();
+  const kelasWali = (document.getElementById('teacher-modal-kelas-wali')?.value || '').trim();
+
+  if (!nama || !kelasWali) {
+    showToast('Nama Guru dan Kelas Wali wajib diisi!', 'warning');
+    return;
+  }
+
+  if (id) {
+    const idx = state.teachers.findIndex(t => t.id === String(id));
+    if (idx !== -1) {
+      state.teachers[idx].nip = nip;
+      state.teachers[idx].nama = nama;
+      state.teachers[idx].kelas_wali = kelasWali;
+      state.teachers[idx].mapel = 'Wali Kelas';
+    }
+  } else {
+    state.teachers.push({
+      id: 'wali_' + Date.now(),
+      nip: nip,
+      nama: nama,
+      mapel: 'Wali Kelas',
+      kelas_wali: kelasWali
+    });
+  }
+
+  await persistData();
+  renderWaliKelasTable();
+  closeTeacherModal();
+  showToast(id ? 'Data wali kelas berhasil diperbarui!' : 'Wali kelas baru berhasil ditambahkan!', 'success');
+}
+
+async function deleteWaliKelas(id) {
+  if (!confirm('Hapus data wali kelas ini?')) return;
+  state.teachers = state.teachers.filter(t => t.id !== String(id));
+  await persistData();
+  renderWaliKelasTable();
+  showToast('Data wali kelas berhasil dihapus.', 'info');
+}
+
+// Excel upload
+
+let tempImportedWaliKelas = [];
+
+function downloadExcelTemplateWaliKelas() {
+  const wb = XLSX.utils.book_new();
+  const data = [
+    { "NIP": "198501152010011002", "Nama Guru": "Drs. H. Ahmad Dahlan", "Kelas Wali": "X-A" },
+    { "NIP": "199003202015022001", "Nama Guru": "Siti Aminah, S.Pd.", "Kelas Wali": "X-B" },
+    { "NIP": "197808122005011003", "Nama Guru": "Budi Prasetyo, M.Pd.", "Kelas Wali": "XI-A" },
+  ];
+  const ws = XLSX.utils.json_to_sheet(data);
+  XLSX.utils.book_append_sheet(wb, ws, 'Template Wali Kelas');
+  XLSX.writeFile(wb, 'Template_Wali_Kelas.xlsx');
+  showToast('Mengunduh file template wali kelas...', 'info');
+}
+
+function handleExcelUploadWaliKelas(event) {
+  const file = event.target.files[0];
+  const nameEl = document.getElementById('uploaded-file-name-wali-kelas');
+  if (!file) return;
+
+  if (nameEl) nameEl.textContent = `📄 ${file.name}`;
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+      if (json.length === 0) {
+        showToast('File Excel kosong atau format tidak sesuai.', 'error');
+        return;
+      }
+
+      tempImportedWaliKelas = json.map(row => ({
+        nip: String(row.NIP || row.Nip || row.nip || '').trim(),
+        nama: String(row.Nama_Guru || row['Nama Guru'] || row.Nama || row.nama || '').trim(),
+        kelas_wali: String(row.Kelas_Wali || row.kelas_wali || row.Kelas || row.kelas || '').trim()
+      })).filter(item => item.nama && item.kelas_wali);
+
+      if (tempImportedWaliKelas.length === 0) {
+        showToast('Tidak ada data valid ditemukan. Pastikan kolom: NIP, Nama Guru, Kelas Wali.', 'error');
+        return;
+      }
+
+      // Show preview
+      const tbody = document.getElementById('import-preview-body-wali-kelas');
+      tbody.innerHTML = tempImportedWaliKelas.map((item, idx) => `
+        <tr>
+          <td>${idx + 1}</td>
+          <td>${item.nip || '-'}</td>
+          <td>${item.nama}</td>
+          <td>${item.kelas_wali}</td>
+        </tr>
+      `).join('');
+
+      document.getElementById('import-count-wali-kelas').textContent = tempImportedWaliKelas.length;
+      document.getElementById('import-preview-section-wali-kelas').style.display = 'block';
+      document.getElementById('btn-save-import-wali-kelas').disabled = false;
+    } catch (err) {
+      showToast('Gagal membaca file Excel: ' + err.message, 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function cancelImportWaliKelas() {
+  tempImportedWaliKelas = [];
+  document.getElementById('import-preview-section-wali-kelas').style.display = 'none';
+  document.getElementById('uploaded-file-name-wali-kelas').textContent = 'Belum ada file terpilih.';
+  document.getElementById('excel-file-input-wali-kelas').value = '';
+}
+
+async function saveImportedWaliKelas() {
+  if (tempImportedWaliKelas.length === 0) {
+    showToast('Tidak ada data untuk disimpan.', 'warning');
+    return;
+  }
+
+  toggleLoader(true, 'Menyimpan data wali kelas...');
+  try {
+    for (const item of tempImportedWaliKelas) {
+      const existing = state.teachers.find(t => t.kelas_wali === item.kelas_wali || (t.nip && t.nip === item.nip));
+      if (existing) {
+        existing.nama = item.nama;
+        existing.nip = item.nip || existing.nip;
+        existing.kelas_wali = item.kelas_wali;
+        existing.mapel = 'Wali Kelas';
+      } else {
+        state.teachers.push({
+          id: 'wali_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+          nip: item.nip,
+          nama: item.nama,
+          mapel: 'Wali Kelas',
+          kelas_wali: item.kelas_wali
+        });
+      }
+    }
+
+    await persistData();
+    cancelImportWaliKelas();
+    renderWaliKelasTable();
+    showToast(`${tempImportedWaliKelas.length} data wali kelas berhasil disimpan!`, 'success');
+  } catch (err) {
+    showToast('Gagal menyimpan: ' + err.message, 'error');
+  } finally {
+    toggleLoader(false);
+  }
+}
 
 function renderAttendanceHistoryTable() {
   const tbody = document.getElementById('attendance-history-table-body');
