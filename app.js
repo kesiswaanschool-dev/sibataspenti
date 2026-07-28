@@ -33,7 +33,8 @@ function getDefaultAccounts() {
     { id: '1', nama: 'Super Admin', username: 'superadmin', password: 'superadmin', role: 'super-admin' },
     { id: '2', nama: 'Admin', username: 'admin', password: 'admin', role: 'admin' },
     { id: '3', nama: 'Guru Piket', username: 'gurupiket', password: 'gurupiket', role: 'guru-piket' },
-    { id: '4', nama: 'OSIS', username: 'osis', password: 'osis', role: 'osis' }
+    { id: '4', nama: 'OSIS', username: 'osis', password: 'osis', role: 'osis' },
+    { id: '5', nama: 'Wali Kelas X-A', username: 'walikelas', password: 'walikelas', role: 'wali-kelas', kelas_wali: 'X-A' }
   ];
 }
 
@@ -104,6 +105,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
   // BUGFIX #5: Dihapus pemanggilan setupDragAndDrop() duplikat (sudah dipanggil baris 55)
+
+  // Role change listeners for akun forms
+  document.getElementById('akun-modal-role')?.addEventListener('change', function() {
+    toggleKelasWaliField(this.value === 'wali-kelas');
+  });
+  document.getElementById('inline-akun-role')?.addEventListener('change', function() {
+    toggleKelasWaliField(this.value === 'wali-kelas');
+  });
 });
 
 function escapeHtml(str) {
@@ -909,7 +918,8 @@ function switchMenu(menuName) {
     'laporan': ['Unduh Laporan Bulanan', 'Ekspor hasil rekapitulasi data siswa ke berkas Microsoft Excel'],
     'github': ['Integrasi Awan GitHub', 'Konfigurasi akun dan repositori database online'],
     '7kaih': ['7 KAIH', 'Monitoring 7 Kebiasaan Anak Indonesia Hebat'],
-    'akun': ['Manajemen Akun Pengguna', 'Kelola akun login untuk Admin, Guru Piket, dan OSIS']
+    'wali-kelas': ['Dashboard Wali Kelas', 'Rekap kehadiran dan 7 KAIH siswa per kelas'],
+    'akun': ['Manajemen Akun Pengguna', 'Kelola akun login untuk Admin, Guru Piket, OSIS, dan Wali Kelas']
   };
 
   if (titleMap[menuName]) {
@@ -955,6 +965,16 @@ function switchMenu(menuName) {
       init7KaihView();
     } else if (menuName === 'akun') {
       switchAkunTab('daftar');
+    } else if (menuName === 'wali-kelas') {
+      populateKelasWaliSelects();
+      populateWaliKelasYearDropdowns();
+      const user = state.currentUser;
+      if (user && (user.role === 'admin' || user.role === 'super-admin')) {
+        document.getElementById('wali-kelas-admin-picker').style.display = 'flex';
+      } else {
+        document.getElementById('wali-kelas-admin-picker').style.display = 'none';
+      }
+      loadWaliKelasDashboard();
     }
   } catch (err) {
     console.error(`Error rendering view ${menuName}:`, err);
@@ -984,6 +1004,7 @@ function refreshAllUI() {
   if (state.currentView === 'rekap') loadRekapData();
   if (state.currentView === '7kaih') init7KaihView();
   if (state.currentView === 'akun') renderAkunTable();
+  if (state.currentView === 'wali-kelas') { populateWaliKelasYearDropdowns(); loadWaliKelasDashboard(); }
 }
 
 // Populates dropdown lists with list of unique classes in students database
@@ -3002,6 +3023,240 @@ function renderRekapIzinPulang(periodType, bulan, semester, tahun, kelas, search
 
   if (!hasData) {
     body.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">Tidak ada data izin pulang periode ini.</td></tr>`;
+  }
+}
+
+// ==========================================================================
+// WALI KELAS FUNCTIONS
+// ==========================================================================
+
+function populateKelasWaliSelects() {
+  const classes = [...new Set((state.students || []).map(s => s.kelas).filter(Boolean))].sort();
+  const selects = ['akun-modal-kelas-wali', 'inline-akun-kelas-wali', 'wali-kelas-class-select'];
+  selects.forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const currentVal = sel.value;
+    sel.innerHTML = '<option value="">-- Pilih Kelas --</option>' + classes.map(c => `<option value="${c}">${c}</option>`).join('');
+    if (currentVal) sel.value = currentVal;
+  });
+}
+
+function populateWaliKelasYearDropdowns() {
+  const currentYear = new Date().getFullYear();
+  const years = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1, currentYear + 2];
+  ['wali-absensi-tahun', 'wali-7kaih-tahun'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const val = sel.value || String(currentYear);
+    sel.innerHTML = years.map(y => `<option value="${y}"${y === currentYear ? ' selected' : ''}>${y}</option>`).join('');
+    sel.value = val;
+  });
+}
+
+function getWaliKelasClassName() {
+  const user = state.currentUser;
+  if (!user) return '';
+  // For admin/super-admin, use the class picker
+  if (user.role === 'admin' || user.role === 'super-admin') {
+    return document.getElementById('wali-kelas-class-select')?.value || '';
+  }
+  // For wali-kelas, get from account's kelas_wali or teacher record
+  if (user.kelas_wali) return user.kelas_wali;
+  const accounts = getAccountsList();
+  const acc = accounts.find(a => String(a.id) === String(user.id));
+  if (acc && acc.kelas_wali) return acc.kelas_wali;
+  // Fallback to teacher record
+  const teacher = (state.teachers || []).find(t => t.nip === user.username || t.nama === user.nama);
+  return teacher ? (teacher.kelas_wali || '') : '';
+}
+
+function switchWaliKelasTab(tabName) {
+  document.querySelectorAll('.wali-tab-content').forEach(el => el.style.display = 'none');
+  document.getElementById(`wali-tab-${tabName}`).style.display = '';
+  document.querySelectorAll('#view-wali-kelas .tab-button').forEach(b => b.classList.remove('active'));
+  document.getElementById(`tab-wali-${tabName}`)?.classList.add('active');
+}
+
+function loadWaliKelasDashboard() {
+  const kelas = getWaliKelasClassName();
+  const subtitle = document.getElementById('wali-kelas-subtitle');
+  if (subtitle) subtitle.textContent = kelas ? `Kelas: ${kelas}` : 'Kelas: - (Pilih kelas terlebih dahulu)';
+
+  if (!kelas) {
+    document.getElementById('wali-absensi-body').innerHTML = '<tr><td colspan="8" class="text-center text-muted">Pilih kelas untuk melihat data.</td></tr>';
+    document.getElementById('wali-7kaih-body').innerHTML = '<tr><td colspan="5" class="text-center text-muted">Pilih kelas untuk melihat data.</td></tr>';
+    document.getElementById('wali-stat-siswa').textContent = '0';
+    document.getElementById('wali-stat-hadir').textContent = '0';
+    document.getElementById('wali-stat-alpha').textContent = '0';
+    document.getElementById('wali-stat-terlambat').textContent = '0';
+    return;
+  }
+
+  renderWaliAbsensi(kelas);
+  renderWali7Kaih(kelas);
+
+  // Stats
+  const classStudents = (state.students || []).filter(s => s.kelas === kelas);
+  document.getElementById('wali-stat-siswa').textContent = classStudents.length;
+  const bulan = document.getElementById('wali-absensi-bulan')?.value || '';
+  const tahun = document.getElementById('wali-absensi-tahun')?.value || '';
+  const periodAtt = filterDataByPeriod(state.attendance, 'bulanan', tahun, bulan, '');
+  const classAtt = periodAtt.filter(a => classStudents.some(s => s.id === a.student_id));
+  document.getElementById('wali-stat-hadir').textContent = classAtt.filter(a => a.status === 'hadir').length;
+  document.getElementById('wali-stat-alpha').textContent = classAtt.filter(a => a.status === 'alpha' || a.status === 'sakit' || a.status === 'izin').length;
+  document.getElementById('wali-stat-terlambat').textContent = (state.lateLogs || []).filter(l => classStudents.some(s => s.id === l.student_id)).length;
+}
+
+function renderWaliAbsensi(kelas) {
+  const body = document.getElementById('wali-absensi-body');
+  body.innerHTML = '';
+
+  const students = (state.students || []).filter(s => s.kelas === kelas);
+  if (students.length === 0) {
+    body.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Tidak ada siswa di kelas ini.</td></tr>';
+    return;
+  }
+
+  const bulan = document.getElementById('wali-absensi-bulan')?.value || '';
+  const tahun = document.getElementById('wali-absensi-tahun')?.value || '';
+  const periodAtt = filterDataByPeriod(state.attendance, 'bulanan', tahun, bulan, '');
+
+  students.forEach((std, idx) => {
+    const studentAtt = periodAtt.filter(a => a.student_id === std.id);
+    let hadir = 0, sakit = 0, izin = 0, alpha = 0;
+    studentAtt.forEach(a => {
+      if (a.status === 'hadir') hadir++;
+      else if (a.status === 'sakit') sakit++;
+      else if (a.status === 'izin') izin++;
+      else if (a.status === 'alpha') alpha++;
+    });
+    const total = hadir + sakit + izin + alpha;
+    const pct = total > 0 ? Math.round((hadir / total) * 100) : 100;
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${idx + 1}</td>
+      <td class="text-left font-semibold">${std.nama}</td>
+      <td>${std.nisn}</td>
+      <td class="text-success font-semibold">${hadir}</td>
+      <td class="text-warning font-semibold">${sakit}</td>
+      <td class="text-info font-semibold">${izin}</td>
+      <td class="text-danger font-semibold">${alpha}</td>
+      <td>
+        <span class="font-semibold text-primary">${pct}%</span>
+        <div style="width:50px;height:6px;background:rgba(255,255,255,0.05);border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle;margin-left:6px;">
+          <div style="width:${pct}%;height:100%;background:linear-gradient(to right,var(--color-primary),var(--color-success));"></div>
+        </div>
+      </td>
+    `;
+    body.appendChild(tr);
+  });
+}
+
+function renderWali7Kaih(kelas) {
+  const body = document.getElementById('wali-7kaih-body');
+  body.innerHTML = '';
+
+  const students = (state.students || []).filter(s => s.kelas === kelas);
+  if (students.length === 0) {
+    body.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Tidak ada siswa di kelas ini.</td></tr>';
+    return;
+  }
+
+  const kaihLogs = state.kaihLogs || [];
+  const tahun = document.getElementById('wali-7kaih-tahun')?.value || '';
+
+  students.forEach((std, idx) => {
+    let logs = kaihLogs.filter(k => k.student_id === std.id);
+    if (tahun) logs = logs.filter(k => k.tanggal && k.tanggal.startsWith(tahun));
+
+    const totalDays = [...new Set(logs.map(k => k.tanggal))];
+    const allIndicators = logs.flatMap(k => k.indicators || []);
+    const totalFilled = allIndicators.filter(Boolean).length;
+    const expectedPerDay = 7;
+    const totalExpected = totalDays.length * expectedPerDay;
+    const notFilled = totalExpected - totalFilled;
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${idx + 1}</td>
+      <td class="text-left font-semibold">${std.nama}</td>
+      <td>${std.nisn}</td>
+      <td class="text-success font-semibold">${totalFilled}</td>
+      <td class="text-danger font-semibold">${Math.max(0, notFilled)}</td>
+    `;
+    body.appendChild(tr);
+  });
+}
+
+function downloadWaliAbsensi() {
+  const kelas = getWaliKelasClassName();
+  if (!kelas) { showToast('Pilih kelas terlebih dahulu!', 'warning'); return; }
+
+  const bulan = document.getElementById('wali-absensi-bulan')?.value || '';
+  const tahun = document.getElementById('wali-absensi-tahun')?.value || '';
+  const bulanLabel = bulan ? (document.getElementById('wali-absensi-bulan')?.options[document.getElementById('wali-absensi-bulan')?.selectedIndex]?.text || bulan) : 'Semua';
+  const periodLabel = bulan ? `Bulan ${bulanLabel} ${tahun}` : `Tahun ${tahun}`;
+  const filenameSuffix = `${kelas.replace(/\s+/g, '_')}_${tahun}${bulan ? '_' + bulan : ''}`;
+
+  const students = (state.students || []).filter(s => s.kelas === kelas);
+  if (students.length === 0) { showToast('Tidak ada data untuk diekspor.', 'warning'); return; }
+
+  toggleLoader(true, 'Menyusun laporan...');
+  try {
+    const periodAtt = filterDataByPeriod(state.attendance, 'bulanan', tahun, bulan, '');
+    const classAtt = periodAtt.filter(a => students.some(s => s.id === a.student_id));
+
+    const rekapData = students.map((std, idx) => {
+      const att = classAtt.filter(a => a.student_id === std.id);
+      let h=0,s=0,i=0,a=0;
+      att.forEach(x => { if(x.status==='hadir')h++; else if(x.status==='sakit')s++; else if(x.status==='izin')i++; else a++; });
+      const total=h+s+i+a;
+      return { 'No': idx+1, 'Nama': std.nama, 'NISN': std.nisn, 'Hadir': h, 'Sakit': s, 'Izin': i, 'Alpha': a, 'Persentase': total>0?`${Math.round(h/total*100)}%`:'100%' };
+    });
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rekapData), 'Rekap Absensi');
+    XLSX.writeFile(wb, `Wali_Kelas_Absensi_${filenameSuffix}.xlsx`);
+    showToast('Laporan absensi berhasil diunduh!', 'success');
+  } catch (e) {
+    showToast(`Gagal mengekspor: ${e.message}`, 'error');
+  } finally {
+    toggleLoader(false);
+  }
+}
+
+function downloadWali7Kaih() {
+  const kelas = getWaliKelasClassName();
+  if (!kelas) { showToast('Pilih kelas terlebih dahulu!', 'warning'); return; }
+
+  const tahun = document.getElementById('wali-7kaih-tahun')?.value || '';
+  const filenameSuffix = `${kelas.replace(/\s+/g, '_')}_${tahun || 'semua'}`;
+
+  const students = (state.students || []).filter(s => s.kelas === kelas);
+  if (students.length === 0) { showToast('Tidak ada data untuk diekspor.', 'warning'); return; }
+
+  toggleLoader(true, 'Menyusun laporan...');
+  try {
+    const kaihLogs = state.kaihLogs || [];
+    const data = students.map((std, idx) => {
+      let logs = kaihLogs.filter(k => k.student_id === std.id);
+      if (tahun) logs = logs.filter(k => k.tanggal && k.tanggal.startsWith(tahun));
+      const totalFilled = logs.flatMap(k => k.indicators || []).filter(Boolean).length;
+      const totalDays = [...new Set(logs.map(k => k.tanggal))].length;
+      const expected = totalDays * 7;
+      return { 'No': idx+1, 'Nama': std.nama, 'NISN': std.nisn, 'Total Terisi': totalFilled, 'Tidak Terisi': Math.max(0, expected - totalFilled) };
+    });
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(data), 'Rekap 7 KAIH');
+    XLSX.writeFile(wb, `Wali_Kelas_7KAIH_${filenameSuffix}.xlsx`);
+    showToast('Laporan 7 KAIH berhasil diunduh!', 'success');
+  } catch (e) {
+    showToast(`Gagal mengekspor: ${e.message}`, 'error');
+  } finally {
+    toggleLoader(false);
   }
 }
 
@@ -6181,6 +6436,9 @@ function updateSidebarUser(user) {
     } else if (user.role === 'osis') {
       roleText = 'OSIS';
       roleClass = 'role-badge-osis';
+    } else if (user.role === 'wali-kelas') {
+      roleText = 'Wali Kelas';
+      roleClass = 'role-badge-wali-kelas';
     }
     roleEl.textContent = roleText;
     roleEl.className = `sidebar-user-role ${roleClass}`;
@@ -6211,6 +6469,8 @@ function applyRolePermissions(user) {
           switchMenu('terlambat');
         } else if (userRole === 'guru-piket') {
           switchMenu('dashboard');
+        } else if (userRole === 'wali-kelas') {
+          switchMenu('wali-kelas');
         }
       }
     }
@@ -6237,6 +6497,9 @@ function renderAkunTable() {
       roleBadge = '<span class="role-pill role-pill-guru-piket">Guru Piket</span>';
     } else if (acc.role === 'osis') {
       roleBadge = '<span class="role-pill role-pill-osis">OSIS</span>';
+    } else if (acc.role === 'wali-kelas') {
+      const kelasInfo = acc.kelas_wali ? ` (${acc.kelas_wali})` : '';
+      roleBadge = `<span class="role-pill role-pill-wali-kelas">Wali Kelas${kelasInfo}</span>`;
     } else {
       roleBadge = `<span class="role-pill">${acc.role}</span>`;
     }
@@ -6284,10 +6547,14 @@ function openAkunModal(id = null) {
       document.getElementById('akun-modal-username').value = acc.username;
       document.getElementById('akun-modal-password').value = acc.password;
       document.getElementById('akun-modal-role').value = acc.role;
+      document.getElementById('akun-modal-kelas-wali').value = acc.kelas_wali || '';
+      toggleKelasWaliField(acc.role === 'wali-kelas');
     }
   } else {
     if (title) title.textContent = 'Tambah Akun Pengguna Baru';
     document.getElementById('akun-modal-id').value = '';
+    document.getElementById('akun-modal-kelas-wali').value = '';
+    toggleKelasWaliField(false);
   }
 
   modal.style.display = 'flex';
@@ -6305,6 +6572,7 @@ async function handleAkunFormSubmit(e) {
   const username = (document.getElementById('akun-modal-username')?.value || '').trim();
   const password = (document.getElementById('akun-modal-password')?.value || '').trim();
   const role = (document.getElementById('akun-modal-role')?.value || '');
+  const kelasWali = role === 'wali-kelas' ? (document.getElementById('akun-modal-kelas-wali')?.value || '') : '';
 
   if (!nama || !username || !password || !role) {
     showToast('Harap isi semua kolom wajib!', 'error');
@@ -6320,10 +6588,10 @@ async function handleAkunFormSubmit(e) {
   }
 
   if (id) {
-    accounts = accounts.map(a => String(a.id) === String(id) ? { id: String(id), nama, username, password, role } : a);
+    accounts = accounts.map(a => String(a.id) === String(id) ? { id: String(id), nama, username, password, role, kelas_wali: kelasWali || a.kelas_wali || '' } : a);
   } else {
     const newId = String(Date.now());
-    accounts.push({ id: newId, nama, username, password, role });
+    accounts.push({ id: newId, nama, username, password, role, kelas_wali: kelasWali });
   }
 
   // Ensure a corresponding entry in state.teachers if user is a teacher/guru
@@ -6334,8 +6602,11 @@ async function handleAkunFormSubmit(e) {
       id: 'guru_' + Date.now(),
       nip: username,
       nama: nama,
-      mapel: role === 'guru-piket' ? 'Guru Piket' : 'Guru'
+      mapel: role === 'guru-piket' ? 'Guru Piket' : (role === 'wali-kelas' ? 'Wali Kelas' : 'Guru'),
+      kelas_wali: kelasWali
     });
+  } else if (kelasWali) {
+    existingTeacher.kelas_wali = kelasWali;
   }
 
   state.accounts = accounts;
@@ -6369,6 +6640,7 @@ async function handleInlineAkunSubmit(e) {
   const username = (document.getElementById('inline-akun-username')?.value || '').trim();
   const password = (document.getElementById('inline-akun-password')?.value || '').trim();
   const role = (document.getElementById('inline-akun-role')?.value || '');
+  const kelasWali = role === 'wali-kelas' ? (document.getElementById('inline-akun-kelas-wali')?.value || '') : '';
 
   if (!nama || !username || !password || !role) {
     showToast('Harap isi semua kolom wajib!', 'error');
@@ -6384,7 +6656,7 @@ async function handleInlineAkunSubmit(e) {
   }
 
   const newId = String(Date.now());
-  accounts.push({ id: newId, nama, username, password, role });
+  accounts.push({ id: newId, nama, username, password, role, kelas_wali: kelasWali });
 
   // Ensure a corresponding entry in state.teachers if user is a teacher/guru
   if (!state.teachers) state.teachers = [];
@@ -6394,8 +6666,11 @@ async function handleInlineAkunSubmit(e) {
       id: 'guru_' + Date.now(),
       nip: username,
       nama: nama,
-      mapel: role === 'guru-piket' ? 'Guru Piket' : 'Guru'
+      mapel: role === 'guru-piket' ? 'Guru Piket' : (role === 'wali-kelas' ? 'Wali Kelas' : 'Guru'),
+      kelas_wali: kelasWali
     });
+  } else if (kelasWali) {
+    existingTeacher.kelas_wali = kelasWali;
   }
 
   state.accounts = accounts;
@@ -6404,6 +6679,13 @@ async function handleInlineAkunSubmit(e) {
   document.getElementById('form-inline-tambah-akun')?.reset();
   showToast('Akun baru berhasil ditambahkan!', 'success');
   switchAkunTab('daftar');
+}
+
+function toggleKelasWaliField(show) {
+  const container = document.getElementById('akun-modal-kelas-wali-container');
+  const container2 = document.getElementById('inline-akun-kelas-wali-container');
+  if (container) container.style.display = show ? 'block' : 'none';
+  if (container2) container2.style.display = show ? 'block' : 'none';
 }
 
 function togglePasswordVisibility(inputId) {

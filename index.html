@@ -122,6 +122,10 @@
           <i data-lucide="award"></i>
           <span>7 KAIH</span>
         </button>
+        <button class="menu-item" id="btn-menu-wali-kelas" data-roles="admin,wali-kelas" onclick="switchMenu('wali-kelas')">
+          <i data-lucide="users"></i>
+          <span>Wali Kelas</span>
+        </button>
 
         <div class="sidebar-submenu-group" id="submenu-laporan-group" data-roles="admin">
           <button class="menu-item" id="btn-menu-laporan" data-roles="admin" onclick="toggleLaporanSubmenu(event)">
@@ -1800,6 +1804,140 @@
           </div>
         </section>
 
+        <!-- ================= WALI KELAS VIEW ================= -->
+        <section id="view-wali-kelas" class="content-view">
+          <div class="dashboard-card card-full">
+            <div class="card-header border-bottom">
+              <h2 class="d-flex align-center flex-wrap gap-2">
+                <span class="icon-badge mr-2" style="background: rgba(99, 102, 241, 0.15); color: var(--color-primary); width: 36px; height: 36px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center;">
+                  <i data-lucide="users" style="width:20px;height:20px;"></i>
+                </span>
+                Dashboard Wali Kelas
+              </h2>
+              <p class="subtitle mt-1" id="wali-kelas-subtitle">Kelas: - </p>
+            </div>
+            <div class="card-body">
+              <!-- Class picker for admin -->
+              <div class="d-flex align-center gap-3 flex-wrap mb-4" id="wali-kelas-admin-picker" style="display:none;">
+                <label class="form-label font-semibold mb-0" style="white-space:nowrap;">Pilih Kelas:</label>
+                <select id="wali-kelas-class-select" class="form-select" style="max-width:200px;" onchange="loadWaliKelasDashboard()"></select>
+              </div>
+
+              <!-- Stat cards -->
+              <div class="stats-grid mb-4">
+                <div class="stat-card purple-glow">
+                  <div class="stat-icon"><i data-lucide="users"></i></div>
+                  <div class="stat-info">
+                    <h3>Total Siswa</h3>
+                    <p class="stat-number" id="wali-stat-siswa">0</p>
+                    <span class="stat-trend text-muted">Di kelas ini</span>
+                  </div>
+                </div>
+                <div class="stat-card green-glow">
+                  <div class="stat-icon"><i data-lucide="check-circle-2"></i></div>
+                  <div class="stat-info">
+                    <h3>Kehadiran</h3>
+                    <p class="stat-number" id="wali-stat-hadir">0</p>
+                    <span class="stat-trend text-success">Total Hadir</span>
+                  </div>
+                </div>
+                <div class="stat-card red-glow">
+                  <div class="stat-icon"><i data-lucide="user-x"></i></div>
+                  <div class="stat-info">
+                    <h3>Alpha / Tidak Hadir</h3>
+                    <p class="stat-number" id="wali-stat-alpha">0</p>
+                    <span class="stat-trend text-danger">Sakit + Izin + Alpha</span>
+                  </div>
+                </div>
+                <div class="stat-card orange-glow">
+                  <div class="stat-icon"><i data-lucide="clock"></i></div>
+                  <div class="stat-info">
+                    <h3>Terlambat</h3>
+                    <p class="stat-number" id="wali-stat-terlambat">0</p>
+                    <span class="stat-trend text-warning">Total keterlambatan</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Content tabs -->
+              <div class="tab-container mb-4">
+                <button class="tab-button active" id="tab-wali-absensi" onclick="switchWaliKelasTab('absensi')">
+                  <i data-lucide="calendar-check" class="mr-1 v-middle"></i> Rekap Absensi
+                </button>
+                <button class="tab-button" id="tab-wali-7kaih" onclick="switchWaliKelasTab('7kaih')">
+                  <i data-lucide="award" class="mr-1 v-middle"></i> 7 KAIH
+                </button>
+              </div>
+
+              <!-- Absensi tab -->
+              <div class="wali-tab-content" id="wali-tab-absensi">
+                <div class="d-flex justify-between align-center flex-wrap gap-2 mb-3">
+                  <h3>Rekap Kehadiran Siswa</h3>
+                  <div class="d-flex gap-2 flex-wrap">
+                    <select id="wali-absensi-bulan" class="form-select" style="max-width:150px;" onchange="loadWaliKelasDashboard()">
+                      <option value="">Semua Bulan</option>
+                      <option value="01">Januari</option><option value="02">Februari</option>
+                      <option value="03">Maret</option><option value="04">April</option>
+                      <option value="05">Mei</option><option value="06">Juni</option>
+                      <option value="07">Juli</option><option value="08">Agustus</option>
+                      <option value="09">September</option><option value="10">Oktober</option>
+                      <option value="11">November</option><option value="12">Desember</option>
+                    </select>
+                    <select id="wali-absensi-tahun" class="form-select" style="max-width:120px;" onchange="loadWaliKelasDashboard()"></select>
+                    <button class="btn btn-primary btn-sm" onclick="downloadWaliAbsensi()"><i data-lucide="download" style="width:14px;height:14px;"></i> Download</button>
+                  </div>
+                </div>
+                <div class="custom-table-container">
+                  <table class="styled-table text-center-headers">
+                    <thead>
+                      <tr>
+                        <th width="60">No</th>
+                        <th class="text-left">Nama Siswa</th>
+                        <th width="100">NISN</th>
+                        <th width="80" class="text-success">Hadir</th>
+                        <th width="80" class="text-warning">Sakit</th>
+                        <th width="80" class="text-info">Izin</th>
+                        <th width="80" class="text-danger">Alpha</th>
+                        <th width="120">Persentase</th>
+                      </tr>
+                    </thead>
+                    <tbody id="wali-absensi-body">
+                      <tr><td colspan="8" class="text-center text-muted">Pilih kelas untuk melihat data.</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- 7KAIH tab -->
+              <div class="wali-tab-content" id="wali-tab-7kaih" style="display:none;">
+                <div class="d-flex justify-between align-center flex-wrap gap-2 mb-3">
+                  <h3>Rekap 7 KAIH Siswa</h3>
+                  <div class="d-flex gap-2 flex-wrap">
+                    <select id="wali-7kaih-tahun" class="form-select" style="max-width:120px;" onchange="loadWaliKelasDashboard()"></select>
+                    <button class="btn btn-primary btn-sm" onclick="downloadWali7Kaih()"><i data-lucide="download" style="width:14px;height:14px;"></i> Download</button>
+                  </div>
+                </div>
+                <div class="custom-table-container">
+                  <table class="styled-table text-center-headers">
+                    <thead>
+                      <tr>
+                        <th width="60">No</th>
+                        <th class="text-left">Nama Siswa</th>
+                        <th width="100">NISN</th>
+                        <th>Total Terisi</th>
+                        <th>Total Tidak Terisi</th>
+                      </tr>
+                    </thead>
+                    <tbody id="wali-7kaih-body">
+                      <tr><td colspan="5" class="text-center text-muted">Pilih kelas untuk melihat data.</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <!-- ================= UNDUH LAPORAN VIEW ================= -->
         <section id="view-laporan" class="content-view">
           <!-- Submenu Laporan (Tabs) -->
@@ -2564,6 +2702,14 @@
                     <option value="admin">Admin (Akses Operasional)</option>
                     <option value="guru-piket" selected>Guru Piket (Absensi, Terlambat, Pelanggaran, Izin Pulang)</option>
                     <option value="osis">OSIS (Siswa Terlambat)</option>
+                    <option value="wali-kelas">Wali Kelas (Laporan Kelas)</option>
+                  </select>
+                </div>
+
+                <div class="form-group mb-4" id="inline-akun-kelas-wali-container" style="display:none;">
+                  <label for="inline-akun-kelas-wali" class="form-label font-semibold" style="display: block; margin-bottom: 6px;">Kelas Wali <span class="required" style="color:var(--color-danger)">*</span></label>
+                  <select id="inline-akun-kelas-wali" class="form-select" style="width: 100%;">
+                    <option value="">-- Pilih Kelas --</option>
                   </select>
                 </div>
 
@@ -2699,6 +2845,14 @@
               <option value="admin">Admin (Akses Operasional)</option>
               <option value="guru-piket">Guru Piket (Absensi, Terlambat, Pelanggaran, Izin Pulang)</option>
               <option value="osis">OSIS (Siswa Terlambat)</option>
+              <option value="wali-kelas">Wali Kelas (Laporan Kelas)</option>
+            </select>
+          </div>
+
+          <div class="form-group mb-4" id="akun-modal-kelas-wali-container" style="display:none;">
+            <label for="akun-modal-kelas-wali">Kelas Wali <span class="required">*</span></label>
+            <select id="akun-modal-kelas-wali" class="form-input">
+              <option value="">-- Pilih Kelas --</option>
             </select>
           </div>
 
