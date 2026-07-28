@@ -148,6 +148,14 @@
               <i data-lucide="log-out"></i>
               <span>Laporan Izin Pulang</span>
             </button>
+            <button class="submenu-item" id="btn-submenu-laporan-jurnal" onclick="switchLaporanSubmenu('jurnal')">
+              <i data-lucide="book-open"></i>
+              <span>Laporan Jurnal Guru</span>
+            </button>
+            <button class="submenu-item" id="btn-submenu-laporan-riwayat" onclick="switchLaporanSubmenu('riwayat')">
+              <i data-lucide="history"></i>
+              <span>Riwayat Unduh Laporan</span>
+            </button>
           </div>
         </div>
       </nav>
@@ -423,7 +431,7 @@
           <div class="dashboard-card card-full mt-4">
             <div class="card-header border-bottom d-flex justify-between align-center">
               <h2>Daftar Siswa Terdaftar</h2>
-              <div class="header-filters">
+              <div class="header-filters d-flex align-center gap-2">
                 <select id="filter-siswa-kelas" onchange="renderStudentListTable()" class="form-select w-200">
                   <option value="">Semua Kelas</option>
                 </select>
@@ -432,6 +440,10 @@
                   <input type="text" id="search-siswa-nama" placeholder="Cari nama..."
                     onkeyup="renderStudentListTable()">
                 </div>
+                <button class="btn btn-primary btn-icon-text" onclick="openStudentAddModal()">
+                  <i data-lucide="user-plus"></i>
+                  <span>Tambah Siswa</span>
+                </button>
               </div>
             </div>
             <div class="card-body">
@@ -1791,6 +1803,12 @@
             <button class="tab-button" id="tab-laporan-izin-pulang" onclick="switchLaporanTab('izin-pulang')">
               <i data-lucide="log-out" class="mr-1 v-middle"></i> Laporan Izin Pulang
             </button>
+            <button class="tab-button" id="tab-laporan-jurnal" onclick="switchLaporanTab('jurnal')">
+              <i data-lucide="book-open" class="mr-1 v-middle"></i> Laporan Jurnal Guru
+            </button>
+            <button class="tab-button" id="tab-laporan-riwayat" onclick="switchLaporanTab('riwayat')">
+              <i data-lucide="history" class="mr-1 v-middle"></i> Riwayat Unduh
+            </button>
           </div>
 
           <!-- Tab 1: Laporan Absensi -->
@@ -2290,6 +2308,121 @@
                   <i data-lucide="file-spreadsheet"></i>
                   <span>Ekspor Laporan Izin Pulang (.xlsx)</span>
                 </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 5: Laporan Jurnal Guru -->
+          <div class="dashboard-card card-full laporan-tab-content" id="laporan-tab-jurnal-content" style="display: none;">
+            <div class="card-header border-bottom">
+              <div>
+                <h2>Laporan Periodik Jurnal Guru</h2>
+                <p class="subtitle mt-1">Ekspor rekaman aktivitas mengajar harian guru bulanan, semester, atau tahunan ke berkas Excel (.xlsx)</p>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-4 mb-3">
+                  <label for="laporan-jurnal-period-type" class="form-label font-semibold">Jenis Periode</label>
+                  <select id="laporan-jurnal-period-type" class="form-select" onchange="handleLaporanPeriodTypeChange('jurnal')">
+                    <option value="bulanan">Bulanan</option>
+                    <option value="semester">Per Semester</option>
+                    <option value="tahunan">Per Tahun</option>
+                  </select>
+                </div>
+
+                <div class="col-md-4 mb-3">
+                  <div class="row">
+                    <div class="col-6" id="laporan-jurnal-bulan-container">
+                      <label for="laporan-jurnal-bulan" class="form-label font-semibold">Bulan</label>
+                      <select id="laporan-jurnal-bulan" class="form-select">
+                        <option value="01">Januari</option>
+                        <option value="02">Februari</option>
+                        <option value="03">Maret</option>
+                        <option value="04">April</option>
+                        <option value="05">Mei</option>
+                        <option value="06">Juni</option>
+                        <option value="07">Juli</option>
+                        <option value="08">Agustus</option>
+                        <option value="09">September</option>
+                        <option value="10">Oktober</option>
+                        <option value="11">November</option>
+                        <option value="12">Desember</option>
+                      </select>
+                    </div>
+                    <div class="col-6" id="laporan-jurnal-semester-container" style="display: none;">
+                      <label for="laporan-jurnal-semester" class="form-label font-semibold">Semester</label>
+                      <select id="laporan-jurnal-semester" class="form-select">
+                        <option value="genap">Semester Genap</option>
+                        <option value="ganjil">Semester Ganjil</option>
+                      </select>
+                    </div>
+                    <div class="col-6" id="laporan-jurnal-tahun-container">
+                      <label for="laporan-jurnal-tahun" class="form-label font-semibold">Tahun</label>
+                      <select id="laporan-jurnal-tahun" class="form-select">
+                        <option value="2026">2026</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-4 mb-3">
+                  <label class="form-label font-semibold mb-2 d-flex">Tingkat Laporan (Scope)</label>
+                  <div class="segmented-control" id="laporan-jurnal-scope-segmented">
+                    <button type="button" class="segment-button active" id="btn-seg-jurnal-semua" onclick="setLaporanScope('jurnal', 'semua')">Semua</button>
+                    <button type="button" class="segment-button" id="btn-seg-jurnal-guru" onclick="setLaporanScope('jurnal', 'guru')">Per Guru</button>
+                  </div>
+                  <input type="hidden" id="laporan-jurnal-scope" value="semua">
+                </div>
+              </div>
+
+              <div class="row mt-2">
+                <div class="col-12 mb-3" id="laporan-jurnal-guru-container" style="display: none;">
+                  <label for="laporan-jurnal-guru" class="form-label font-semibold">Pilih Guru</label>
+                  <select id="laporan-jurnal-guru" class="form-select">
+                    <option value="">Pilih Guru</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="border-top pt-4 mt-2">
+                <button class="btn btn-primary btn-lg btn-icon-text w-100" onclick="downloadLaporanJurnal()" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); border: none;">
+                  <i data-lucide="file-spreadsheet"></i>
+                  <span>Ekspor Laporan Jurnal Guru (.xlsx)</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 6: Riwayat Unduh Laporan -->
+          <div class="dashboard-card card-full laporan-tab-content" id="laporan-tab-riwayat-content" style="display: none;">
+            <div class="card-header border-bottom">
+              <div>
+                <h2>Riwayat Unduh Laporan</h2>
+                <p class="subtitle mt-1">Daftar histori laporan yang telah diunduh sebelumnya</p>
+              </div>
+              <button class="btn btn-outline btn-sm" onclick="clearReportHistory()" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.3);">
+                <i data-lucide="trash-2" class="mr-1" style="width:14px;height:14px;"></i> Hapus Riwayat
+              </button>
+            </div>
+            <div class="card-body">
+              <div class="custom-table-container">
+                <table class="styled-table">
+                  <thead>
+                    <tr>
+                      <th width="50" class="text-center">No</th>
+                      <th width="180">Waktu Unduh</th>
+                      <th width="200">Jenis Laporan</th>
+                      <th width="150">Periode</th>
+                      <th>Detail</th>
+                    </tr>
+                  </thead>
+                  <tbody id="riwayat-unduh-body">
+                    <tr>
+                      <td colspan="5" class="text-center text-muted py-4">Belum ada riwayat unduhan laporan.</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>

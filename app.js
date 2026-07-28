@@ -52,6 +52,7 @@ let state = {
   teachers: [],     // Array of { id, nama, mapel }
   kaihLogs: [],     // Array of 7 KAIH log entries
   accounts: [],     // Array of { id, username, password, nama, role }
+  reportHistory: [], // Array of { id, waktu, jenis, periode, detail }
   currentView: 'dashboard',
   theme: 'dark'
 };
@@ -407,6 +408,7 @@ async function loadData() {
         if (Array.isArray(parsed.jurnalGuru)) state.jurnalGuru = parsed.jurnalGuru;
         if (Array.isArray(parsed.teachers)) state.teachers = parsed.teachers;
         if (Array.isArray(parsed.kaihLogs)) state.kaihLogs = parsed.kaihLogs;
+        if (Array.isArray(parsed.reportHistory)) state.reportHistory = parsed.reportHistory;
         if (Array.isArray(parsed.accounts) && parsed.accounts.length > 0) state.accounts = parsed.accounts;
       } catch (e) {
         console.error('Error parsing local DB', e);
@@ -471,6 +473,7 @@ function saveLocalState() {
     jurnalGuru: state.jurnalGuru,
     teachers: state.teachers,
     kaihLogs: state.kaihLogs,
+    reportHistory: state.reportHistory || [],
     accounts: getAccountsList()
   };
   localStorage.setItem('schoolDb', JSON.stringify(dbData));
@@ -572,6 +575,7 @@ async function syncPullFromFirebase(silent = true, snapshotData = null) {
       state.izinPulang = [];
       state.jurnalGuru = [];
       state.kaihLogs = [];
+      state.reportHistory = [];
       clearDeletedStudentIds();
       const resetTs = data.resetAt || new Date().toISOString();
       try {
@@ -597,6 +601,7 @@ async function syncPullFromFirebase(silent = true, snapshotData = null) {
     state.jurnalGuru = data.jurnalguru || data.jurnalGuru || [];
     state.teachers = data.teachers || [];
     state.kaihLogs = data.kaihlogs || data.kaihLogs || [];
+    state.reportHistory = data.reportHistory || [];
     state.accounts = data.accounts || [];
 
     console.log('[SYNC] Pull: state replaced, students:', state.students.length);
@@ -653,6 +658,7 @@ async function syncPushToFirebase(silent = true) {
       teachers: state.teachers || existingData.teachers || [],
       kaihlogs: _kaihLogsModified ? state.kaihLogs : (existingData.kaihlogs || existingData.kaihLogs || state.kaihLogs || []),
       accounts: getAccountsList() || existingData.accounts || [],
+      reportHistory: state.reportHistory || existingData.reportHistory || [],
       deletedStudentIds,
       updated_at: new Date().toISOString()
     };
@@ -941,6 +947,7 @@ function switchMenu(menuName) {
       initJurnalGuruForm();
       renderJurnalRiwayatTable();
     } else if (menuName === 'laporan') {
+      populateJurnalGuruFilter();
       switchLaporanTab('absensi');
     } else if (menuName === 'github') {
       updateStorageExplanation();
@@ -3027,14 +3034,27 @@ function switchLaporanTab(tabName) {
   const activeSubmenuBtn = document.getElementById(`btn-submenu-laporan-${tabName}`);
   if (activeSubmenuBtn) activeSubmenuBtn.classList.add('active');
 
+  if (tabName === 'riwayat') {
+    renderReportHistoryTable();
+    lucide.createIcons();
+    return;
+  }
+
+  const reportType = tabName === 'absensi' ? 'absen' : tabName;
+
+  // Populate guru filter for jurnal laporan
+  if (tabName === 'jurnal') {
+    populateJurnalGuruFilter();
+  }
+
   // Handle defaults
-  handleLaporanScopeChange(tabName === 'absensi' ? 'absen' : tabName);
+  handleLaporanScopeChange(reportType);
   
   // Set default period type to bulanan on switch
-  const pTypeSelect = document.getElementById(`laporan-${tabName === 'absensi' ? 'absen' : tabName}-period-type`);
+  const pTypeSelect = document.getElementById(`laporan-${reportType}-period-type`);
   if (pTypeSelect) {
     pTypeSelect.value = 'bulanan';
-    handleLaporanPeriodTypeChange(tabName === 'absensi' ? 'absen' : tabName);
+    handleLaporanPeriodTypeChange(reportType);
   }
 
   lucide.createIcons();
@@ -3047,10 +3067,12 @@ function handleLaporanScopeChange(reportType) {
   
   const classContainer = document.getElementById(`laporan-${reportType}-kelas-container`);
   const studentContainer = document.getElementById(`laporan-${reportType}-siswa-container`);
+  const guruContainer = document.getElementById(`laporan-${reportType}-guru-container`);
 
   if (scope === 'semua') {
     if (classContainer) classContainer.style.display = 'none';
     if (studentContainer) studentContainer.style.display = 'none';
+    if (guruContainer) guruContainer.style.display = 'none';
   } else if (scope === 'kelas') {
     if (classContainer) {
       classContainer.style.display = 'block';
@@ -3060,16 +3082,24 @@ function handleLaporanScopeChange(reportType) {
       else if (reportType === 'izin-pulang') populateClassSelect('laporan-izin-pulang-kelas');
     }
     if (studentContainer) studentContainer.style.display = 'none';
+    if (guruContainer) guruContainer.style.display = 'none';
   } else if (scope === 'siswa') {
     if (classContainer) classContainer.style.display = 'none';
     if (studentContainer) {
       studentContainer.style.display = 'block';
-      // Reset search inputs
       document.getElementById(`laporan-${reportType}-siswa-search`).value = '';
       document.getElementById(`laporan-${reportType}-siswa-id`).value = '';
       
       const resultsWrapper = document.getElementById(`laporan-${reportType}-siswa-results-wrapper`);
       if (resultsWrapper) resultsWrapper.style.display = 'none';
+    }
+    if (guruContainer) guruContainer.style.display = 'none';
+  } else if (scope === 'guru') {
+    if (classContainer) classContainer.style.display = 'none';
+    if (studentContainer) studentContainer.style.display = 'none';
+    if (guruContainer) {
+      guruContainer.style.display = 'block';
+      populateJurnalGuruFilter();
     }
   }
 }
@@ -3295,6 +3325,7 @@ function downloadLaporanAbsensi() {
     }
 
     XLSX.writeFile(wb, `Laporan_Absensi_${titleSuffix}_${filenameSuffix}.xlsx`);
+    logReportDownload('Laporan Absensi', labelPeriode, `${filteredStudents.length} siswa`);
     showToast('Laporan absensi berhasil diunduh!', 'success');
   } catch (error) {
     showToast(`Gagal mengekspor laporan: ${error.message}`, 'error');
@@ -3405,6 +3436,7 @@ function downloadLaporanTerlambat() {
     }
 
     XLSX.writeFile(wb, `Laporan_Keterlambatan_${titleSuffix}_${filenameSuffix}.xlsx`);
+    logReportDownload('Laporan Keterlambatan', labelPeriode, `${filteredStudents.length} siswa`);
     showToast('Laporan keterlambatan berhasil diunduh!', 'success');
   } catch (error) {
     showToast(`Gagal mengekspor laporan: ${error.message}`, 'error');
@@ -3516,6 +3548,7 @@ function downloadLaporanPelanggaran() {
     }
 
     XLSX.writeFile(wb, `Laporan_Pelanggaran_${titleSuffix}_${filenameSuffix}.xlsx`);
+    logReportDownload('Laporan Pelanggaran', labelPeriode, `${filteredStudents.length} siswa`);
     showToast('Laporan pelanggaran berhasil diunduh!', 'success');
   } catch (error) {
     showToast(`Gagal mengekspor laporan: ${error.message}`, 'error');
@@ -3628,6 +3661,7 @@ function downloadLaporanIzinPulang() {
     }
 
     XLSX.writeFile(wb, `Laporan_Izin_Pulang_${titleSuffix}_${filenameSuffix}.xlsx`);
+    logReportDownload('Laporan Izin Pulang', labelPeriode, `${filteredStudents.length} siswa`);
     showToast('Laporan izin pulang berhasil diunduh!', 'success');
   } catch (error) {
     showToast(`Gagal mengekspor laporan: ${error.message}`, 'error');
@@ -3636,6 +3670,174 @@ function downloadLaporanIzinPulang() {
   }
 }
 
+// ==========================================================================
+// RIWAYAT UNDUH LAPORAN - History Tracking
+// ==========================================================================
+
+function logReportDownload(jenis, periode, detail) {
+  if (!state.reportHistory) state.reportHistory = [];
+  state.reportHistory.unshift({
+    id: 'rh_' + Date.now(),
+    waktu: new Date().toISOString(),
+    jenis: jenis,
+    periode: periode,
+    detail: detail
+  });
+  // Keep max 100 records
+  if (state.reportHistory.length > 100) {
+    state.reportHistory = state.reportHistory.slice(0, 100);
+  }
+  persistData();
+}
+
+function renderReportHistoryTable() {
+  const body = document.getElementById('riwayat-unduh-body');
+  if (!body) return;
+
+  const entries = state.reportHistory || [];
+
+  if (entries.length === 0) {
+    body.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Belum ada riwayat unduhan laporan.</td></tr>';
+    return;
+  }
+
+  body.innerHTML = '';
+  entries.forEach((r, idx) => {
+    const tr = document.createElement('tr');
+    const waktu = new Date(r.waktu);
+    const waktuStr = waktu.toLocaleDateString('id-ID', {
+      year: 'numeric', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+    tr.innerHTML = `
+      <td class="text-center">${idx + 1}</td>
+      <td>${waktuStr}</td>
+      <td><span class="badge" style="background: var(--color-primary-glow); color: var(--color-primary);">${r.jenis}</span></td>
+      <td>${r.periode || '-'}</td>
+      <td class="text-muted" style="max-width: 300px; white-space: normal;">${r.detail || '-'}</td>
+    `;
+    body.appendChild(tr);
+  });
+}
+
+function clearReportHistory() {
+  if (!confirm('Hapus seluruh riwayat unduhan laporan?')) return;
+  state.reportHistory = [];
+  persistData();
+  renderReportHistoryTable();
+  showToast('Riwayat unduhan berhasil dihapus.', 'info');
+}
+
+function populateJurnalGuruFilter() {
+  const select = document.getElementById('laporan-jurnal-guru');
+  if (!select) return;
+  const curVal = select.value;
+  select.innerHTML = '<option value="">Pilih Guru</option>';
+  const gurus = new Set();
+  (state.teachers || []).forEach(t => { if (t.nama) gurus.add(t.nama); });
+  (state.jurnalGuru || []).forEach(j => { if (j.guru) gurus.add(j.guru); });
+  Array.from(gurus).sort().forEach(g => {
+    const opt = document.createElement('option');
+    opt.value = g;
+    opt.textContent = g;
+    select.appendChild(opt);
+  });
+  if (gurus.has(curVal)) select.value = curVal;
+}
+
+function downloadLaporanJurnal() {
+  const periodType = document.getElementById('laporan-jurnal-period-type')?.value || '';
+  const bulan = document.getElementById('laporan-jurnal-bulan')?.value || '';
+  const semester = document.getElementById('laporan-jurnal-semester')?.value || '';
+  const tahun = document.getElementById('laporan-jurnal-tahun')?.value || '';
+  const scope = document.getElementById('laporan-jurnal-scope')?.value || '';
+
+  let labelPeriode = '';
+  let filenameSuffix = '';
+
+  if (periodType === 'bulanan') {
+    const labelBulan = document.getElementById('laporan-jurnal-bulan').options[document.getElementById('laporan-jurnal-bulan').selectedIndex].text;
+    labelPeriode = `Bulan ${labelBulan} ${tahun}`;
+    filenameSuffix = `${labelBulan}_${tahun}`;
+  } else if (periodType === 'semester') {
+    const semName = semester === 'genap' ? 'Genap' : 'Ganjil';
+    labelPeriode = `Semester ${semName} ${tahun}`;
+    filenameSuffix = `Semester_${semName}_${tahun}`;
+  } else if (periodType === 'tahunan') {
+    labelPeriode = `Tahun ${tahun}`;
+    filenameSuffix = `Tahunan_${tahun}`;
+  }
+
+  let entries = state.jurnalGuru || [];
+  let titleSuffix = 'Semua_Guru';
+
+  if (scope === 'guru') {
+    const guru = document.getElementById('laporan-jurnal-guru')?.value || '';
+    if (!guru) {
+      showToast('Harap pilih guru terlebih dahulu!', 'warning');
+      return;
+    }
+    entries = entries.filter(j => j.guru === guru);
+    titleSuffix = `Guru_${guru.replace(/\s+/g, '_')}`;
+  }
+
+  if (entries.length === 0) {
+    showToast('Belum ada data jurnal guru untuk diekspor.', 'warning');
+    return;
+  }
+
+  const periodEntries = filterDataByPeriod(entries, periodType, tahun, bulan, semester);
+
+  if (periodEntries.length === 0) {
+    showToast(`Tidak ada data jurnal guru untuk ${labelPeriode}.`, 'warning');
+    return;
+  }
+
+  toggleLoader(true, 'Menyusun laporan jurnal guru...');
+
+  try {
+    periodEntries.sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || ''));
+
+    const rows = periodEntries.map((j, idx) => ({
+      'No': idx + 1,
+      'Hari': j.hari || '-',
+      'Tanggal': formatLocalDate(j.tanggal) || j.tanggal,
+      'Kelas': j.kelas || '-',
+      'Guru Pengampu': j.guru || '-',
+      'Mata Pelajaran': j.mapel || '-',
+      'Jam Ke / Waktu': j.jam || '-',
+      'Batas Materi / Uraian Kegiatan': j.materi || '-',
+      'Hadir': j.hadir || 0,
+      'Sakit': j.sakit || 0,
+      'Izin': j.izin || 0,
+      'Alpha': j.alpha || 0,
+      'Siswa Sakit': j.namaSakit || 'Tidak ada',
+      'Siswa Izin': j.namaIzin || 'Tidak ada',
+      'Siswa Alpha': j.namaAlpha || 'Tidak ada',
+      'Keterangan Lain': j.keteranganLain || '-'
+    }));
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(rows);
+
+    ws['!cols'] = [
+      { wch: 5 }, { wch: 10 }, { wch: 16 }, { wch: 10 }, { wch: 25 },
+      { wch: 20 }, { wch: 16 }, { wch: 40 }, { wch: 8 }, { wch: 8 },
+      { wch: 8 }, { wch: 8 }, { wch: 25 }, { wch: 25 }, { wch: 25 }, { wch: 30 }
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Laporan Jurnal Guru');
+    XLSX.writeFile(wb, `Laporan_Jurnal_Guru_${titleSuffix}_${filenameSuffix}.xlsx`);
+
+    logReportDownload('Laporan Jurnal Guru', labelPeriode, `${periodEntries.length} entri jurnal`);
+
+    showToast(`Berhasil mengekspor ${periodEntries.length} data jurnal guru!`, 'success');
+  } catch (error) {
+    showToast(`Gagal mengekspor laporan: ${error.message}`, 'error');
+  } finally {
+    toggleLoader(false);
+  }
+}
 
 // ==========================================================================
 // DASHBOARD VIEW CORE RENDER
@@ -4258,6 +4460,7 @@ function exportAllJurnalExcel() {
 
   XLSX.utils.book_append_sheet(wb, ws, 'Riwayat Jurnal Guru');
   XLSX.writeFile(wb, `Riwayat_Jurnal_Guru_${new Date().toISOString().split('T')[0]}.xlsx`);
+  logReportDownload('Riwayat Jurnal Guru (Ekspor Cepat)', 'Semua Periode', `${entries.length} entri jurnal`);
   showToast(`Berhasil mengekspor ${entries.length} data jurnal guru ke Excel!`, 'success');
 }
 
@@ -6019,6 +6222,7 @@ async function confirmResetAllData() {
     state.izinPulang = [];
     state.jurnalGuru = [];
     state.kaihLogs   = [];
+    state.reportHistory = [];
     state.accounts   = [];
 
     state.currentView = 'dashboard';
