@@ -587,7 +587,7 @@
           const vList = studentsWithViolations[std.id];
           const details = vList.map(v =>
             '<span class="badge badge-danger" style="margin:2px;" title="' + (v.keterangan || '') + '">' +
-            (v.tanggal || '-') + ': ' + (v.jenis_pelanggaran || v.jenis || '-') + '</span>'
+            (v.tanggal || '-') + ': ' + (v.keterangan || '-') + '</span>'
           ).join(' ');
           html += '<tr>';
           html += '<td>' + (idx + 1) + '</td>';
@@ -650,9 +650,9 @@
             const jam = iz.jam_keluar || iz.jam || '-';
             const alasan = iz.alasan || '-';
             const guru = iz.guru_piket || '-';
-            const status = iz.status || 'disetujui';
+            const status = '';
             return '<span class="badge badge-info" style="margin:2px;" title="Guru Piket: ' + guru + '">' +
-              tanggal + ' ' + jam + ': ' + alasan + ' <strong>[' + status + ']</strong></span>';
+              tanggal + ' ' + jam + ': ' + alasan + (guru ? ' (Guru: ' + guru + ')' : '') + '</span>';
           }).join(' ');
           html += '<tr>';
           html += '<td>' + (idx + 1) + '</td>';
