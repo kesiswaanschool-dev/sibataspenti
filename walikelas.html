@@ -571,27 +571,55 @@
       const tbody = document.getElementById('kaih-body');
       if (!tbody || !currentWali) return;
       const idSet = new Set(getStudentIds());
+      const allStudents = (appDb.students || []).filter(s => idSet.has(String(s.id)));
       let list = (appDb.kaihlogs || []).filter(k => idSet.has(String(k.student_id)));
       list = getFilteredByMonthYear(list, 'kaih');
-      if (list.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Tidak ada catatan 7KAIH.</td></tr>';
+
+      const filledIds = new Set(list.map(k => String(k.student_id)));
+      const belumMengisi = allStudents.filter(s => !filledIds.has(String(s.id)));
+      const sudahMengisi = allStudents.filter(s => filledIds.has(String(s.id)));
+
+      if (allStudents.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">Tidak ada siswa di kelas ini.</td></tr>';
         return;
       }
-      tbody.innerHTML = list.map((k, idx) => {
-        const s = (appDb.students || []).find(std => String(std.id) === String(k.student_id));
-        return `<tr>
-          <td>${idx+1}</td>
-          <td>${s ? s.nisn || '-' : '-'}</td>
-          <td>${s ? s.nama : 'Siswa#' + k.student_id}</td>
-          <td>${k.tanggal || '-'}</td>
-          <td>${k.kategori || '-'}</td>
-          <td>${k.catatan || '-'}</td>
-        </tr>`;
-      }).join('');
-    }
 
-    // === TAB NAVIGATION ===
-    function switchTab(tab) {
+      let html = '';
+
+      if (sudahMengisi.length > 0) {
+        html += '<tr><td colspan="7" class="text-center font-semibold py-2" style="background:rgba(16,185,129,0.1);color:#10b981;">Sudah Mengisi</td></tr>';
+        sudahMengisi.forEach((std, idx) => {
+          const logs = list.filter(k => String(k.student_id) === String(std.id));
+          const tanggalList = [...new Set(logs.map(k => k.tanggal || '-'))].sort();
+          html += '<tr>';
+          html += '<td>' + (idx + 1) + '</td>';
+          html += '<td>' + (std.nisn || '-') + '</td>';
+          html += '<td class="font-semibold">' + std.nama + '</td>';
+          html += '<td>' + tanggalList.join(', ') + '</td>';
+          html += '<td><span class="badge badge-success">Sudah</span></td>';
+          html += '<td>' + logs.length + ' entries</td>';
+          html += '<td>-</td>';
+          html += '</tr>';
+        });
+      }
+
+      if (belumMengisi.length > 0) {
+        html += '<tr><td colspan="7" class="text-center font-semibold py-2" style="background:rgba(239,68,68,0.1);color:#ef4444;">Belum Mengisi</td></tr>';
+        belumMengisi.forEach((std, idx) => {
+          html += '<tr>';
+          html += '<td>' + (sudahMengisi.length + idx + 1) + '</td>';
+          html += '<td>' + (std.nisn || '-') + '</td>';
+          html += '<td class="font-semibold">' + std.nama + '</td>';
+          html += '<td>-</td>';
+          html += '<td><span class="badge badge-danger">Belum</span></td>';
+          html += '<td>-</td>';
+          html += '<td>-</td>';
+          html += '</tr>';
+        });
+      }
+
+      tbody.innerHTML = html;
+    }function switchTab(tab) {
       document.querySelectorAll('.wk-tab-btn').forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.wk-tab-content').forEach(c => c.classList.remove('active'));
       document.querySelector('.wk-tab-btn[data-tab="' + tab + '"]').classList.add('active');
