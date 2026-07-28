@@ -1840,10 +1840,14 @@ async function handleTeacherFormSubmit(e) {
         kelas_wali: kelasWali
       });
     }
-    await persistData();
-    closeTeacherModal();
-    renderWaliKelasTable();
-    showToast(id ? 'Data wali kelas berhasil diperbarui!' : 'Wali kelas baru berhasil ditambahkan!', 'success');
+    try {
+      await persistData();
+      closeTeacherModal();
+      renderWaliKelasTable();
+      showToast(id ? 'Data wali kelas berhasil diperbarui!' : 'Wali kelas baru berhasil ditambahkan!', 'success');
+    } catch (err) {
+      showToast('Gagal menyimpan wali kelas: ' + err.message, 'error');
+    }
     return;
   }
 
@@ -2049,10 +2053,14 @@ async function handleWaliKelasFormSubmit(e) {
     });
   }
 
-  await persistData();
-  renderWaliKelasTable();
-  closeTeacherModal();
-  showToast(id ? 'Data wali kelas berhasil diperbarui!' : 'Wali kelas baru berhasil ditambahkan!', 'success');
+  try {
+    await persistData();
+    renderWaliKelasTable();
+    closeTeacherModal();
+    showToast(id ? 'Data wali kelas berhasil diperbarui!' : 'Wali kelas baru berhasil ditambahkan!', 'success');
+  } catch (err) {
+    showToast('Gagal menyimpan wali kelas: ' + err.message, 'error');
+  }
 }
 
 async function deleteWaliKelas(id) {
@@ -2102,7 +2110,7 @@ function handleExcelUploadWaliKelas(event) {
       tempImportedWaliKelas = json.map(row => ({
         nip: String(row.NIP || row.Nip || row.nip || '').trim(),
         nama: String(row.Nama_Guru || row['Nama Guru'] || row.Nama || row.nama || '').trim(),
-        kelas_wali: String(row.Kelas_Wali || row.kelas_wali || row.Kelas || row.kelas || '').trim()
+        kelas_wali: String(row.Kelas_Wali || row['Kelas Wali'] || row.kelas_wali || row.Kelas || row.kelas || '').trim()
       })).filter(item => item.nama && item.kelas_wali);
 
       if (tempImportedWaliKelas.length === 0) {
