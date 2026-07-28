@@ -2768,16 +2768,23 @@ function renderRekapAbsensi(periodType, bulan, semester, tahun, kelas, search) {
   }
 
   if (filteredStudents.length === 0) {
-    body.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-4">Tidak ada data siswa sesuai filter.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-4">Tidak ada data siswa sesuai filter.</td></tr>`;
     return;
   }
 
   // Filter attendance of selected period
   const periodAtt = filterDataByPeriod(state.attendance, periodType, tahun, bulan, semester);
 
+  let hasData = false;
+
   filteredStudents.forEach((std, idx) => {
     const studentAtt = periodAtt.filter(a => a.student_id === std.id);
-    
+    if (studentAtt.length === 0 && search === '') {
+      return;
+    }
+
+    hasData = true;
+
     let hadir = 0, sakit = 0, izin = 0, alpha = 0;
     studentAtt.forEach(a => {
       if (a.status === 'hadir') hadir++;
@@ -2788,6 +2795,19 @@ function renderRekapAbsensi(periodType, bulan, semester, tahun, kelas, search) {
 
     const totalMarked = hadir + sakit + izin + alpha;
     const persentase = totalMarked > 0 ? Math.round((hadir / totalMarked) * 100) : 100;
+
+    // Build date details
+    let detailsHtml = '<span class="text-muted">Tidak ada absensi</span>';
+    if (studentAtt.length > 0) {
+      const sorted = [...studentAtt].sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+      detailsHtml = sorted.map(a => {
+        let color = 'rgba(34,197,94,0.15)'; let txtColor = '#22c55e';
+        if (a.status === 'sakit') { color = 'rgba(234,179,8,0.15)'; txtColor = '#eab308'; }
+        else if (a.status === 'izin') { color = 'rgba(14,165,233,0.15)'; txtColor = '#38bdf8'; }
+        else if (a.status === 'alpha') { color = 'rgba(239,68,68,0.15)'; txtColor = '#ef4444'; }
+        return `<span class="badge" style="background:${color};color:${txtColor};margin:2px;">${formatLocalDate(a.tanggal)}: ${a.status.toUpperCase()}</span>`;
+      }).join(' ');
+    }
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -2807,9 +2827,14 @@ function renderRekapAbsensi(periodType, bulan, semester, tahun, kelas, search) {
           </div>
         </div>
       </td>
+      <td class="text-left">${detailsHtml}</td>
     `;
     body.appendChild(tr);
   });
+
+  if (!hasData) {
+    body.innerHTML = `<tr><td colspan="10" class="text-center text-muted py-4">Tidak ada data absensi periode ini.</td></tr>`;
+  }
 }
 
 function renderRekapTerlambat(periodType, bulan, semester, tahun, kelas, search) {
@@ -2977,6 +3002,223 @@ function renderRekapIzinPulang(periodType, bulan, semester, tahun, kelas, search
 
   if (!hasData) {
     body.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">Tidak ada data izin pulang periode ini.</td></tr>`;
+  }
+}
+
+// ==========================================================================
+// REKAP DOWNLOAD FUNCTIONS
+// ==========================================================================
+
+function getRekapFilterValues() {
+  return {
+    periodType: document.getElementById('rekap-period-type')?.value || '',
+    bulan: document.getElementById('rekap-bulan')?.value || '',
+    semester: document.getElementById('rekap-semester')?.value || '',
+    tahun: document.getElementById('rekap-tahun')?.value || '',
+    kelas: document.getElementById('rekap-kelas')?.value || '',
+    search: (document.getElementById('rekap-search')?.value || '').toLowerCase().trim()
+  };
+}
+
+function getRekapPeriodLabel(periodType, bulan, semester, tahun) {
+  if (periodType === 'bulanan') {
+    const sel = document.getElementById('rekap-bulan');
+    const label = sel ? sel.options[sel.selectedIndex]?.text || bulan : bulan;
+    return { label: `Bulan ${label} ${tahun}`, suffix: `${label}_${tahun}` };
+  } else if (periodType === 'semester') {
+    const semName = semester === 'genap' ? 'Genap' : 'Ganjil';
+    return { label: `Semester ${semName} ${tahun}`, suffix: `Semester_${semName}_${tahun}` };
+  } else {
+    return { label: `Tahun ${tahun}`, suffix: `Tahunan_${tahun}` };
+  }
+}
+
+function downloadRekapAbsensi() {
+  const f = getRekapFilterValues();
+  const period = getRekapPeriodLabel(f.periodType, f.bulan, f.semester, f.tahun);
+
+  let filteredStudents = state.students;
+  if (f.kelas) filteredStudents = filteredStudents.filter(s => s.kelas === f.kelas);
+  if (f.search) filteredStudents = filteredStudents.filter(s => s.nama.toLowerCase().includes(f.search) || s.nisn.includes(f.search));
+
+  if (filteredStudents.length === 0) {
+    showToast('Tidak ada data untuk diekspor.', 'warning');
+    return;
+  }
+
+  toggleLoader(true, 'Menyusun rekap absensi...');
+  try {
+    const studentIds = new Set(filteredStudents.map(s => s.id));
+    const periodAtt = filterDataByPeriod(state.attendance, f.periodType, f.tahun, f.bulan, f.semester)
+      .filter(a => studentIds.has(a.student_id));
+
+    const rekapData = filteredStudents.map((std, idx) => {
+      const studentAtt = periodAtt.filter(a => a.student_id === std.id);
+      let hadir = 0, sakit = 0, izin = 0, alpha = 0;
+      studentAtt.forEach(a => {
+        if (a.status === 'hadir') hadir++;
+        else if (a.status === 'sakit') sakit++;
+        else if (a.status === 'izin') izin++;
+        else if (a.status === 'alpha') alpha++;
+      });
+      const totalMarked = hadir + sakit + izin + alpha;
+      const persentase = totalMarked > 0 ? `${Math.round((hadir / totalMarked) * 100)}%` : '100%';
+      return { 'No': idx + 1, 'Nama Siswa': std.nama, 'Kelas': std.kelas, 'NISN': std.nisn, 'Hadir': hadir, 'Sakit': sakit, 'Izin': izin, 'Alpha': alpha, 'Persentase': persentase };
+    });
+
+    const logData = periodAtt.map((att, idx) => {
+      const std = state.students.find(s => s.id === att.student_id) || { nama: '-', kelas: '-', nisn: '-' };
+      return { 'No': idx + 1, 'Tanggal': formatLocalDate(att.tanggal), 'Nama Siswa': std.nama, 'Kelas': std.kelas, 'NISN': std.nisn, 'Status': att.status.toUpperCase(), 'Keterangan': att.keterangan || '-' };
+    }).sort((a, b) => a.Tanggal.localeCompare(b.Tanggal));
+
+    const wb = XLSX.utils.book_new();
+    const wsRekap = XLSX.utils.json_to_sheet(rekapData);
+    XLSX.utils.book_append_sheet(wb, wsRekap, `Rekap Absensi`);
+    if (logData.length > 0) {
+      const wsLog = XLSX.utils.json_to_sheet(logData);
+      XLSX.utils.book_append_sheet(wb, wsLog, 'Rincian Harian');
+    }
+    XLSX.writeFile(wb, `Rekap_Absensi_${period.suffix}.xlsx`);
+    showToast('Rekap absensi berhasil diunduh!', 'success');
+  } catch (error) {
+    showToast(`Gagal mengekspor: ${error.message}`, 'error');
+  } finally {
+    toggleLoader(false);
+  }
+}
+
+function downloadRekapTerlambat() {
+  const f = getRekapFilterValues();
+  const period = getRekapPeriodLabel(f.periodType, f.bulan, f.semester, f.tahun);
+
+  let filteredStudents = state.students;
+  if (f.kelas) filteredStudents = filteredStudents.filter(s => s.kelas === f.kelas);
+  if (f.search) filteredStudents = filteredStudents.filter(s => s.nama.toLowerCase().includes(f.search) || s.nisn.includes(f.search));
+
+  if (filteredStudents.length === 0) {
+    showToast('Tidak ada data untuk diekspor.', 'warning');
+    return;
+  }
+
+  toggleLoader(true, 'Menyusun rekap terlambat...');
+  try {
+    const studentIds = new Set(filteredStudents.map(s => s.id));
+    const periodData = filterDataByPeriod(state.lateLogs, f.periodType, f.tahun, f.bulan, f.semester)
+      .filter(d => studentIds.has(d.student_id));
+
+    const rekapData = filteredStudents.map((std, idx) => {
+      const records = periodData.filter(d => d.student_id === std.id);
+      return { 'No': idx + 1, 'Nama Siswa': std.nama, 'Kelas': std.kelas, 'NISN': std.nisn, 'Frekuensi': records.length };
+    });
+
+    const logData = periodData.map((d, idx) => {
+      const std = state.students.find(s => s.id === d.student_id) || { nama: '-', kelas: '-', nisn: '-' };
+      return { 'No': idx + 1, 'Tanggal': formatLocalDate(d.tanggal), 'Jam': d.jam || '-', 'Nama Siswa': std.nama, 'Kelas': std.kelas, 'NISN': std.nisn, 'Keterangan': d.keterangan || '-' };
+    }).sort((a, b) => a.Tanggal.localeCompare(b.Tanggal));
+
+    const wb = XLSX.utils.book_new();
+    const wsRekap = XLSX.utils.json_to_sheet(rekapData);
+    XLSX.utils.book_append_sheet(wb, wsRekap, `Rekap Terlambat`);
+    if (logData.length > 0) {
+      const wsLog = XLSX.utils.json_to_sheet(logData);
+      XLSX.utils.book_append_sheet(wb, wsLog, 'Rincian Harian');
+    }
+    XLSX.writeFile(wb, `Rekap_Terlambat_${period.suffix}.xlsx`);
+    showToast('Rekap terlambat berhasil diunduh!', 'success');
+  } catch (error) {
+    showToast(`Gagal mengekspor: ${error.message}`, 'error');
+  } finally {
+    toggleLoader(false);
+  }
+}
+
+function downloadRekapPelanggaran() {
+  const f = getRekapFilterValues();
+  const period = getRekapPeriodLabel(f.periodType, f.bulan, f.semester, f.tahun);
+
+  let filteredStudents = state.students;
+  if (f.kelas) filteredStudents = filteredStudents.filter(s => s.kelas === f.kelas);
+  if (f.search) filteredStudents = filteredStudents.filter(s => s.nama.toLowerCase().includes(f.search) || s.nisn.includes(f.search));
+
+  if (filteredStudents.length === 0) {
+    showToast('Tidak ada data untuk diekspor.', 'warning');
+    return;
+  }
+
+  toggleLoader(true, 'Menyusun rekap pelanggaran...');
+  try {
+    const studentIds = new Set(filteredStudents.map(s => s.id));
+    const periodData = filterDataByPeriod(state.violations, f.periodType, f.tahun, f.bulan, f.semester)
+      .filter(d => studentIds.has(d.student_id));
+
+    const rekapData = filteredStudents.map((std, idx) => {
+      const records = periodData.filter(d => d.student_id === std.id);
+      return { 'No': idx + 1, 'Nama Siswa': std.nama, 'Kelas': std.kelas, 'NISN': std.nisn, 'Jumlah Pelanggaran': records.length };
+    });
+
+    const logData = periodData.map((d, idx) => {
+      const std = state.students.find(s => s.id === d.student_id) || { nama: '-', kelas: '-', nisn: '-' };
+      return { 'No': idx + 1, 'Tanggal': formatLocalDate(d.tanggal), 'Nama Siswa': std.nama, 'Kelas': std.kelas, 'NISN': std.nisn, 'Pelanggaran': d.keterangan || '-' };
+    }).sort((a, b) => a.Tanggal.localeCompare(b.Tanggal));
+
+    const wb = XLSX.utils.book_new();
+    const wsRekap = XLSX.utils.json_to_sheet(rekapData);
+    XLSX.utils.book_append_sheet(wb, wsRekap, `Rekap Pelanggaran`);
+    if (logData.length > 0) {
+      const wsLog = XLSX.utils.json_to_sheet(logData);
+      XLSX.utils.book_append_sheet(wb, wsLog, 'Rincian Harian');
+    }
+    XLSX.writeFile(wb, `Rekap_Pelanggaran_${period.suffix}.xlsx`);
+    showToast('Rekap pelanggaran berhasil diunduh!', 'success');
+  } catch (error) {
+    showToast(`Gagal mengekspor: ${error.message}`, 'error');
+  } finally {
+    toggleLoader(false);
+  }
+}
+
+function downloadRekapIzinPulang() {
+  const f = getRekapFilterValues();
+  const period = getRekapPeriodLabel(f.periodType, f.bulan, f.semester, f.tahun);
+
+  let filteredStudents = state.students;
+  if (f.kelas) filteredStudents = filteredStudents.filter(s => s.kelas === f.kelas);
+  if (f.search) filteredStudents = filteredStudents.filter(s => s.nama.toLowerCase().includes(f.search) || s.nisn.includes(f.search));
+
+  if (filteredStudents.length === 0) {
+    showToast('Tidak ada data untuk diekspor.', 'warning');
+    return;
+  }
+
+  toggleLoader(true, 'Menyusun rekap izin pulang...');
+  try {
+    const studentIds = new Set(filteredStudents.map(s => s.id));
+    const periodData = filterDataByPeriod(state.izinPulang, f.periodType, f.tahun, f.bulan, f.semester)
+      .filter(d => studentIds.has(d.student_id));
+
+    const rekapData = filteredStudents.map((std, idx) => {
+      const records = periodData.filter(d => d.student_id === std.id);
+      return { 'No': idx + 1, 'Nama Siswa': std.nama, 'Kelas': std.kelas, 'NISN': std.nisn, 'Frekuensi Izin Pulang': records.length };
+    });
+
+    const logData = periodData.map((d, idx) => {
+      const std = state.students.find(s => s.id === d.student_id) || { nama: '-', kelas: '-', nisn: '-' };
+      return { 'No': idx + 1, 'Tanggal': formatLocalDate(d.tanggal), 'Jam': d.jam || '-', 'Nama Siswa': std.nama, 'Kelas': std.kelas, 'NISN': std.nisn, 'Alasan': d.keterangan || '-', 'Guru Piket': d.guru_piket || '-' };
+    }).sort((a, b) => a.Tanggal.localeCompare(b.Tanggal));
+
+    const wb = XLSX.utils.book_new();
+    const wsRekap = XLSX.utils.json_to_sheet(rekapData);
+    XLSX.utils.book_append_sheet(wb, wsRekap, `Rekap Izin Pulang`);
+    if (logData.length > 0) {
+      const wsLog = XLSX.utils.json_to_sheet(logData);
+      XLSX.utils.book_append_sheet(wb, wsLog, 'Rincian Harian');
+    }
+    XLSX.writeFile(wb, `Rekap_Izin_Pulang_${period.suffix}.xlsx`);
+    showToast('Rekap izin pulang berhasil diunduh!', 'success');
+  } catch (error) {
+    showToast(`Gagal mengekspor: ${error.message}`, 'error');
+  } finally {
+    toggleLoader(false);
   }
 }
 
