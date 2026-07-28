@@ -810,6 +810,8 @@ function switchAkunTab(tabName) {
 
   if (tabName === 'daftar') {
     renderAkunTable();
+  } else if (tabName === 'tambah') {
+    populateKelasWaliSelects();
   }
   lucide.createIcons();
 }
@@ -6786,6 +6788,7 @@ function openAkunModal(id = null) {
   if (!modal || !form) return;
 
   form.reset();
+  populateKelasWaliSelects();
 
   if (id) {
     const accounts = getAccountsList();
