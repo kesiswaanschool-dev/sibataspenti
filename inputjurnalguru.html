@@ -588,24 +588,25 @@
           console.warn('Firebase fetch notice in inputjurnalguru:', e);
         }
 
-        // Auto-extract teacher entries from accounts
-        if (Array.isArray(appDb.accounts)) {
-          appDb.accounts.forEach(acc => {
-            if (acc && (acc.role === 'guru' || acc.role === 'teacher')) {
-              const accNip = String(acc.username || acc.nip || '').trim();
-              const accNama = String(acc.nama || acc.name || '').trim();
-              if (accNip || accNama) {
-                const exists = appDb.teachers.some(t => String(t.nip || '').toLowerCase() === accNip.toLowerCase() || String(t.nama || '').toLowerCase() === accNama.toLowerCase());
-                if (!exists) {
-                  appDb.teachers.push({ id: acc.id || ('teacher-' + Date.now()), nip: accNip, nama: accNama || 'Guru', mapel: acc.mapel || 'Guru Mata Pelajaran' });
-                }
+      }
+
+      // Auto-extract teacher entries from accounts (runs even if Firebase unavailable)
+      if (Array.isArray(appDb.accounts)) {
+        appDb.accounts.forEach(acc => {
+          if (acc && (acc.role === 'guru' || acc.role === 'teacher' || acc.role === 'guru-piket' || acc.role === 'admin' || acc.role === 'super-admin')) {
+            const accNip = String(acc.username || acc.nip || '').trim();
+            const accNama = String(acc.nama || acc.name || '').trim();
+            if (accNip || accNama) {
+              const exists = appDb.teachers.some(t => String(t.nip || '').toLowerCase() === accNip.toLowerCase() || String(t.nama || '').toLowerCase() === accNama.toLowerCase());
+              if (!exists) {
+                appDb.teachers.push({ id: acc.id || ('teacher-' + Date.now()), nip: accNip, nama: accNama || 'Guru', mapel: acc.mapel || 'Guru Mata Pelajaran' });
               }
             }
-          });
-        }
-
-        saveLocalDatabase();
+          }
+        });
       }
+
+      saveLocalDatabase();
     }
 
     function saveLocalDatabase() {
