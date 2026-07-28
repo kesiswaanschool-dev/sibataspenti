@@ -639,15 +639,15 @@
           }
 
           const payload = {
-            students: localDb.students || appDb.students || [],
-            attendance: localDb.attendance || appDb.attendance || [],
-            latelogs: localDb.latelogs || [],
-            violations: localDb.violations || [],
-            izinpulang: localDb.izinpulang || [],
-            jurnalguru: localDb.jurnalGuru || appDb.jurnalGuru || [],
-            teachers: localDb.teachers || appDb.teachers || [],
-            kaihlogs: localDb.kaihlogs || [],
-            accounts: localDb.accounts || appDb.accounts || [],
+            students: localDb.students && localDb.students.length > 0 ? localDb.students : (appDb.students || []),
+            attendance: localDb.attendance && localDb.attendance.length > 0 ? localDb.attendance : (appDb.attendance || []),
+            latelogs: localDb.latelogs && localDb.latelogs.length > 0 ? localDb.latelogs : [],
+            violations: localDb.violations && localDb.violations.length > 0 ? localDb.violations : [],
+            izinpulang: localDb.izinpulang && localDb.izinpulang.length > 0 ? localDb.izinpulang : [],
+            jurnalguru: localDb.jurnalGuru && localDb.jurnalGuru.length > 0 ? localDb.jurnalGuru : (appDb.jurnalGuru || []),
+            teachers: localDb.teachers && localDb.teachers.length > 0 ? localDb.teachers : (appDb.teachers || []),
+            kaihlogs: localDb.kaihlogs && localDb.kaihlogs.length > 0 ? localDb.kaihlogs : [],
+            accounts: localDb.accounts && localDb.accounts.length > 0 ? localDb.accounts : (appDb.accounts || []),
             updated_at: new Date().toISOString()
           };
 

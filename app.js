@@ -649,16 +649,16 @@ async function syncPushToFirebase(silent = true) {
       try { return JSON.parse(localStorage.getItem('deletedStudentIds') || '[]'); } catch { return []; }
     })();
     const payload = {
-      students: state.students || existingData.students || [],
-      attendance: state.attendance || existingData.attendance || [],
-      latelogs: state.lateLogs || existingData.latelogs || [],
-      violations: state.violations || existingData.violations || [],
-      izinpulang: state.izinPulang || existingData.izinpulang || [],
-      jurnalguru: state.jurnalGuru || existingData.jurnalguru || [],
-      teachers: state.teachers || existingData.teachers || [],
-      kaihlogs: _kaihLogsModified ? state.kaihLogs : (existingData.kaihlogs || existingData.kaihLogs || state.kaihLogs || []),
-      accounts: getAccountsList() || existingData.accounts || [],
-      reportHistory: state.reportHistory || existingData.reportHistory || [],
+      students: state.students && state.students.length > 0 ? state.students : (existingData.students || []),
+      attendance: state.attendance && state.attendance.length > 0 ? state.attendance : (existingData.attendance || []),
+      latelogs: state.lateLogs && state.lateLogs.length > 0 ? state.lateLogs : (existingData.latelogs || []),
+      violations: state.violations && state.violations.length > 0 ? state.violations : (existingData.violations || []),
+      izinpulang: state.izinPulang && state.izinPulang.length > 0 ? state.izinPulang : (existingData.izinpulang || []),
+      jurnalguru: state.jurnalGuru && state.jurnalGuru.length > 0 ? state.jurnalGuru : (existingData.jurnalguru || []),
+      teachers: state.teachers && state.teachers.length > 0 ? state.teachers : (existingData.teachers || []),
+      kaihlogs: _kaihLogsModified ? (state.kaihLogs || []) : (existingData.kaihlogs || existingData.kaihLogs || []),
+      accounts: (() => { const a = getAccountsList(); return a && a.length > 0 ? a : (existingData.accounts || []); })(),
+      reportHistory: state.reportHistory && state.reportHistory.length > 0 ? state.reportHistory : (existingData.reportHistory || []),
       deletedStudentIds,
       updated_at: new Date().toISOString()
     };
