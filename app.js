@@ -2165,9 +2165,10 @@ async function saveImportedWaliKelas() {
     }
 
     await persistData();
+    const savedCount = tempImportedWaliKelas.length;
     cancelImportWaliKelas();
     renderWaliKelasTable();
-    showToast(`${tempImportedWaliKelas.length} data wali kelas berhasil disimpan!`, 'success');
+    showToast(`${savedCount} data wali kelas berhasil disimpan!`, 'success');
   } catch (err) {
     showToast('Gagal menyimpan: ' + err.message, 'error');
   } finally {
