@@ -420,6 +420,15 @@
       return filtered;
     }
 
+    function formatLocalDate(dateStr) {
+      if (!dateStr) return '-';
+      const d = new Date(dateStr + 'T00:00:00');
+      const hari = d.getDate();
+      const bulan = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'][d.getMonth()];
+      const tahun = d.getFullYear();
+      return hari + ' ' + bulan + ' ' + tahun;
+    }
+
     // === ABSENSI ===
     function renderAbsensi() {
       const tbody = document.getElementById('absensi-body');
@@ -648,11 +657,10 @@
           const details = iList.map(iz => {
             const tanggal = iz.tanggal || '-';
             const jam = iz.jam_keluar || iz.jam || '-';
-            const alasan = iz.alasan || '-';
+            const alasan = iz.keterangan || '-';
             const guru = iz.guru_piket || '-';
-            const status = '';
             return '<span class="badge badge-info" style="margin:2px;" title="Guru Piket: ' + guru + '">' +
-              tanggal + ' ' + jam + ': ' + alasan + (guru ? ' (Guru: ' + guru + ')' : '') + '</span>';
+              formatLocalDate(tanggal) + ' (' + jam + '): ' + alasan + ' (Piket: ' + guru + ')</span>';
           }).join(' ');
           html += '<tr>';
           html += '<td>' + (idx + 1) + '</td>';
