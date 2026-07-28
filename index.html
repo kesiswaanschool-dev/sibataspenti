@@ -1859,84 +1859,202 @@
                 </div>
               </div>
 
-              <!-- Content tabs -->
-              <div class="tab-container mb-4">
-                <button class="tab-button active" id="tab-wali-absensi" onclick="switchWaliKelasTab('absensi')">
-                  <i data-lucide="calendar-check" class="mr-1 v-middle"></i> Rekap Absensi
-                </button>
-                <button class="tab-button" id="tab-wali-7kaih" onclick="switchWaliKelasTab('7kaih')">
-                  <i data-lucide="award" class="mr-1 v-middle"></i> 7 KAIH
-                </button>
-              </div>
+      <!-- Content tabs -->
+      <div class="tab-container mb-4">
+        <button class="tab-button active" id="tab-wali-absensi" onclick="switchWaliKelasTab('absensi')">
+          <i data-lucide="calendar-check" class="mr-1 v-middle"></i> Rekap Absensi
+        </button>
+        <button class="tab-button" id="tab-wali-terlambat" onclick="switchWaliKelasTab('terlambat')">
+          <i data-lucide="clock" class="mr-1 v-middle"></i> Siswa Terlambat
+        </button>
+        <button class="tab-button" id="tab-wali-pelanggaran" onclick="switchWaliKelasTab('pelanggaran')">
+          <i data-lucide="shield-alert" class="mr-1 v-middle"></i> Pelanggaran
+        </button>
+        <button class="tab-button" id="tab-wali-izin-pulang" onclick="switchWaliKelasTab('izin-pulang')">
+          <i data-lucide="log-out" class="mr-1 v-middle"></i> Izin Pulang
+        </button>
+        <button class="tab-button" id="tab-wali-7kaih" onclick="switchWaliKelasTab('7kaih')">
+          <i data-lucide="award" class="mr-1 v-middle"></i> 7 KAIH
+        </button>
+      </div>
 
-              <!-- Absensi tab -->
-              <div class="wali-tab-content" id="wali-tab-absensi">
-                <div class="d-flex justify-between align-center flex-wrap gap-2 mb-3">
-                  <h3>Rekap Kehadiran Siswa</h3>
-                  <div class="d-flex gap-2 flex-wrap">
-                    <select id="wali-absensi-bulan" class="form-select" style="max-width:150px;" onchange="loadWaliKelasDashboard()">
-                      <option value="">Semua Bulan</option>
-                      <option value="01">Januari</option><option value="02">Februari</option>
-                      <option value="03">Maret</option><option value="04">April</option>
-                      <option value="05">Mei</option><option value="06">Juni</option>
-                      <option value="07">Juli</option><option value="08">Agustus</option>
-                      <option value="09">September</option><option value="10">Oktober</option>
-                      <option value="11">November</option><option value="12">Desember</option>
-                    </select>
-                    <select id="wali-absensi-tahun" class="form-select" style="max-width:120px;" onchange="loadWaliKelasDashboard()"></select>
-                    <button class="btn btn-primary btn-sm" onclick="downloadWaliAbsensi()"><i data-lucide="download" style="width:14px;height:14px;"></i> Download</button>
-                  </div>
-                </div>
-                <div class="custom-table-container">
-                  <table class="styled-table text-center-headers">
-                    <thead>
-                      <tr>
-                        <th width="60">No</th>
-                        <th class="text-left">Nama Siswa</th>
-                        <th width="100">NISN</th>
-                        <th width="80" class="text-success">Hadir</th>
-                        <th width="80" class="text-warning">Sakit</th>
-                        <th width="80" class="text-info">Izin</th>
-                        <th width="80" class="text-danger">Alpha</th>
-                        <th width="120">Persentase</th>
-                      </tr>
-                    </thead>
-                    <tbody id="wali-absensi-body">
-                      <tr><td colspan="8" class="text-center text-muted">Pilih kelas untuk melihat data.</td></tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <!-- 7KAIH tab -->
-              <div class="wali-tab-content" id="wali-tab-7kaih" style="display:none;">
-                <div class="d-flex justify-between align-center flex-wrap gap-2 mb-3">
-                  <h3>Rekap 7 KAIH Siswa</h3>
-                  <div class="d-flex gap-2 flex-wrap">
-                    <select id="wali-7kaih-tahun" class="form-select" style="max-width:120px;" onchange="loadWaliKelasDashboard()"></select>
-                    <button class="btn btn-primary btn-sm" onclick="downloadWali7Kaih()"><i data-lucide="download" style="width:14px;height:14px;"></i> Download</button>
-                  </div>
-                </div>
-                <div class="custom-table-container">
-                  <table class="styled-table text-center-headers">
-                    <thead>
-                      <tr>
-                        <th width="60">No</th>
-                        <th class="text-left">Nama Siswa</th>
-                        <th width="100">NISN</th>
-                        <th>Total Terisi</th>
-                        <th>Total Tidak Terisi</th>
-                      </tr>
-                    </thead>
-                    <tbody id="wali-7kaih-body">
-                      <tr><td colspan="5" class="text-center text-muted">Pilih kelas untuk melihat data.</td></tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
+      <!-- Absensi tab -->
+      <div class="wali-tab-content" id="wali-tab-absensi">
+        <div class="d-flex justify-between align-center flex-wrap gap-2 mb-3">
+          <h3>Rekap Kehadiran Siswa</h3>
+          <div class="d-flex gap-2 flex-wrap">
+            <select id="wali-absensi-bulan" class="form-select" style="max-width:150px;" onchange="loadWaliKelasDashboard()">
+              <option value="">Semua Bulan</option>
+              <option value="01">Januari</option><option value="02">Februari</option>
+              <option value="03">Maret</option><option value="04">April</option>
+              <option value="05">Mei</option><option value="06">Juni</option>
+              <option value="07">Juli</option><option value="08">Agustus</option>
+              <option value="09">September</option><option value="10">Oktober</option>
+              <option value="11">November</option><option value="12">Desember</option>
+            </select>
+            <select id="wali-absensi-tahun" class="form-select" style="max-width:120px;" onchange="loadWaliKelasDashboard()"></select>
+            <button class="btn btn-primary btn-sm" onclick="downloadWaliAbsensi()"><i data-lucide="download" style="width:14px;height:14px;"></i> Download</button>
           </div>
-        </section>
+        </div>
+        <div class="custom-table-container">
+          <table class="styled-table text-center-headers">
+            <thead>
+              <tr>
+                <th width="60">No</th>
+                <th class="text-left">Nama Siswa</th>
+                <th width="100">NISN</th>
+                <th width="80" class="text-success">Hadir</th>
+                <th width="80" class="text-warning">Sakit</th>
+                <th width="80" class="text-info">Izin</th>
+                <th width="80" class="text-danger">Alpha</th>
+                <th width="120">Persentase</th>
+                <th>Rincian Tanggal <small class="text-muted">(Status)</small></th>
+              </tr>
+            </thead>
+            <tbody id="wali-absensi-body">
+              <tr><td colspan="9" class="text-center text-muted">Pilih kelas untuk melihat data.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Terlambat tab -->
+      <div class="wali-tab-content" id="wali-tab-terlambat" style="display:none;">
+        <div class="d-flex justify-between align-center flex-wrap gap-2 mb-3">
+          <h3>Rekap Siswa Terlambat</h3>
+          <div class="d-flex gap-2 flex-wrap">
+            <select id="wali-terlambat-bulan" class="form-select" style="max-width:150px;" onchange="loadWaliKelasDashboard()">
+              <option value="">Semua Bulan</option>
+              <option value="01">Januari</option><option value="02">Februari</option>
+              <option value="03">Maret</option><option value="04">April</option>
+              <option value="05">Mei</option><option value="06">Juni</option>
+              <option value="07">Juli</option><option value="08">Agustus</option>
+              <option value="09">September</option><option value="10">Oktober</option>
+              <option value="11">November</option><option value="12">Desember</option>
+            </select>
+            <select id="wali-terlambat-tahun" class="form-select" style="max-width:120px;" onchange="loadWaliKelasDashboard()"></select>
+            <button class="btn btn-warning btn-sm" onclick="downloadWaliTerlambat()"><i data-lucide="download" style="width:14px;height:14px;"></i> Download</button>
+          </div>
+        </div>
+        <div class="custom-table-container">
+          <table class="styled-table text-center-headers">
+            <thead>
+              <tr>
+                <th width="60">No</th>
+                <th class="text-left">Nama Siswa</th>
+                <th width="100">NISN</th>
+                <th width="150" class="text-warning">Frekuensi</th>
+                <th>Rincian Tanggal & Alasan</th>
+              </tr>
+            </thead>
+            <tbody id="wali-terlambat-body">
+              <tr><td colspan="5" class="text-center text-muted">Pilih kelas untuk melihat data.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Pelanggaran tab -->
+      <div class="wali-tab-content" id="wali-tab-pelanggaran" style="display:none;">
+        <div class="d-flex justify-between align-center flex-wrap gap-2 mb-3">
+          <h3>Rekap Pelanggaran Siswa</h3>
+          <div class="d-flex gap-2 flex-wrap">
+            <select id="wali-pelanggaran-bulan" class="form-select" style="max-width:150px;" onchange="loadWaliKelasDashboard()">
+              <option value="">Semua Bulan</option>
+              <option value="01">Januari</option><option value="02">Februari</option>
+              <option value="03">Maret</option><option value="04">April</option>
+              <option value="05">Mei</option><option value="06">Juni</option>
+              <option value="07">Juli</option><option value="08">Agustus</option>
+              <option value="09">September</option><option value="10">Oktober</option>
+              <option value="11">November</option><option value="12">Desember</option>
+            </select>
+            <select id="wali-pelanggaran-tahun" class="form-select" style="max-width:120px;" onchange="loadWaliKelasDashboard()"></select>
+            <button class="btn btn-danger btn-sm" onclick="downloadWaliPelanggaran()"><i data-lucide="download" style="width:14px;height:14px;"></i> Download</button>
+          </div>
+        </div>
+        <div class="custom-table-container">
+          <table class="styled-table text-center-headers">
+            <thead>
+              <tr>
+                <th width="60">No</th>
+                <th class="text-left">Nama Siswa</th>
+                <th width="100">NISN</th>
+                <th width="150" class="text-danger">Jumlah</th>
+                <th>Rincian Tanggal & Pelanggaran</th>
+              </tr>
+            </thead>
+            <tbody id="wali-pelanggaran-body">
+              <tr><td colspan="5" class="text-center text-muted">Pilih kelas untuk melihat data.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Izin Pulang tab -->
+      <div class="wali-tab-content" id="wali-tab-izin-pulang" style="display:none;">
+        <div class="d-flex justify-between align-center flex-wrap gap-2 mb-3">
+          <h3>Rekap Izin Pulang Siswa</h3>
+          <div class="d-flex gap-2 flex-wrap">
+            <select id="wali-izin-pulang-bulan" class="form-select" style="max-width:150px;" onchange="loadWaliKelasDashboard()">
+              <option value="">Semua Bulan</option>
+              <option value="01">Januari</option><option value="02">Februari</option>
+              <option value="03">Maret</option><option value="04">April</option>
+              <option value="05">Mei</option><option value="06">Juni</option>
+              <option value="07">Juli</option><option value="08">Agustus</option>
+              <option value="09">September</option><option value="10">Oktober</option>
+              <option value="11">November</option><option value="12">Desember</option>
+            </select>
+            <select id="wali-izin-pulang-tahun" class="form-select" style="max-width:120px;" onchange="loadWaliKelasDashboard()"></select>
+            <button class="btn btn-info btn-sm" onclick="downloadWaliIzinPulang()"><i data-lucide="download" style="width:14px;height:14px;"></i> Download</button>
+          </div>
+        </div>
+        <div class="custom-table-container">
+          <table class="styled-table text-center-headers">
+            <thead>
+              <tr>
+                <th width="60">No</th>
+                <th class="text-left">Nama Siswa</th>
+                <th width="100">NISN</th>
+                <th width="150" class="text-info">Frekuensi</th>
+                <th>Rincian Tanggal, Alasan & Guru Piket</th>
+              </tr>
+            </thead>
+            <tbody id="wali-izin-pulang-body">
+              <tr><td colspan="5" class="text-center text-muted">Pilih kelas untuk melihat data.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 7KAIH tab -->
+      <div class="wali-tab-content" id="wali-tab-7kaih" style="display:none;">
+        <div class="d-flex justify-between align-center flex-wrap gap-2 mb-3">
+          <h3>Rekap 7 KAIH Siswa</h3>
+          <div class="d-flex gap-2 flex-wrap">
+            <select id="wali-7kaih-tahun" class="form-select" style="max-width:120px;" onchange="loadWaliKelasDashboard()"></select>
+            <button class="btn btn-primary btn-sm" onclick="downloadWali7Kaih()"><i data-lucide="download" style="width:14px;height:14px;"></i> Download</button>
+          </div>
+        </div>
+        <div class="custom-table-container">
+          <table class="styled-table text-center-headers">
+            <thead>
+              <tr>
+                <th width="60">No</th>
+                <th class="text-left">Nama Siswa</th>
+                <th width="100">NISN</th>
+                <th>Total Terisi</th>
+                <th>Total Tidak Terisi</th>
+              </tr>
+            </thead>
+            <tbody id="wali-7kaih-body">
+              <tr><td colspan="5" class="text-center text-muted">Pilih kelas untuk melihat data.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
         <!-- ================= UNDUH LAPORAN VIEW ================= -->
         <section id="view-laporan" class="content-view">

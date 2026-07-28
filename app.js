@@ -3045,7 +3045,7 @@ function populateKelasWaliSelects() {
 function populateWaliKelasYearDropdowns() {
   const currentYear = new Date().getFullYear();
   const years = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1, currentYear + 2];
-  ['wali-absensi-tahun', 'wali-7kaih-tahun'].forEach(id => {
+  ['wali-absensi-tahun', 'wali-terlambat-tahun', 'wali-pelanggaran-tahun', 'wali-izin-pulang-tahun', 'wali-7kaih-tahun'].forEach(id => {
     const sel = document.getElementById(id);
     if (!sel) return;
     const val = sel.value || String(currentYear);
@@ -3084,8 +3084,10 @@ function loadWaliKelasDashboard() {
   if (subtitle) subtitle.textContent = kelas ? `Kelas: ${kelas}` : 'Kelas: - (Pilih kelas terlebih dahulu)';
 
   if (!kelas) {
-    document.getElementById('wali-absensi-body').innerHTML = '<tr><td colspan="8" class="text-center text-muted">Pilih kelas untuk melihat data.</td></tr>';
-    document.getElementById('wali-7kaih-body').innerHTML = '<tr><td colspan="5" class="text-center text-muted">Pilih kelas untuk melihat data.</td></tr>';
+    ['wali-absensi-body','wali-terlambat-body','wali-pelanggaran-body','wali-izin-pulang-body','wali-7kaih-body'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = '<tr><td colspan="9" class="text-center text-muted">Pilih kelas untuk melihat data.</td></tr>';
+    });
     document.getElementById('wali-stat-siswa').textContent = '0';
     document.getElementById('wali-stat-hadir').textContent = '0';
     document.getElementById('wali-stat-alpha').textContent = '0';
@@ -3094,6 +3096,9 @@ function loadWaliKelasDashboard() {
   }
 
   renderWaliAbsensi(kelas);
+  renderWaliTerlambat(kelas);
+  renderWaliPelanggaran(kelas);
+  renderWaliIzinPulang(kelas);
   renderWali7Kaih(kelas);
 
   // Stats
@@ -3114,7 +3119,7 @@ function renderWaliAbsensi(kelas) {
 
   const students = (state.students || []).filter(s => s.kelas === kelas);
   if (students.length === 0) {
-    body.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Tidak ada siswa di kelas ini.</td></tr>';
+    body.innerHTML = '<tr><td colspan="9" class="text-center text-muted">Tidak ada siswa di kelas ini.</td></tr>';
     return;
   }
 
@@ -3122,8 +3127,13 @@ function renderWaliAbsensi(kelas) {
   const tahun = document.getElementById('wali-absensi-tahun')?.value || '';
   const periodAtt = filterDataByPeriod(state.attendance, 'bulanan', tahun, bulan, '');
 
+  let hasData = false;
+
   students.forEach((std, idx) => {
     const studentAtt = periodAtt.filter(a => a.student_id === std.id);
+    if (studentAtt.length === 0) return;
+    hasData = true;
+
     let hadir = 0, sakit = 0, izin = 0, alpha = 0;
     studentAtt.forEach(a => {
       if (a.status === 'hadir') hadir++;
@@ -3133,6 +3143,19 @@ function renderWaliAbsensi(kelas) {
     });
     const total = hadir + sakit + izin + alpha;
     const pct = total > 0 ? Math.round((hadir / total) * 100) : 100;
+
+    // Build date details
+    let detailsHtml = '<span class="text-muted">Tidak ada absensi</span>';
+    if (studentAtt.length > 0) {
+      const sorted = [...studentAtt].sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+      detailsHtml = sorted.map(a => {
+        let color = 'rgba(34,197,94,0.15)'; let txtColor = '#22c55e';
+        if (a.status === 'sakit') { color = 'rgba(234,179,8,0.15)'; txtColor = '#eab308'; }
+        else if (a.status === 'izin') { color = 'rgba(14,165,233,0.15)'; txtColor = '#38bdf8'; }
+        else if (a.status === 'alpha') { color = 'rgba(239,68,68,0.15)'; txtColor = '#ef4444'; }
+        return `<span class="badge" style="background:${color};color:${txtColor};margin:2px;">${formatLocalDate(a.tanggal)}: ${a.status.toUpperCase()}</span>`;
+      }).join(' ');
+    }
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -3149,9 +3172,140 @@ function renderWaliAbsensi(kelas) {
           <div style="width:${pct}%;height:100%;background:linear-gradient(to right,var(--color-primary),var(--color-success));"></div>
         </div>
       </td>
+      <td class="text-left">${detailsHtml}</td>
     `;
     body.appendChild(tr);
   });
+
+  if (!hasData) {
+    body.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">Tidak ada data absensi periode ini.</td></tr>';
+  }
+}
+
+function renderWaliTerlambat(kelas) {
+  const body = document.getElementById('wali-terlambat-body');
+  if (!body) return;
+  body.innerHTML = '';
+
+  const students = (state.students || []).filter(s => s.kelas === kelas);
+  if (students.length === 0) {
+    body.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Tidak ada siswa di kelas ini.</td></tr>';
+    return;
+  }
+
+  const bulan = document.getElementById('wali-terlambat-bulan')?.value || '';
+  const tahun = document.getElementById('wali-terlambat-tahun')?.value || '';
+  const periodData = filterDataByPeriod(state.lateLogs, 'bulanan', tahun, bulan, '');
+
+  let hasData = false;
+
+  students.forEach(std => {
+    const records = periodData.filter(d => d.student_id === std.id).sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+    if (records.length === 0) return;
+    hasData = true;
+
+    let detailsHtml = records.map(l =>
+      `<span class="badge badge-warning" style="margin:2px;" title="${l.keterangan || 'Tanpa keterangan'}">${formatLocalDate(l.tanggal)} (${l.jam})</span>`
+    ).join(' ');
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${body.children.length + 1}</td>
+      <td class="text-left font-semibold">${std.nama}</td>
+      <td>${std.nisn}</td>
+      <td class="text-warning font-semibold text-center">${records.length}x</td>
+      <td class="text-left">${detailsHtml}</td>
+    `;
+    body.appendChild(tr);
+  });
+
+  if (!hasData) {
+    body.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Tidak ada data keterlambatan periode ini.</td></tr>';
+  }
+}
+
+function renderWaliPelanggaran(kelas) {
+  const body = document.getElementById('wali-pelanggaran-body');
+  if (!body) return;
+  body.innerHTML = '';
+
+  const students = (state.students || []).filter(s => s.kelas === kelas);
+  if (students.length === 0) {
+    body.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Tidak ada siswa di kelas ini.</td></tr>';
+    return;
+  }
+
+  const bulan = document.getElementById('wali-pelanggaran-bulan')?.value || '';
+  const tahun = document.getElementById('wali-pelanggaran-tahun')?.value || '';
+  const periodData = filterDataByPeriod(state.violations, 'bulanan', tahun, bulan, '');
+
+  let hasData = false;
+
+  students.forEach(std => {
+    const records = periodData.filter(d => d.student_id === std.id).sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+    if (records.length === 0) return;
+    hasData = true;
+
+    let detailsHtml = records.map(v =>
+      `<span class="badge badge-danger" style="margin:2px;" title="${v.keterangan}">${formatLocalDate(v.tanggal)} (${v.jam}): ${v.keterangan}</span>`
+    ).join(' ');
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${body.children.length + 1}</td>
+      <td class="text-left font-semibold">${std.nama}</td>
+      <td>${std.nisn}</td>
+      <td class="text-danger font-semibold text-center">${records.length}x</td>
+      <td class="text-left">${detailsHtml}</td>
+    `;
+    body.appendChild(tr);
+  });
+
+  if (!hasData) {
+    body.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Tidak ada data pelanggaran periode ini.</td></tr>';
+  }
+}
+
+function renderWaliIzinPulang(kelas) {
+  const body = document.getElementById('wali-izin-pulang-body');
+  if (!body) return;
+  body.innerHTML = '';
+
+  const students = (state.students || []).filter(s => s.kelas === kelas);
+  if (students.length === 0) {
+    body.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Tidak ada siswa di kelas ini.</td></tr>';
+    return;
+  }
+
+  const bulan = document.getElementById('wali-izin-pulang-bulan')?.value || '';
+  const tahun = document.getElementById('wali-izin-pulang-tahun')?.value || '';
+  const periodData = filterDataByPeriod(state.izinPulang, 'bulanan', tahun, bulan, '');
+
+  let hasData = false;
+
+  students.forEach(std => {
+    const records = periodData.filter(d => d.student_id === std.id).sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+    if (records.length === 0) return;
+    hasData = true;
+
+    let detailsHtml = records.map(ip =>
+      `<span class="badge" style="background:rgba(14,165,233,0.15);color:#38bdf8;margin:2px;" title="Piket: ${ip.guru_piket} | Alasan: ${ip.keterangan}">${formatLocalDate(ip.tanggal)} (${ip.jam}): ${ip.keterangan} (Piket: ${ip.guru_piket})</span>`
+    ).join(' ');
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${body.children.length + 1}</td>
+      <td class="text-left font-semibold">${std.nama}</td>
+      <td>${std.nisn}</td>
+      <td class="text-info font-semibold text-center">${records.length}x</td>
+      <td class="text-left">${detailsHtml}</td>
+    `;
+    body.appendChild(tr);
+  });
+
+  if (!hasData) {
+    body.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">Tidak ada data izin pulang periode ini.</td></tr>';
+  }
 }
 
 function renderWali7Kaih(kelas) {
@@ -3216,8 +3370,17 @@ function downloadWaliAbsensi() {
       return { 'No': idx+1, 'Nama': std.nama, 'NISN': std.nisn, 'Hadir': h, 'Sakit': s, 'Izin': i, 'Alpha': a, 'Persentase': total>0?`${Math.round(h/total*100)}%`:'100%' };
     });
 
+    // Detail sheet
+    const logData = classAtt.map((att, idx) => {
+      const std = students.find(s => s.id === att.student_id) || { nama: '-', nisn: '-' };
+      return { 'No': idx+1, 'Tanggal': formatLocalDate(att.tanggal), 'Nama': std.nama, 'NISN': std.nisn, 'Status': att.status.toUpperCase(), 'Keterangan': att.keterangan || '-' };
+    }).sort((a, b) => a.Tanggal.localeCompare(b.Tanggal));
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rekapData), 'Rekap Absensi');
+    if (logData.length > 0) {
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(logData), 'Rincian Harian');
+    }
     XLSX.writeFile(wb, `Wali_Kelas_Absensi_${filenameSuffix}.xlsx`);
     showToast('Laporan absensi berhasil diunduh!', 'success');
   } catch (e) {
@@ -3225,6 +3388,93 @@ function downloadWaliAbsensi() {
   } finally {
     toggleLoader(false);
   }
+}
+
+function downloadWaliTerlambat() {
+  const kelas = getWaliKelasClassName();
+  if (!kelas) { showToast('Pilih kelas terlebih dahulu!', 'warning'); return; }
+  const bulan = document.getElementById('wali-terlambat-bulan')?.value || '';
+  const tahun = document.getElementById('wali-terlambat-tahun')?.value || '';
+  const filenameSuffix = `${kelas.replace(/\s+/g, '_')}_${tahun}${bulan ? '_' + bulan : ''}`;
+  const students = (state.students || []).filter(s => s.kelas === kelas);
+  if (students.length === 0) { showToast('Tidak ada data untuk diekspor.', 'warning'); return; }
+  toggleLoader(true, 'Menyusun laporan...');
+  try {
+    const periodData = filterDataByPeriod(state.lateLogs, 'bulanan', tahun, bulan, '');
+    const classData = periodData.filter(d => students.some(s => s.id === d.student_id));
+    const rekapData = students.map((std, idx) => {
+      const cnt = classData.filter(d => d.student_id === std.id).length;
+      return { 'No': idx+1, 'Nama': std.nama, 'NISN': std.nisn, 'Frekuensi': cnt };
+    });
+    const logData = classData.map((d, idx) => {
+      const std = students.find(s => s.id === d.student_id) || { nama: '-', nisn: '-' };
+      return { 'No': idx+1, 'Tanggal': formatLocalDate(d.tanggal), 'Jam': d.jam||'-', 'Nama': std.nama, 'NISN': std.nisn, 'Keterangan': d.keterangan||'-' };
+    }).sort((a, b) => a.Tanggal.localeCompare(b.Tanggal));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rekapData), 'Rekap Terlambat');
+    if (logData.length > 0) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(logData), 'Rincian Harian');
+    XLSX.writeFile(wb, `Wali_Kelas_Terlambat_${filenameSuffix}.xlsx`);
+    showToast('Laporan terlambat berhasil diunduh!', 'success');
+  } catch (e) { showToast(`Gagal mengekspor: ${e.message}`, 'error');
+  } finally { toggleLoader(false); }
+}
+
+function downloadWaliPelanggaran() {
+  const kelas = getWaliKelasClassName();
+  if (!kelas) { showToast('Pilih kelas terlebih dahulu!', 'warning'); return; }
+  const bulan = document.getElementById('wali-pelanggaran-bulan')?.value || '';
+  const tahun = document.getElementById('wali-pelanggaran-tahun')?.value || '';
+  const filenameSuffix = `${kelas.replace(/\s+/g, '_')}_${tahun}${bulan ? '_' + bulan : ''}`;
+  const students = (state.students || []).filter(s => s.kelas === kelas);
+  if (students.length === 0) { showToast('Tidak ada data untuk diekspor.', 'warning'); return; }
+  toggleLoader(true, 'Menyusun laporan...');
+  try {
+    const periodData = filterDataByPeriod(state.violations, 'bulanan', tahun, bulan, '');
+    const classData = periodData.filter(d => students.some(s => s.id === d.student_id));
+    const rekapData = students.map((std, idx) => {
+      const cnt = classData.filter(d => d.student_id === std.id).length;
+      return { 'No': idx+1, 'Nama': std.nama, 'NISN': std.nisn, 'Jumlah Pelanggaran': cnt };
+    });
+    const logData = classData.map((d, idx) => {
+      const std = students.find(s => s.id === d.student_id) || { nama: '-', nisn: '-' };
+      return { 'No': idx+1, 'Tanggal': formatLocalDate(d.tanggal), 'Nama': std.nama, 'NISN': std.nisn, 'Pelanggaran': d.keterangan||'-' };
+    }).sort((a, b) => a.Tanggal.localeCompare(b.Tanggal));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rekapData), 'Rekap Pelanggaran');
+    if (logData.length > 0) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(logData), 'Rincian Harian');
+    XLSX.writeFile(wb, `Wali_Kelas_Pelanggaran_${filenameSuffix}.xlsx`);
+    showToast('Laporan pelanggaran berhasil diunduh!', 'success');
+  } catch (e) { showToast(`Gagal mengekspor: ${e.message}`, 'error');
+  } finally { toggleLoader(false); }
+}
+
+function downloadWaliIzinPulang() {
+  const kelas = getWaliKelasClassName();
+  if (!kelas) { showToast('Pilih kelas terlebih dahulu!', 'warning'); return; }
+  const bulan = document.getElementById('wali-izin-pulang-bulan')?.value || '';
+  const tahun = document.getElementById('wali-izin-pulang-tahun')?.value || '';
+  const filenameSuffix = `${kelas.replace(/\s+/g, '_')}_${tahun}${bulan ? '_' + bulan : ''}`;
+  const students = (state.students || []).filter(s => s.kelas === kelas);
+  if (students.length === 0) { showToast('Tidak ada data untuk diekspor.', 'warning'); return; }
+  toggleLoader(true, 'Menyusun laporan...');
+  try {
+    const periodData = filterDataByPeriod(state.izinPulang, 'bulanan', tahun, bulan, '');
+    const classData = periodData.filter(d => students.some(s => s.id === d.student_id));
+    const rekapData = students.map((std, idx) => {
+      const cnt = classData.filter(d => d.student_id === std.id).length;
+      return { 'No': idx+1, 'Nama': std.nama, 'NISN': std.nisn, 'Frekuensi Izin Pulang': cnt };
+    });
+    const logData = classData.map((d, idx) => {
+      const std = students.find(s => s.id === d.student_id) || { nama: '-', nisn: '-' };
+      return { 'No': idx+1, 'Tanggal': formatLocalDate(d.tanggal), 'Jam': d.jam||'-', 'Nama': std.nama, 'NISN': std.nisn, 'Alasan': d.keterangan||'-', 'Guru Piket': d.guru_piket||'-' };
+    }).sort((a, b) => a.Tanggal.localeCompare(b.Tanggal));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rekapData), 'Rekap Izin Pulang');
+    if (logData.length > 0) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(logData), 'Rincian Harian');
+    XLSX.writeFile(wb, `Wali_Kelas_Izin_Pulang_${filenameSuffix}.xlsx`);
+    showToast('Laporan izin pulang berhasil diunduh!', 'success');
+  } catch (e) { showToast(`Gagal mengekspor: ${e.message}`, 'error');
+  } finally { toggleLoader(false); }
 }
 
 function downloadWali7Kaih() {
