@@ -3060,11 +3060,14 @@ function handleLaporanPeriodTypeChange(reportType) {
 function filterDataByPeriod(dataArray, periodType, year, month, semester) {
   return (dataArray || []).filter(item => {
     if (!item.tanggal) return false;
-    const [y, m, d] = item.tanggal.split('-');
+    const parts = item.tanggal.split('-');
+    if (parts.length < 2) return false;
+    const y = parts[0];
+    const m = parts[1];
     if (y !== year) return false;
     
     if (periodType === 'bulanan') {
-      return m === month;
+      return !month || m === month;
     } else if (periodType === 'semester') {
       const mNum = parseInt(m, 10);
       if (semester === 'genap') {
@@ -3430,12 +3433,8 @@ function renderWaliAbsensi(kelas) {
   const tahun = document.getElementById('wali-absensi-tahun')?.value || '';
   const periodAtt = filterDataByPeriod(state.attendance, 'bulanan', tahun, bulan, '');
 
-  let hasData = false;
-
   students.forEach((std, idx) => {
     const studentAtt = periodAtt.filter(a => a.student_id === std.id);
-    if (studentAtt.length === 0) return;
-    hasData = true;
 
     let hadir = 0, sakit = 0, izin = 0, alpha = 0;
     studentAtt.forEach(a => {
@@ -3445,7 +3444,7 @@ function renderWaliAbsensi(kelas) {
       else if (a.status === 'alpha') alpha++;
     });
     const total = hadir + sakit + izin + alpha;
-    const pct = total > 0 ? Math.round((hadir / total) * 100) : 100;
+    const pct = total > 0 ? Math.round((hadir / total) * 100) : 0;
 
     // Build date details
     let detailsHtml = '<span class="text-muted">Tidak ada absensi</span>';
@@ -3479,10 +3478,6 @@ function renderWaliAbsensi(kelas) {
     `;
     body.appendChild(tr);
   });
-
-  if (!hasData) {
-    body.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">Tidak ada data absensi periode ini.</td></tr>';
-  }
 }
 
 function renderWaliTerlambat(kelas) {
