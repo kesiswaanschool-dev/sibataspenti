@@ -218,8 +218,8 @@
             </div>
             <div class="custom-table-container">
               <table class="styled-table text-sm">
-                <thead><tr><th>No</th><th>NISN</th><th>Nama Siswa</th><th>Tanggal</th><th>Kategori</th><th>Catatan</th></tr></thead>
-                <tbody id="kaih-body"><tr><td colspan="6" class="text-center text-muted py-4">Memuat data...</td></tr></tbody>
+                <thead><tr><th>No</th><th>NISN</th><th>Nama Siswa</th><th>Tanggal Terisi</th><th>Total Terisi</th><th>Tidak Terisi</th></tr></thead>
+                <tbody id="kaih-body"><tr><td colspan="6" class="text-center text-muted py-4">Pilih kelas untuk melihat data.</td></tr></tbody>
               </table>
             </div>
           </div>
@@ -697,48 +697,45 @@
       let list = (appDb.kaihlogs || []).filter(k => idSet.has(String(k.student_id)));
       list = getFilteredByMonthYear(list, 'kaih');
 
-      const filledIds = new Set(list.map(k => String(k.student_id)));
-      const belumMengisi = allStudents.filter(s => !filledIds.has(String(s.id)));
-      const sudahMengisi = allStudents.filter(s => filledIds.has(String(s.id)));
-
       if (allStudents.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">Tidak ada siswa di kelas ini.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Tidak ada siswa di kelas ini.</td></tr>';
         return;
       }
 
+      const bulan = document.getElementById('kaih-bulan')?.value || '';
+      const tahun = document.getElementById('kaih-tahun')?.value || '';
+      const monthNames = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+
       let html = '';
+      allStudents.forEach((std, idx) => {
+        const logs = list.filter(k => String(k.student_id) === String(std.id));
+        const uniqueDates = [...new Set(logs.map(k => k.tanggal || ''))].filter(Boolean).sort();
+        const filledCount = uniqueDates.length;
+        const dateList = uniqueDates.map(d => {
+          const [y, m, dd] = d.split('-');
+          return parseInt(dd) + ' ' + monthNames[parseInt(m)] + ' ' + y;
+        }).join(', ');
 
-      if (sudahMengisi.length > 0) {
-        html += '<tr><td colspan="7" class="text-center font-semibold py-2" style="background:rgba(16,185,129,0.1);color:#10b981;">Sudah Mengisi</td></tr>';
-        sudahMengisi.forEach((std, idx) => {
-          const logs = list.filter(k => String(k.student_id) === String(std.id));
-          const tanggalList = [...new Set(logs.map(k => k.tanggal || '-'))].sort();
-          html += '<tr>';
-          html += '<td>' + (idx + 1) + '</td>';
-          html += '<td>' + (std.nisn || '-') + '</td>';
-          html += '<td class="font-semibold">' + std.nama + '</td>';
-          html += '<td>' + tanggalList.join(', ') + '</td>';
-          html += '<td><span class="badge badge-success">Sudah</span></td>';
-          html += '<td>' + logs.length + ' entries</td>';
-          html += '<td>-</td>';
-          html += '</tr>';
-        });
-      }
+        let notFilled = '-';
+        if (bulan && tahun) {
+          const daysInMonth = new Date(parseInt(tahun), parseInt(bulan), 0).getDate();
+          let totalWeekdays = 0;
+          for (let d = 1; d <= daysInMonth; d++) {
+            const day = new Date(parseInt(tahun), parseInt(bulan) - 1, d).getDay();
+            if (day >= 1 && day <= 5) totalWeekdays++;
+          }
+          notFilled = Math.max(0, totalWeekdays - filledCount);
+        }
 
-      if (belumMengisi.length > 0) {
-        html += '<tr><td colspan="7" class="text-center font-semibold py-2" style="background:rgba(239,68,68,0.1);color:#ef4444;">Belum Mengisi</td></tr>';
-        belumMengisi.forEach((std, idx) => {
-          html += '<tr>';
-          html += '<td>' + (sudahMengisi.length + idx + 1) + '</td>';
-          html += '<td>' + (std.nisn || '-') + '</td>';
-          html += '<td class="font-semibold">' + std.nama + '</td>';
-          html += '<td>-</td>';
-          html += '<td><span class="badge badge-danger">Belum</span></td>';
-          html += '<td>-</td>';
-          html += '<td>-</td>';
-          html += '</tr>';
-        });
-      }
+        html += '<tr>';
+        html += '<td>' + (idx + 1) + '</td>';
+        html += '<td>' + (std.nisn || '-') + '</td>';
+        html += '<td class="font-semibold">' + std.nama + '</td>';
+        html += '<td style="font-size:12px;">' + (dateList || '-') + '</td>';
+        html += '<td class="text-success font-semibold">' + filledCount + 'x</td>';
+        html += '<td class="text-danger font-semibold">' + notFilled + '</td>';
+        html += '</tr>';
+      });
 
       tbody.innerHTML = html;
     }function switchTab(tab) {

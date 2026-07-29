@@ -3363,7 +3363,7 @@ function populateWaliKelasYearDropdowns() {
   });
 
   // Auto-set month dropdown ke bulan berjalan jika belum dipilih
-  const monthIds = ['wali-absensi-bulan', 'wali-terlambat-bulan', 'wali-pelanggaran-bulan', 'wali-izin-pulang-bulan'];
+  const monthIds = ['wali-absensi-bulan', 'wali-terlambat-bulan', 'wali-pelanggaran-bulan', 'wali-izin-pulang-bulan', 'wali-7kaih-bulan'];
   monthIds.forEach(id => {
     const sel = document.getElementById(id);
     if (sel && !sel.value) sel.value = currentMonth;
@@ -3622,31 +3622,47 @@ function renderWali7Kaih(kelas) {
 
   const students = (state.students || []).filter(s => s.kelas === kelas);
   if (students.length === 0) {
-    body.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Tidak ada siswa di kelas ini.</td></tr>';
+    body.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Tidak ada siswa di kelas ini.</td></tr>';
     return;
   }
 
   const kaihLogs = state.kaihLogs || [];
   const tahun = document.getElementById('wali-7kaih-tahun')?.value || '';
+  const bulan = document.getElementById('wali-7kaih-bulan')?.value || '';
+
+  const monthNames = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
   students.forEach((std, idx) => {
     let logs = kaihLogs.filter(k => k.student_id === std.id);
     if (tahun) logs = logs.filter(k => k.tanggal && k.tanggal.startsWith(tahun));
+    if (bulan) logs = logs.filter(k => k.tanggal && k.tanggal.slice(5,7) === bulan);
 
-    const totalDays = [...new Set(logs.map(k => k.tanggal))];
-    const allIndicators = logs.flatMap(k => k.indicators || []);
-    const totalFilled = allIndicators.filter(Boolean).length;
-    const expectedPerDay = 7;
-    const totalExpected = totalDays.length * expectedPerDay;
-    const notFilled = totalExpected - totalFilled;
+    const uniqueDates = [...new Set(logs.map(k => k.tanggal))].sort();
+    const filledCount = uniqueDates.length;
+    const dateList = uniqueDates.map(d => {
+      const [y, m, dd] = d.split('-');
+      return `${parseInt(dd)} ${monthNames[parseInt(m)]} ${y}`;
+    }).join(', ');
+
+    let notFilled = '-';
+    if (bulan && tahun) {
+      const daysInMonth = new Date(parseInt(tahun), parseInt(bulan), 0).getDate();
+      let totalWeekdays = 0;
+      for (let d = 1; d <= daysInMonth; d++) {
+        const day = new Date(parseInt(tahun), parseInt(bulan) - 1, d).getDay();
+        if (day >= 1 && day <= 5) totalWeekdays++;
+      }
+      notFilled = Math.max(0, totalWeekdays - filledCount);
+    }
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${idx + 1}</td>
       <td class="text-left font-semibold">${std.nama}</td>
       <td>${std.nisn}</td>
-      <td class="text-success font-semibold">${totalFilled}</td>
-      <td class="text-danger font-semibold">${Math.max(0, notFilled)}</td>
+      <td style="font-size:12px;">${dateList || '-'}</td>
+      <td class="text-success font-semibold">${filledCount}x</td>
+      <td class="text-danger font-semibold">${notFilled}</td>
     `;
     body.appendChild(tr);
   });
@@ -3790,7 +3806,10 @@ function downloadWali7Kaih() {
   if (!kelas) { showToast('Pilih kelas terlebih dahulu!', 'warning'); return; }
 
   const tahun = document.getElementById('wali-7kaih-tahun')?.value || '';
-  const filenameSuffix = `${kelas.replace(/\s+/g, '_')}_${tahun || 'semua'}`;
+  const bulan = document.getElementById('wali-7kaih-bulan')?.value || '';
+  const monthNames = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+  const bulanLabel = bulan ? monthNames[parseInt(bulan)] : 'Semua';
+  const filenameSuffix = `${kelas.replace(/\s+/g, '_')}_${tahun}${bulan ? '_' + bulan : ''}`;
 
   const students = (state.students || []).filter(s => s.kelas === kelas);
   if (students.length === 0) { showToast('Tidak ada data untuk diekspor.', 'warning'); return; }
@@ -3801,10 +3820,23 @@ function downloadWali7Kaih() {
     const data = students.map((std, idx) => {
       let logs = kaihLogs.filter(k => k.student_id === std.id);
       if (tahun) logs = logs.filter(k => k.tanggal && k.tanggal.startsWith(tahun));
-      const totalFilled = logs.flatMap(k => k.indicators || []).filter(Boolean).length;
-      const totalDays = [...new Set(logs.map(k => k.tanggal))].length;
-      const expected = totalDays * 7;
-      return { 'No': idx+1, 'Nama': std.nama, 'NISN': std.nisn, 'Total Terisi': totalFilled, 'Tidak Terisi': Math.max(0, expected - totalFilled) };
+      if (bulan) logs = logs.filter(k => k.tanggal && k.tanggal.slice(5,7) === bulan);
+      const uniqueDates = [...new Set(logs.map(k => k.tanggal))].sort();
+      const dateList = uniqueDates.map(d => {
+        const [y, m, dd] = d.split('-');
+        return `${parseInt(dd)} ${monthNames[parseInt(m)]} ${y}`;
+      }).join(', ');
+      let notFilled = '-';
+      if (bulan && tahun) {
+        const daysInMonth = new Date(parseInt(tahun), parseInt(bulan), 0).getDate();
+        let totalWeekdays = 0;
+        for (let d = 1; d <= daysInMonth; d++) {
+          const day = new Date(parseInt(tahun), parseInt(bulan) - 1, d).getDay();
+          if (day >= 1 && day <= 5) totalWeekdays++;
+        }
+        notFilled = Math.max(0, totalWeekdays - uniqueDates.length);
+      }
+      return { 'No': idx+1, 'Nama': std.nama, 'NISN': std.nisn, 'Tanggal': dateList || '-', 'Total Terisi': `${uniqueDates.length}x`, 'Tidak Terisi': notFilled };
     });
 
     const wb = XLSX.utils.book_new();
