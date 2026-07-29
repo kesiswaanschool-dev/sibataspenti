@@ -602,16 +602,21 @@ async function syncPullFromFirebase(silent = true, snapshotData = null) {
     }
 
     // Cloud adalah source of truth — replace state lokal dengan data cloud
-    state.students = data.students || [];
-    state.attendance = data.attendance || [];
-    state.lateLogs = data.latelogs || data.lateLogs || [];
-    state.violations = data.violations || [];
-    state.izinPulang = data.izinpulang || data.izinPulang || [];
-    state.jurnalGuru = data.jurnalguru || data.jurnalGuru || [];
-    state.teachers = data.teachers || [];
-    state.kaihLogs = data.kaihlogs || data.kaihLogs || [];
-    state.reportHistory = data.reportHistory || [];
-    state.accounts = data.accounts || [];
+    // Hanya replace jika data cloud memiliki isi (tidak kosong) agar data lokal tidak terhapus
+    if (data.students && data.students.length > 0) state.students = data.students;
+    if (data.attendance && data.attendance.length > 0) state.attendance = data.attendance;
+    const cloudLateLogs = data.latelogs || data.lateLogs || [];
+    if (cloudLateLogs.length > 0) state.lateLogs = cloudLateLogs;
+    if (data.violations && data.violations.length > 0) state.violations = data.violations;
+    const cloudIzinPulang = data.izinpulang || data.izinPulang || [];
+    if (cloudIzinPulang.length > 0) state.izinPulang = cloudIzinPulang;
+    const cloudJurnalGuru = data.jurnalguru || data.jurnalGuru || [];
+    if (cloudJurnalGuru.length > 0) state.jurnalGuru = cloudJurnalGuru;
+    if (data.teachers && data.teachers.length > 0) state.teachers = data.teachers;
+    const cloudKaihLogs = data.kaihlogs || data.kaihLogs || [];
+    if (cloudKaihLogs.length > 0) state.kaihLogs = cloudKaihLogs;
+    if (data.reportHistory && data.reportHistory.length > 0) state.reportHistory = data.reportHistory;
+    if (data.accounts && data.accounts.length > 0) state.accounts = data.accounts;
 
     console.log('[SYNC] Pull: state replaced, students:', state.students.length);
 
@@ -657,17 +662,23 @@ async function syncPushToFirebase(silent = true) {
     const deletedStudentIds = (() => {
       try { return JSON.parse(localStorage.getItem('deletedStudentIds') || '[]'); } catch { return []; }
     })();
+    // Gabung data state lokal dengan existingData: state menang, existingData sebagai fallback
+    const safeMerge = (local, existing) => {
+      if (local && local.length > 0) return local;
+      if (existing && existing.length > 0) return existing;
+      return [];
+    };
     const payload = {
-      students: state.students && state.students.length > 0 ? state.students : (existingData.students || []),
-      attendance: state.attendance && state.attendance.length > 0 ? state.attendance : (existingData.attendance || []),
-      latelogs: state.lateLogs && state.lateLogs.length > 0 ? state.lateLogs : (existingData.latelogs || []),
-      violations: state.violations && state.violations.length > 0 ? state.violations : (existingData.violations || []),
-      izinpulang: state.izinPulang && state.izinPulang.length > 0 ? state.izinPulang : (existingData.izinpulang || []),
-      jurnalguru: state.jurnalGuru && state.jurnalGuru.length > 0 ? state.jurnalGuru : (existingData.jurnalguru || []),
-      teachers: state.teachers && state.teachers.length > 0 ? state.teachers : (existingData.teachers || []),
-      kaihlogs: _kaihLogsModified ? (state.kaihLogs || []) : (existingData.kaihlogs || existingData.kaihLogs || []),
-      accounts: (() => { const a = getAccountsList(); return a && a.length > 0 ? a : (existingData.accounts || []); })(),
-      reportHistory: state.reportHistory && state.reportHistory.length > 0 ? state.reportHistory : (existingData.reportHistory || []),
+      students: safeMerge(state.students, existingData.students),
+      attendance: safeMerge(state.attendance, existingData.attendance),
+      latelogs: safeMerge(state.lateLogs, existingData.latelogs),
+      violations: safeMerge(state.violations, existingData.violations),
+      izinpulang: safeMerge(state.izinPulang, existingData.izinpulang),
+      jurnalguru: safeMerge(state.jurnalGuru, existingData.jurnalguru),
+      teachers: safeMerge(state.teachers, existingData.teachers),
+      kaihlogs: _kaihLogsModified ? (state.kaihLogs || []) : safeMerge(state.kaihLogs, existingData.kaihlogs || existingData.kaihLogs),
+      accounts: safeMerge(getAccountsList(), existingData.accounts),
+      reportHistory: safeMerge(state.reportHistory, existingData.reportHistory),
       deletedStudentIds,
       updated_at: new Date().toISOString()
     };
