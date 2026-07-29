@@ -2746,6 +2746,7 @@
                   <label class="form-label font-semibold mb-2 d-flex">Tingkat Laporan (Scope)</label>
                   <div class="segmented-control" id="laporan-jurnal-scope-segmented">
                     <button type="button" class="segment-button active" id="btn-seg-jurnal-semua" onclick="setLaporanScope('jurnal', 'semua')">Semua</button>
+                    <button type="button" class="segment-button" id="btn-seg-jurnal-kelas" onclick="setLaporanScope('jurnal', 'kelas')">Per Kelas</button>
                     <button type="button" class="segment-button" id="btn-seg-jurnal-guru" onclick="setLaporanScope('jurnal', 'guru')">Per Guru</button>
                   </div>
                   <input type="hidden" id="laporan-jurnal-scope" value="semua">
@@ -2753,6 +2754,12 @@
               </div>
 
               <div class="row mt-2">
+                <div class="col-12 mb-3" id="laporan-jurnal-kelas-container" style="display: none;">
+                  <label for="laporan-jurnal-kelas" class="form-label font-semibold">Pilih Kelas</label>
+                  <select id="laporan-jurnal-kelas" class="form-select">
+                    <option value="">Pilih Kelas</option>
+                  </select>
+                </div>
                 <div class="col-12 mb-3" id="laporan-jurnal-guru-container" style="display: none;">
                   <label for="laporan-jurnal-guru" class="form-label font-semibold">Pilih Guru</label>
                   <select id="laporan-jurnal-guru" class="form-select">

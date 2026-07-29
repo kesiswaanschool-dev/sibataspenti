@@ -4119,6 +4119,7 @@ function handleLaporanScopeChange(reportType) {
       else if (reportType === 'terlambat') populateClassSelect('laporan-terlambat-kelas');
       else if (reportType === 'pelanggaran') populateClassSelect('laporan-pelanggaran-kelas');
       else if (reportType === 'izin-pulang') populateClassSelect('laporan-izin-pulang-kelas');
+      else if (reportType === 'jurnal') populateClassSelect('laporan-jurnal-kelas');
     }
     if (studentContainer) studentContainer.style.display = 'none';
     if (guruContainer) guruContainer.style.display = 'none';
@@ -4810,7 +4811,15 @@ function downloadLaporanJurnal() {
   let entries = state.jurnalGuru || [];
   let titleSuffix = 'Semua_Guru';
 
-  if (scope === 'guru') {
+  if (scope === 'kelas') {
+    const kelas = document.getElementById('laporan-jurnal-kelas')?.value || '';
+    if (!kelas) {
+      showToast('Harap pilih kelas terlebih dahulu!', 'warning');
+      return;
+    }
+    entries = entries.filter(j => j.kelas === kelas);
+    titleSuffix = `Kelas_${kelas.replace(/\s+/g, '_')}`;
+  } else if (scope === 'guru') {
     const guru = document.getElementById('laporan-jurnal-guru')?.value || '';
     if (!guru) {
       showToast('Harap pilih guru terlebih dahulu!', 'warning');
