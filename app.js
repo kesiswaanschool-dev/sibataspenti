@@ -3349,14 +3349,24 @@ function populateKelasWaliSelects() {
 }
 
 function populateWaliKelasYearDropdowns() {
-  const currentYear = new Date().getFullYear();
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
   const years = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1, currentYear + 2];
+
   ['wali-absensi-tahun', 'wali-terlambat-tahun', 'wali-pelanggaran-tahun', 'wali-izin-pulang-tahun', 'wali-7kaih-tahun'].forEach(id => {
     const sel = document.getElementById(id);
     if (!sel) return;
     const val = sel.value || String(currentYear);
     sel.innerHTML = years.map(y => `<option value="${y}"${y === currentYear ? ' selected' : ''}>${y}</option>`).join('');
     sel.value = val;
+  });
+
+  // Auto-set month dropdown ke bulan berjalan jika belum dipilih
+  const monthIds = ['wali-absensi-bulan', 'wali-terlambat-bulan', 'wali-pelanggaran-bulan', 'wali-izin-pulang-bulan'];
+  monthIds.forEach(id => {
+    const sel = document.getElementById(id);
+    if (sel && !sel.value) sel.value = currentMonth;
   });
 }
 
